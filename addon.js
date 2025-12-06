@@ -1,604 +1,432 @@
+/**
+ * addon.js
+ * Corsaro Brain — LEVIATHAN EDITION (v33.0 - Hybrid Stable)
+ * * Changelog:
+ * - CORE: Basato sulla versione v31.1 (Stabile & Funzionante).
+ * - FILTER: Mantiene il fix "Lisa Frankenstein" (Anno + Prefisso check).
+ * - PERFORMANCE: Reintrodotta Node-Cache per evitare ban API Debrid.
+ * - UX: Format CinePro originale mantenuto.
+ */
+
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const path = require("path");
 const axios = require("axios");
-const cheerio = require("cheerio");
-const https = require("https");
-const cloudscraper = require("cloudscraper");
+const Bottleneck = require("bottleneck");
+const NodeCache = require("node-cache"); // ASSICURATI DI AVERLO: npm install node-cache
 
-// --- CONFIGURAZIONE CENTRALE ---
+// --- IMPORTIAMO I MODULI SMART ---
+const { generateSmartQueries } = require("./ai_query");
+const { smartMatch } = require("./smart_parser");
+const { rankAndFilterResults } = require("./ranking");
+
+//  IMPORTIAMO ALTRI MODULI
+const { tmdbToImdb } = require("./id_converter");
+const kitsuHandler = require("./kitsu_handler");
+const RD = require("./debrid/realdebrid");
+const AD = require("./debrid/alldebrid");
+const TB = require("./debrid/torbox");
+
+// --- CONFIGURAZIONE ---
 const CONFIG = {
-    TIMEOUT: 6000,       // Timeout standard (6s) per siti pesanti o con Cloudflare
-    TIMEOUT_API: 3000,   // Timeout ridotto (3s) per API veloci (Knaben, TPB)
-    KNABEN_API: "https://api.knaben.org/v1",
-    // Pool di User-Agents per rotazione
-    USER_AGENTS: [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-    ],
-    // Lista statica di tracker di fallback
-    TRACKERS: [
-        "udp://tracker.opentrackr.org:1337/announce",
-        "udp://open.demonoid.ch:6969/announce",
-        "udp://open.demonii.com:1337/announce",
-        "udp://open.stealth.si:80/announce",
-        "udp://tracker.torrent.eu.org:451/announce",
-        "udp://tracker.therarbg.to:6969/announce",
-        "udp://tracker.tryhackx.org:6969/announce",
-        "udp://tracker.doko.moe:6969/announce",
-        "udp://opentracker.i2p.rocks:6969/announce"
-    ],
-    HTTPS_AGENT_OPTIONS: { rejectUnauthorized: false, keepAlive: true } 
+  CINEMETA_URL: "https://v3-cinemeta.strem.io",
+  REAL_SIZE_FILTER: 80 * 1024 * 1024, 
+  TIMEOUT_TMDB: 2000,
+  SCRAPER_TIMEOUT: 6000, 
+  MAX_RESULTS: 40, 
+  CACHE_TTL: 600 // 10 Minuti di cache per i link debrid
 };
 
-// --- UTILS & HELPERS ---
+// --- CACHE & LIMITERS ---
+const debridCache = new NodeCache({ stdTTL: CONFIG.CACHE_TTL, checkperiod: 120 });
 
-// 1. User Agent Rotator
-function getRandomUA() {
-    return CONFIG.USER_AGENTS[Math.floor(Math.random() * CONFIG.USER_AGENTS.length)];
-}
-
-// 2. Dynamic Tracker Updater (Chiamata opzionale)
-async function updateTrackers() {
-    try {
-        const { data } = await axios.get("https://ngosang.github.io/trackerslist/trackers_best.txt", { timeout: 3000 });
-        const list = data.split('\n').filter(line => line.trim() !== '');
-        if (list.length > 0) CONFIG.TRACKERS = list;
-    } catch (e) {
-        // Fallimento silenzioso, usa lista statica
-    }
-}
-
-// 3. Concurrency Limiter (Implementazione nativa di p-limit)
-const limitConcurrency = (concurrency) => {
-    const queue = [];
-    let active = 0;
-    const next = () => {
-        active--;
-        if (queue.length > 0) queue.shift()();
-    };
-    const run = (fn) => new Promise((resolve, reject) => {
-        const execute = async () => {
-            active++;
-            try { resolve(await fn()); } catch (e) { reject(e); } finally { next(); }
-        };
-        if (active < concurrency) execute();
-        else queue.push(execute);
-    });
-    return run;
+const LIMITERS = {
+  scraper: new Bottleneck({ maxConcurrent: 40, minTime: 10 }), 
+  rd: new Bottleneck({ maxConcurrent: 25, minTime: 40 }), 
 };
 
-// 4. Strict Engine Timeout Wrapper
-const withTimeout = (promise, ms) => Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error("Engine Timeout")), ms))
-]);
+// --- MOTORI DI RICERCA ---
+const SCRAPER_MODULES = [
+  require("./engines") 
+];
 
-const httpsAgent = new https.Agent(CONFIG.HTTPS_AGENT_OPTIONS);
+const FALLBACK_SCRAPERS = [
+  require("./external"),
+];
 
-// --- BYPASS CLOUDFLARE (Wrapper Automatico) ---
-async function cfGet(url, config = {}) {
-    const headers = { ...CONFIG.HEADERS, 'User-Agent': getRandomUA(), ...config.headers };
-    try {
-        return await axios.get(url, { ...config, headers, httpsAgent });
-    } catch (err) {
-        try {
-            const html = await cloudscraper.get(url, {
-                headers: headers,
-                timeout: CONFIG.TIMEOUT
-            });
-            return { data: html };
-        } catch (err2) {
-            return { data: "" };
-        }
-    }
-}
+const app = express();
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors());
+app.use(express.static(path.join(__dirname, "public")));
 
-// --- HELPER DI PARSING ---
-function clean(title) {
-    if (!title) return "";
-    const decoded = title.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'");
-    return decoded.replace(/[:"'’]/g, "").replace(/[^a-zA-Z0-9\s\-.\[\]]/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function isItalianResult(name) {
-    const nameUpper = name.toUpperCase();
-    if (/\b(ENG|ENGLISH)\b/i.test(nameUpper) && !/\b(ITA|MULTI|DUAL)\b/i.test(nameUpper)) return false;
-    const regex = /\b(ITA|ITALIAN|ITALIANO|MULTI|DUAL|MD|SUB.?ITA|SUBITA|SUB-ITA|ITALUB|FORCED|AC3.?ITA|DTS.?ITA|AUDIO.?ITA|ITA.?AC3|ITA.?HD|BDMUX|DVDRIP.?ITA|CiNEFiLE|NovaRip|MeM|robbyrs|iDN_CreW|SPEEDVIDEO|WMS|TRIDIM)\b/i;
-    return regex.test(nameUpper);
-}
-
-function checkYear(name, year, type) {
-    if (!year) return true;
-    if (type === 'tv' || type === 'series') return true;
-    const y = parseInt(year);
-    return [y - 1, y, y + 1].some(ay => name.includes(ay.toString()));
-}
-
-function parseImdbId(imdbId) {
-    if (!imdbId || !imdbId.includes(':')) return { season: null, episode: null };
-    const parts = imdbId.split(':');
-    if (parts.length >= 3) {
-        return { season: parseInt(parts[parts.length - 2]), episode: parseInt(parts[parts.length - 1]) };
-    }
-    return { season: null, episode: null };
-}
-
-// --- PARSER EPISODI ---
-function extractInfo(name) {
-    const upper = name.toUpperCase();
-    let season = null;
-    let episode = null;
-
-    const dotMatch = upper.match(/S(\d{1,2})\.E(\d{1,3})/);
-    if (dotMatch) { 
-        season = parseInt(dotMatch[1]); 
-        episode = parseInt(dotMatch[2]); 
-    } else {
-        const standardMatch = upper.match(/S(\d{1,2})[._\s-]*E(\d{1,3})/);
-        if (standardMatch) {
-            season = parseInt(standardMatch[1]);
-            episode = parseInt(standardMatch[2]);
-        } else {
-            const xMatch = upper.match(/(\d{1,2})X(\d{1,3})/);
-            if (xMatch) {
-                season = parseInt(xMatch[1]);
-                episode = parseInt(xMatch[2]);
-            } else {
-                const sMatch = upper.match(/(?:STAGIONE|SEASON|S)\s?(\d{1,2})(?![0-9])/);
-                if (sMatch) season = parseInt(sMatch[1]);
-                const eMatch = upper.match(/(?:EPISODIO|EP\.|_|\s)(\d{1,3})(?!\d|p|k|bit|mb|gb)/);
-                if (eMatch) episode = parseInt(eMatch[1]);
-            }
-        }
-    }
-    return { season, episode };
-}
-
-function isCorrectFormat(name, reqSeason, reqEpisode) {
-    if (!reqSeason && !reqEpisode) return true;
-    const info = extractInfo(name);
-    const upperName = name.toUpperCase();
-    const isPack = upperName.includes("COMPLET") || upperName.includes("PACK") || upperName.includes("TUTTE") || upperName.includes("STAGIONE");
-
-    const rangeMatch = upperName.match(/(?:S|STAGIONE)?\s*(\d{1,2})\s*-\s*(?:S|STAGIONE)?\s*(\d{1,2})/);
-    if (rangeMatch && reqSeason) {
-        const start = parseInt(rangeMatch[1]);
-        const end = parseInt(rangeMatch[2]);
-        if (reqSeason >= start && reqSeason <= end) return true;
-    }
-
-    if (reqSeason && info.season !== null && info.season !== reqSeason) return false;
-    if (reqEpisode) {
-        if (info.episode !== null) {
-            if (info.episode !== reqEpisode) return false;
-        } else if (!isPack) return false;
-    }
-    return true;
+// --- UTILITIES ---
+const UNITS = ["B", "KB", "MB", "GB", "TB"];
+function formatBytes(bytes) {
+  if (!+bytes) return "0 B";
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${UNITS[i]}`;
 }
 
 function parseSize(sizeStr) {
-    if (!sizeStr) return 0;
-    const match = sizeStr.toString().match(/([\d.,]+)\s*(TB|GB|MB|KB|B)/i);
-    if (!match) return 0;
-    let val = parseFloat(match[1].replace(',', '.'));
-    const unit = match[2].toUpperCase();
-    if (unit.includes('T')) val *= 1024 ** 4;
-    else if (unit.includes('G')) val *= 1024 ** 3;
-    else if (unit.includes('M')) val *= 1024 ** 2;
-    else if (unit.includes('K')) val *= 1024;
-    return Math.round(val);
+  if (!sizeStr) return 0;
+  if (typeof sizeStr === "number") return sizeStr;
+  const m = sizeStr.toString().match(/([\d.]+)\s*([KMGTP]?B)/i);
+  if (!m) return 0;
+  const val = parseFloat(m[1]);
+  const unit = m[2].toUpperCase();
+  const mult = { TB: 1099511627776, GB: 1073741824, MB: 1048576, KB: 1024, B: 1 };
+  return val * (mult[unit] || 1);
 }
 
-function bytesToSize(bytes) {
-    return (bytes / 1073741824).toFixed(2) + " GB";
+// ==========================================
+//  HELPER DI FORMATTAZIONE & FILTRO
+// ==========================================
+
+function isSafeForItalian(item) {
+  if (!item || !item.title) return false;
+  const t = item.title.toUpperCase();
+  const itaPatterns = [
+    /\b(ITA|ITALIAN|IT|ITL|ITALY)\b/,
+    /\b(MULTI|MUII|MUL|MULTILANGUAGE)\b.*\b(ITA|IT|ITALIAN)\b/,
+    /\b(AC3|DTS).*\b(ITA|IT|ITALIAN)\b/, 
+    /\b(SUB.?ITA|SUBS.?ITA|SOTTOTITOLI.?ITA)\b/,
+    /\b(VC[._-]?I|VO.?ITA|AUD.?ITA)\b/,            
+    /\b(ITA.?ENG)\b/,                      
+    /ITALIAN.*(DL|Mux|WEBRip|BluRay)/i,
+    /\b(SPEEDVIDEO|WMS|TRIDIM|iDN_CreW)\b/
+  ];
+  return itaPatterns.some(p => p.test(t));
 }
 
-// --- MOTORI DI RICERCA ---
+function cleanFilename(filename) {
+  if (!filename) return "";
+  const yearMatch = filename.match(/(19|20)\d{2}/);
+  let cleanTitle = filename;
+  let year = "";
+  if (yearMatch) {
+    year = ` (${yearMatch[0]})`;
+    cleanTitle = filename.substring(0, yearMatch.index);
+  }
+  cleanTitle = cleanTitle.replace(/[._]/g, " ").trim();
+  cleanTitle = cleanTitle.replace(/\b(ita|eng|sub|h264|h265|x264|x265|1080p|720p|4k|bluray|webdl|rip)\b.*/yi, "");
+  return `${cleanTitle.trim()}${year}`;
+}
 
-async function searchCorsaro(title, year, type, reqSeason, reqEpisode) {
+function getEpisodeTag(filename) {
+    const f = filename.toLowerCase();
+    const matchEp = f.match(/s(\d+)[ex](\d+)/i);
+    if (matchEp) return `🍿 S${matchEp[1]}E${matchEp[2]}`;
+    const matchX = f.match(/(\d+)x(\d+)/i);
+    if (matchX) return `🍿 S${matchX[1].padStart(2, '0')}E${matchX[2].padStart(2, '0')}`;
+    if (/s(\d+)\b|stagione (\d+)|season (\d+)/i.test(f)) {
+        const s = f.match(/s(\d+)|stagione (\d+)|season (\d+)/i);
+        const num = s[1] || s[2] || s[3];
+        return `📦 STAGIONE ${num}`;
+    }
+    return "";
+}
+
+function extractStreamInfo(title, source) {
+  const t = String(title).toLowerCase();
+  let q = "HD"; let qIcon = "📺";
+  if (/2160p|4k|uhd/.test(t)) { q = "4K"; qIcon = "✨"; }
+  else if (/1080p/.test(t)) { q = "1080p"; qIcon = "🌕"; }
+  else if (/720p/.test(t)) { q = "720p"; qIcon = "🌗"; }
+  else if (/480p|\bsd\b/.test(t)) { q = "SD"; qIcon = "🌑"; }
+
+  const videoTags = []; const audioTags = [];
+  if (/hdr/.test(t)) videoTags.push("HDR");
+  if (/dolby|vision|\bdv\b/.test(t)) videoTags.push("DV");
+  if (/imax/.test(t)) videoTags.push("IMAX");
+  if (/h265|hevc|x265/.test(t)) videoTags.push("HEVC");
+  
+  if (/atmos/.test(t)) audioTags.push("Atmos");
+  if (/dts:?x?|\bdts\b/.test(t)) audioTags.push("DTS");
+  if (/dd\+|eac3/.test(t)) audioTags.push("DD+");
+  if (/5\.1/.test(t)) audioTags.push("5.1");
+
+  let lang = "🇬🇧 ENG"; 
+  if (source === "Corsaro") {
+      lang = "🇮🇹 ITA";
+      if (/multi|mui/i.test(t)) lang = "🇮🇹 MULTI";
+  } 
+  else if (/\b(ita|italian|it)\b/i.test(t)) {
+      lang = "🇮🇹 ITA";
+  } else if (/multi|mui/i.test(t)) {
+      lang = "🌐 MULTI"; 
+  }
+
+  let detailsParts = [];
+  if (videoTags.length) detailsParts.push(`✨ ${videoTags.join(" ")}`);
+  if (audioTags.length) detailsParts.push(`🔊 ${audioTags.join(" ")}`);
+  
+  return { quality: q, qIcon, info: detailsParts.join(" • "), lang };
+}
+
+function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag = "RD") {
+    const { quality, qIcon, info, lang } = extractStreamInfo(fileTitle, source);
+    const sizeStr = size ? `📦 ${formatBytes(size)}` : "📦 ❓"; 
+    const seedersStr = seeders ? `👤 ${seeders}` : "";
+
+    const name = `[${serviceTag} ${qIcon} ${quality}] ${source}`;
+    const detailLines = [];
+
+    let cleanName = cleanFilename(fileTitle)
+        .replace(/s\d+e\d+/i, "")
+        .replace(/s\d+/i, "")
+        .trim();
+    const epTag = getEpisodeTag(fileTitle);
+    detailLines.push(`🎬 ${cleanName}${epTag ? ` ${epTag}` : ""} • ${quality}`);
+
+    let sizeSeedLine = sizeStr;
+    if (seedersStr) sizeSeedLine += ` • ${seedersStr}`;
+    detailLines.push(sizeSeedLine);
+
+    const langTag = lang.replace('🌐', '').replace('🇮🇹', 'IT').replace('🇬🇧', 'GB').trim();
+    detailLines.push(`🔍 ${source} • 🗣️ ${langTag}`);
+
+    if (info) {
+        const tags = info.split(' • ');
+        const videoTags = tags.filter(t => t.includes('✨')).map(t => t.replace('✨', ''));
+        const audioTags = tags.filter(t => t.includes('🔊'));
+        if (videoTags.length) detailLines.push(`🎞️ ${videoTags.join(' • ')}`);
+        if (audioTags.length) detailLines.push(`🔊 ${audioTags.join(' • ')}`);
+    }
+
+    const fullTitle = detailLines.join('\n');
+    return { name, title: fullTitle };
+}
+
+// ==========================================
+// 🧠 CORE LOGIC
+// ==========================================
+
+async function getMetadata(id, type) {
+  try {
+    let tmdbId = id, s = 1, e = 1;
+    if (type === "series" && id.includes(":")) [tmdbId, s, e] = id.split(":");
+    
+    const { data: cData } = await axios.get(`${CONFIG.CINEMETA_URL}/meta/${type}/${tmdbId.split(":")[0]}.json`, { timeout: CONFIG.TIMEOUT_TMDB }).catch(() => ({ data: {} }));
+    
+    return cData?.meta ? {
+      title: cData.meta.name,
+      originalTitle: cData.meta.name, 
+      year: cData.meta.year?.split("–")[0],
+      imdb_id: tmdbId.split(":")[0], 
+      isSeries: type === "series",
+      season: parseInt(s),
+      episode: parseInt(e)
+    } : null;
+  } catch { return null; }
+}
+
+async function resolveDebridLink(config, item, showFake) {
+    const service = config.service || 'rd';
+    const apiKey = config.key || config.rd;
+    if (!apiKey) return null;
+
+    // --- CACHE CHECK (NEW) ---
+    // Questo è fondamentale per la velocità, non intacca la logica di ricerca
+    const hashMatch = item.magnet.match(/btih:([a-f0-9]{40})/i);
+    const hash = hashMatch ? hashMatch[1].toUpperCase() : null;
+    const cacheKey = hash ? `${service}:${apiKey.substring(0,5)}:${hash}` : null;
+
+    if (cacheKey) {
+        const cached = debridCache.get(cacheKey);
+        if (cached === 'MISSING') return showFake ? { name: `[P2P ⚠️]`, title: `${item.title}\n⚠️ Cache Assente`, url: item.magnet, behaviorHints: { notWebReady: true } } : null;
+        if (cached) return cached;
+    }
+    // -------------------------
+
     try {
-        const url = `https://ilcorsaronero.link/search?q=${encodeURIComponent(clean(title))}`;
-        const { data } = await cfGet(url, { timeout: CONFIG.TIMEOUT });
+        let streamData = null;
+        if (service === 'rd') streamData = await RD.getStreamLink(apiKey, item.magnet, item.season, item.episode);
+        else if (service === 'ad') streamData = await AD.getStreamLink(apiKey, item.magnet, item.season, item.episode);
+        else if (service === 'tb') streamData = await TB.getStreamLink(apiKey, item.magnet, item.season, item.episode);
 
-        if (!data || data.includes("Cloudflare")) return [];
-        const $ = cheerio.load(data);
-        let items = [];
+        if (!streamData || (streamData.type === "ready" && streamData.size < CONFIG.REAL_SIZE_FILTER)) {
+            if (cacheKey) debridCache.set(cacheKey, 'MISSING');
+            return null;
+        }
 
-        $('a').each((i, elem) => {
-            if (items.length >= 20) return;
-            const href = $(elem).attr('href');
-            const text = $(elem).text().trim();
-            if (!isItalianResult(text) || !checkYear(text, year, type) || !isCorrectFormat(text, reqSeason, reqEpisode)) return;
-            if (href && (href.includes('/torrent/') || href.includes('details.php')) && text.length > 5) {
-                let fullUrl = href.startsWith('http') ? href : `https://ilcorsaronero.link${href.startsWith('/') ? '' : '/'}${href}`;
-                if (!items.some(p => p.url === fullUrl)) items.push({ url: fullUrl, title: text });
-            }
-        });
+        let serviceTag = "RD";
+        if (service === 'ad') serviceTag = "AD";
+        if (service === 'tb') serviceTag = "TB";
 
-        const limit = limitConcurrency(5);
-        const promises = items.map(item => limit(async () => {
-            try {
-                const detailPage = await cfGet(item.url, { timeout: 3000 });
-                const magnetMatch = detailPage.data.match(/magnet:\?xt=urn:btih:([a-zA-Z0-9]{40})/i);
-                if (!magnetMatch) return null;
-                const sizeMatch = detailPage.data.match(/(\d+(\.\d+)?)\s?(GB|MB|KB)/i);
-                const seedersMatch = detailPage.data.match(/Seeders:\s*(\d+)/i);
-                return {
-                    title: item.title,
-                    magnet: `magnet:?xt=urn:btih:${magnetMatch[1]}&dn=${encodeURIComponent(item.title)}`,
-                    size: sizeMatch ? sizeMatch[0] : "??",
-                    sizeBytes: parseSize(sizeMatch ? sizeMatch[0] : "0"),
-                    seeders: seedersMatch ? parseInt(seedersMatch[1]) : 0,
-                    source: "Corsaro"
-                };
-            } catch { return null; }
-        }));
-
-        return (await Promise.all(promises)).filter(Boolean);
-    } catch { return []; }
-}
-
-async function searchKnaben(title, year, type, reqSeason, reqEpisode) {
-    try {
-        let query = clean(title);
-        if (!query.toUpperCase().includes("ITA")) query += " ITA";
-
-        const payload = {
-            "search_field": "title",
-            "query": query,
-            "order_by": "seeders",
-            "order_direction": "desc",
-            "hide_unsafe": false,
-            "hide_xxx": true,
-            "size": 300
+        const { name, title } = formatStreamTitleCinePro(streamData.filename || item.title, item.source, streamData.size || item.size, item.seeders, serviceTag);
+        
+        const result = { 
+            name, 
+            title, 
+            url: streamData.url, 
+            behaviorHints: { notWebReady: false, bingieGroup: `corsaro-${service}` } 
         };
 
-        const { data } = await axios.post(CONFIG.KNABEN_API, payload, {
-            headers: {
-                'Content-Type': 'application/json',
-                'User-Agent': getRandomUA()
-            },
-            timeout: CONFIG.TIMEOUT_API // Usa timeout breve per API
-        });
+        if (cacheKey) debridCache.set(cacheKey, result);
+        return result;
 
-        if (!data || !data.hits) return [];
-
-        const results = [];
-        data.hits.forEach(item => {
-            if (!item.title) return;
-            let magnet = item.magnetUrl;
-            if (!magnet && item.hash) {
-                magnet = `magnet:?xt=urn:btih:${item.hash}&dn=${encodeURIComponent(item.title)}`;
-            }
-            if (!magnet) return;
-
-            const sizeBytes = item.bytes ? parseInt(item.bytes) : 0;
-            const sizeStr = bytesToSize(sizeBytes);
-            
-            if (isItalianResult(item.title) && checkYear(item.title, year, type) && isCorrectFormat(item.title, reqSeason, reqEpisode)) {
-                results.push({
-                    title: item.title,
-                    magnet: magnet,
-                    size: sizeStr,
-                    sizeBytes: sizeBytes,
-                    seeders: item.seeders || 0,
-                    source: "Knaben"
-                });
-            }
-        });
-        return results;
-    } catch (error) { return []; }
+    } catch (e) {
+        if (cacheKey) debridCache.set(cacheKey, 'MISSING');
+        if (showFake) return { name: `[P2P ⚠️]`, title: `${item.title}\n⚠️ Errore Debrid`, url: item.magnet, behaviorHints: { notWebReady: true } };
+        return null;
+    }
 }
 
-async function searchUindex(title, year, type, reqSeason, reqEpisode) {
-    try {
-        const url = `https://uindex.org/search.php?search=${encodeURIComponent(clean(title) + " ITA")}&c=0`;
-        const { data } = await axios.get(url, { 
-            headers: { 'User-Agent': getRandomUA() }, 
-            httpsAgent, 
-            timeout: 4000, // Timeout medio
-            validateStatus: s => s < 500 
-        });
-        if (!data || typeof data !== 'string') return [];
+// 🔥 GENERATE STREAM - FUNZIONE PRINCIPALE 🔥
+async function generateStream(type, id, config, userConfStr) {
+  if (!config.key && !config.rd) return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key nel configuratore" }] };
+  
+  let finalId = id; 
+  
+  // 1. RILEVAMENTO ID TMDB/KITSU
+  if (id.startsWith("tmdb:")) {
+      try {
+          const parts = id.split(":");
+          const imdbId = await tmdbToImdb(parts[1], type);
+          if (imdbId) finalId = (type === "series" && parts.length >= 4) ? `${imdbId}:${parts[2]}:${parts[3]}` : imdbId;
+      } catch (err) { }
+  } else if (id.startsWith("kitsu:")) {
+      try {
+          const parts = id.split(":");
+          const kData = await kitsuHandler(parts[1]);
+          if (kData && kData.imdbID) {
+              finalId = (kData.type === 'series' || type === 'series') ? `${kData.imdbID}:${kData.season||1}:${parts[2]||1}` : kData.imdbID;
+          }
+      } catch (err) { }
+  }
 
-        const rows = data.split(/<tr[^>]*>/gi).filter(row => row.includes('magnet:?xt=urn:btih:') && row.includes('<td'));
-        let results = [];
+  const meta = await getMetadata(finalId, type); 
+  if (!meta) return { streams: [] };
+  
+  // 2. QUERY EXPANSION
+  const queries = generateSmartQueries(meta);
+  const onlyIta = config.filters?.onlyIta !== false;
 
-        for (const row of rows) {
-            try {
-                const magnet = row.match(/href=["'](magnet:\?xt=urn:btih:[^"']+)["']/i)?.[1].replace(/&amp;/g, '&');
-                if (!magnet) continue;
+  console.log(`\n🧠 [AI-CORE] Cerco "${meta.title}" (${meta.year}): ${queries.length} varianti.`);
 
-                const cells = [];
-                let m; const regex = /<td[^>]*>(.*?)<\/td>/gis;
-                while ((m = regex.exec(row)) !== null) cells.push(m[1].trim());
-                if (cells.length < 3) continue;
+  let promises = [];
+  queries.forEach(q => {
+    SCRAPER_MODULES.forEach(scraper => {
+      if (scraper.searchMagnet) {
+        promises.push(
+          LIMITERS.scraper.schedule(() => 
+            withTimeout(scraper.searchMagnet(q, meta.year, type, finalId), CONFIG.SCRAPER_TIMEOUT).catch(err => [])
+          )
+        );
+      }
+    });
+  });
 
-                const name = cells[1].match(/>([^<]+)<\/a>/)?.[1].trim();
-                if (name && isItalianResult(name) && checkYear(name, year, type) && isCorrectFormat(name, reqSeason, reqEpisode)) {
-                    const sizeStr = cells[2].match(/([\d.,]+\s*(?:B|KB|MB|GB|TB))/i)?.[1].trim() || "??";
-                    const seeders = parseInt(cells[4]?.match(/(\d+)/)?.[1] || 0);
-                    results.push({ title: name, magnet, size: sizeStr, sizeBytes: parseSize(sizeStr), seeders, source: "UIndex" });
-                }
-            } catch {}
+  let resultsRaw = (await Promise.all(promises)).flat();
+
+  // 3. 🔥 FILTRI UTENTE + FIX LISA FRANKENSTEIN 🔥
+  resultsRaw = resultsRaw.filter(item => {
+    if (!item?.magnet) return false;
+    
+    // --- IL TUO FIX CHE FUNZIONA ---
+    const fileYearMatch = item.title.match(/\b(19|20)\d{2}\b/);
+    if (fileYearMatch) {
+        const fileYear = parseInt(fileYearMatch[0]);
+        const metaYear = parseInt(meta.year);
+
+        if (fileYear !== metaYear) {
+            const cleanT = item.title.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+            const cleanM = meta.title.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+            // Se il titolo meta è CONTENUTO nel file ma non è all'inizio (es. Frankenstein dentro Lisa Frankenstein) -> SCARTA
+            if (cleanT.indexOf(cleanM) > 0) return false; 
         }
-        return results;
-    } catch { return []; }
-}
+    }
+    // ------------------------------------
 
-async function searchNyaa(title, year, type, reqSeason, reqEpisode) {
-    try {
-        let q = clean(title);
-        if (!q.toLowerCase().includes("ita")) q += " ita";
-        const url = `https://nyaa.iss.ink/?f=0&c=0_0&q=${encodeURIComponent(q)}&s=seeders&o=desc`;
+    const isSemanticallySafe = smartMatch(meta.title, item.title, meta.isSeries);
+    if (!isSemanticallySafe) return false;
 
-        const { data } = await cfGet(url, { timeout: CONFIG.TIMEOUT });
-        const $ = cheerio.load(data);
-        const results = [];
+    if (onlyIta && !isSafeForItalian(item)) return false;
+    return true;
+  });
 
-        $("tr.default, tr.success, tr.danger").each((i, el) => {
-            const tds = $(el).find("td");
-            if (tds.length < 8) return;
-            const name = $(tds.eq(1)).find("a:not(.comments)").last().text().trim();
-            const magnet = $(tds.eq(2)).find('a[href^="magnet:"]').attr("href");
-            const sizeStr = $(tds.eq(3)).text().trim();
-            const seeders = parseInt($(tds.eq(5)).text().trim(), 10);
-            if (name && magnet && seeders > 0 && isItalianResult(name) && checkYear(name, year, type) && isCorrectFormat(name, reqSeason, reqEpisode)) {
-                results.push({ title: name, magnet, size: sizeStr, sizeBytes: parseSize(sizeStr), seeders, source: "Nyaa" });
-            }
+  // Fallback
+  if (resultsRaw.length <= 5) {
+    const extPromises = FALLBACK_SCRAPERS.map(fb => {
+        return LIMITERS.scraper.schedule(async () => {
+            try { return await withTimeout(fb.searchMagnet(queries[0], meta.year, type, finalId), CONFIG.SCRAPER_TIMEOUT); } catch (err) { return []; }
         });
-        return results;
-    } catch { return []; }
-}
-
-async function searchTPB(title, year, type, reqSeason, reqEpisode) {
-    try {
-        const q = `${clean(title)} ${type === 'tv' ? '' : (year || "")} ITA`;
-        const { data } = await axios.get("https://apibay.org/q.php", {
-            params: { q, cat: type === 'tv' ? 0 : 201 },
-            headers: { 'User-Agent': getRandomUA() },
-            timeout: CONFIG.TIMEOUT_API // Timeout breve per API
-        }).catch(() => ({ data: [] }));
-
-        if (!Array.isArray(data) || data[0]?.name === "No results returned") return [];
-
-        return data
-            .filter(i => 
-                i.info_hash !== "0000000000000000000000000000000000000000" && 
-                isItalianResult(i.name) &&
-                checkYear(i.name, year, type) &&
-                isCorrectFormat(i.name, reqSeason, reqEpisode)
-            )
-            .map(i => ({
-                title: i.name,
-                magnet: `magnet:?xt=urn:btih:${i.info_hash}&dn=${encodeURIComponent(i.name)}`,
-                size: bytesToSize(i.size),
-                sizeBytes: parseInt(i.size),
-                seeders: parseInt(i.seeders),
-                source: "TPB"
-            }));
-    } catch { return []; }
-}
-
-async function search1337x(title, year, type, reqSeason, reqEpisode) {
-    try {
-        const domain = "https://1337x.ninjaproxy1.com";
-        const url = `${domain}/search/${encodeURIComponent(clean(title) + " ITA")}/1/`;
-
-        const { data } = await cfGet(url, { timeout: CONFIG.TIMEOUT });
-        const $ = cheerio.load(data || "");
-        const candidates = [];
-
-        $("table.table-list tbody tr").slice(0, 8).each((i, row) => {
-            const name = $(row).find("td.name a").last().text().trim();
-            const link = $(row).find("td.name a").last().attr("href");
-            const seeders = parseInt($(row).find("td.seeds").text().replace(/,/g, "")) || 0;
-
-            if (name && link && isItalianResult(name) && checkYear(name, year, type) && isCorrectFormat(name, reqSeason, reqEpisode)) {
-                candidates.push({ name, link: `${domain}${link}`, seeders });
-            }
-        });
-
-        const limit = limitConcurrency(4);
-        const promises = candidates.map(cand => limit(async () => {
-            try {
-                const { data } = await cfGet(cand.link, { timeout: 3000 });
-                const $d = cheerio.load(data);
-                const magnet = $d("a[href^='magnet:?']").first().attr("href");
-                const sizeStr = $d("ul.list li").filter((i, el) => $(el).text().includes("Size")).text().replace(/.*Size:\s*/, '').trim();
-
-                return magnet ? {
-                    title: cand.name,
-                    magnet,
-                    seeders: cand.seeders,
-                    size: sizeStr || "?",
-                    sizeBytes: parseSize(sizeStr),
-                    source: "1337x"
-                } : null;
-            } catch { return null; }
-        }));
-
-        return (await Promise.all(promises)).filter(Boolean);
-    } catch { return []; }
-}
-
-async function searchTorrentGalaxy(title, year, type, reqSeason, reqEpisode) {
-    try {
-        const url = `https://torrentgalaxy.to/torrents.php?search=${encodeURIComponent(clean(title) + " ITA")}&sort=seeders&order=desc`;
-        const { data } = await cfGet(url, { timeout: CONFIG.TIMEOUT });
-        const $ = cheerio.load(data);
-        const results = [];
-
-        $('div.tgxtablerow').each((i, row) => {
-            const name = $(row).find('div a b').text().trim();
-            const magnet = $(row).find('a[href^="magnet:"]').attr('href');
-            const sizeStr = $(row).find('div td div span font').first().text().trim();
-            const seedersStr = $(row).find('div td span font[color="green"]').text().trim();
-            const seeders = parseInt(seedersStr) || 0;
-
-            if (name && magnet && isItalianResult(name) && checkYear(name, year, type) && isCorrectFormat(name, reqSeason, reqEpisode)) {
-                results.push({ title: name, magnet, size: sizeStr, sizeBytes: parseSize(sizeStr), seeders, source: "TorrentGalaxy" });
-            }
-        });
-        return results;
-    } catch { return []; }
-}
-
-async function searchBitSearch(title, year, type, reqSeason, reqEpisode) {
-    try {
-        const url = `https://bitsearch.to/search?q=${encodeURIComponent(clean(title) + " ITA")}`;
-        const { data } = await cfGet(url, { timeout: CONFIG.TIMEOUT });
-        const $ = cheerio.load(data || "");
-        const results = [];
-
-        $("li.search-result").each((i, el) => {
-            const name = $(el).find("h5 a").text().trim();
-            const magnet = $(el).find("a.dl-magnet").attr("href");
-            const seeders = parseInt($(el).find(".stats div").first().text().replace(/,/g, "")) || 0;
-            const sizeStr = $(el).find(".stats div").eq(1).text();
-
-            if (name && magnet && isItalianResult(name) && checkYear(name, year, type) && isCorrectFormat(name, reqSeason, reqEpisode)) {
-                results.push({ title: name, magnet, seeders, size: sizeStr, sizeBytes: parseSize(sizeStr), source: "BitSearch" });
-            }
-        });
-        return results;
-    } catch { return []; }
-}
-
-async function searchLime(title, year, type, reqSeason, reqEpisode) {
-    try {
-        const url = `https://limetorrents.info/search/all/${encodeURIComponent(clean(title) + " ITA")}/seeds/1/`;
-        const { data } = await cfGet(url, { timeout: CONFIG.TIMEOUT });
-        const $ = cheerio.load(data || "");
-        const candidates = [];
-
-        $("table.table2 tbody tr").each((i, row) => {
-            const tds = $(row).find("td");
-            if (tds.length < 4) return;
-            const nameLink = tds.eq(0).find("div.tt-name a").eq(1);
-            const name = nameLink.text().trim();
-            const link = nameLink.attr("href");
-            const seeders = parseInt(tds.eq(3).text().replace(/,/g, "")) || 0;
-            const sizeStr = tds.eq(2).text();
-            if (name && link && isItalianResult(name) && checkYear(name, year, type) && isCorrectFormat(name, reqSeason, reqEpisode)) {
-                candidates.push({ name, link: `https://limetorrents.info${link}`, seeders, sizeStr });
-            }
-        });
-
-        const limit = limitConcurrency(4);
-        const promises = candidates.slice(0, 5).map(cand => limit(async () => {
-            try {
-                const { data } = await cfGet(cand.link, { timeout: 3000 });
-                const magnet = cheerio.load(data)("a[href^='magnet:?']").first().attr("href");
-                return magnet ? {
-                    title: cand.name, magnet, seeders: cand.seeders, size: cand.sizeStr, sizeBytes: parseSize(cand.sizeStr), source: "Lime"
-                } : null;
-            } catch { return null; }
-        }));
-        return (await Promise.all(promises)).filter(Boolean);
-    } catch { return []; }
-}
-
-async function searchGlo(title, year, type, reqSeason, reqEpisode) {
-    try {
-        let q = clean(title);
-        if (!q.toLowerCase().includes("ita")) q += " ITA";
-        const url = `https://glotorrents.com/search_results.php?search=${encodeURIComponent(q)}&incldead=0&sort=seeders&order=desc`;
-
-        const { data } = await cfGet(url, { timeout: CONFIG.TIMEOUT });
-        const $ = cheerio.load(data);
-        const candidates = [];
-
-        $('tr.t-row').each((i, el) => {
-            const nameA = $(el).find('td.ttitle a b');
-            const name = nameA.text().trim();
-            const detailLink = nameA.parent().attr('href');
-            const sizeStr = $(el).find('td').eq(4).text().trim();
-            const seeders = parseInt($(el).find('td').eq(5).text().trim()) || 0;
-            if (name && detailLink && isItalianResult(name) && checkYear(name, year, type) && isCorrectFormat(name, reqSeason, reqEpisode)) {
-                candidates.push({ name, detailLink: `https://glotorrents.com/${detailLink}`, sizeStr, seeders });
-            }
-        });
-
-        const limit = limitConcurrency(4);
-        const promises = candidates.slice(0, 5).map(cand => limit(async () => {
-            try {
-                const { data } = await cfGet(cand.detailLink, { timeout: 3000 });
-                const magnet = cheerio.load(data)('a[href^="magnet:"]').attr('href');
-                if (magnet) {
-                    return { title: cand.name, magnet, size: cand.sizeStr, sizeBytes: parseSize(cand.sizeStr), seeders: cand.seeders, source: "Glo" };
-                }
-            } catch {}
-            return null;
-        }));
-        return (await Promise.all(promises)).filter(Boolean);
-    } catch { return []; }
-}
-
-// DEFINIZIONE MOTORI ATTIVI
-CONFIG.ENGINES = [
-    searchCorsaro,
-    searchTPB,
-    search1337x,
-    searchBitSearch,
-    searchTorrentGalaxy,
-    searchNyaa,
-    searchLime,
-    searchGlo,
-    searchKnaben,
-    searchUindex
-];
-
-// --- MAIN AGGREGATOR ---
-async function searchMagnet(title, year, type, imdbId) {
-    // await updateTrackers(); 
-
-    const { season: reqSeason, episode: reqEpisode } = parseImdbId(imdbId);
-
-    // Mappatura Timeout Specifici
-    const engineTimeouts = new Map([
-        [searchKnaben, CONFIG.TIMEOUT_API],
-        [searchTPB, CONFIG.TIMEOUT_API],
-        [searchUindex, 4000] // Una via di mezzo per Uindex
-        // Tutti gli altri useranno il default CONFIG.TIMEOUT (6000ms)
-    ]);
-
-    // Esecuzione parallela con timeout specifici per engine
-    const promises = CONFIG.ENGINES.map(engine => {
-        const specificTimeout = engineTimeouts.get(engine) || CONFIG.TIMEOUT;
-        return withTimeout(engine(title, year, type, reqSeason, reqEpisode), specificTimeout)
-            .catch(e => []); // Se timeout o errore, ritorna array vuoto subito
     });
 
-    const resultsArrays = await Promise.allSettled(promises);
-
-    let allResults = resultsArrays
-        .filter(r => r.status === 'fulfilled')
-        .map(r => r.value)
-        .flat();
-
-    const topResults = allResults
-        .sort((a, b) => (b.seeders || 0) - (a.seeders || 0))
-        .slice(0, 50);
-
-    topResults.forEach(r => {
-        if (r.magnet && !r.magnet.includes("&tr=")) {
-            CONFIG.TRACKERS.forEach(tr =>
-                r.magnet += `&tr=${encodeURIComponent(tr)}`
-            );
+    try {
+        const extResultsRaw = await Promise.race([
+            Promise.all(extPromises),
+            new Promise(r => setTimeout(() => r([]), CONFIG.SCRAPER_TIMEOUT + 1500))
+        ]);
+        
+        if (Array.isArray(extResultsRaw)) {
+            const filteredExt = extResultsRaw.flat().filter(item => smartMatch(meta.title, item.title, meta.isSeries));
+            resultsRaw = [...resultsRaw, ...filteredExt];
         }
-    });
+    } catch (e) {}
+  }
 
-    const seenHashes = new Set();
-    const finalResults = topResults.filter(r => {
-        const hashMatch = r.magnet.match(/btih:([a-f0-9]{40})/i);
-        const hash = hashMatch ? hashMatch[1].toLowerCase() : null;
-        if (hash && seenHashes.has(hash)) return false;
-        if (hash) seenHashes.add(hash);
-        return true;
-    });
+  // Deduplicazione
+  const seen = new Set(); 
+  let cleanResults = [];
+  for (const item of resultsRaw) {
+    if (!item || !item.magnet) continue;
+    try {
+        const hashMatch = item.magnet.match(/btih:([a-f0-9]{40})/i);
+        const hash = hashMatch ? hashMatch[1].toUpperCase() : item.magnet;
+        if (seen.has(hash)) continue;
+        seen.add(hash);
+        item._size = parseSize(item.size || item.sizeBytes);
+        cleanResults.push(item);
+    } catch (err) { continue; }
+  }
+  
+  if (!cleanResults.length) return { streams: [{ name: "⛔", title: "Nessun risultato trovato" }] };
 
-    return finalResults;
+  // Ranking
+  const ranked = rankAndFilterResults(cleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
+  
+  // Risoluzione Link Debrid (CON CACHE ORA)
+  const rdPromises = ranked.map(item => {
+      item.season = meta.season;
+      item.episode = meta.episode;
+      return LIMITERS.rd.schedule(() => resolveDebridLink(config, item, config.filters?.showFake));
+  });
+  
+  const streams = (await Promise.all(rdPromises)).filter(Boolean);
+  return { streams }; 
 }
 
-module.exports = { searchMagnet, CONFIG, updateTrackers };
+// --- ROUTES ---
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+
+app.get("/:conf/manifest.json", (req, res) => { 
+    const m = { 
+        id: "org.corsaro.brain.v33.0", 
+        version: "33.0.0", 
+        name: "Leviathan (Hybrid)", 
+        description: "Best of Both Worlds: User Logic + Debrid Cache", 
+        logo: "https://img.icons8.com/ios-filled/500/00f2ea/dragon.png",
+        resources: ["catalog", "stream"], 
+        types: ["movie", "series"], 
+        catalogs: [] 
+    }; 
+    m.behaviorHints = { configurable: true, configurationRequired: false }; 
+    res.setHeader("Access-Control-Allow-Origin", "*"); 
+    res.json(m); 
+});
+
+app.get("/:conf/catalog/:type/:id/:extra?.json", async (req, res) => { res.json({metas:[]}); });
+
+app.get("/:conf/stream/:type/:id.json", async (req, res) => { 
+    const result = await generateStream(req.params.type, req.params.id.replace(".json", ""), getConfig(req.params.conf), req.params.conf); 
+    res.setHeader("Access-Control-Allow-Origin", "*"); 
+    res.json(result); 
+});
+
+function getConfig(configStr) { try { return JSON.parse(Buffer.from(configStr, "base64").toString()); } catch { return {}; } }
+function withTimeout(promise, ms) { return Promise.race([promise, new Promise(r => setTimeout(() => r([]), ms))]); }
+
+const PORT = process.env.PORT || 7000;
+app.listen(PORT, () => console.log(`🚀 Leviathan (Hybrid) v33.0 attivo su porta ${PORT}`));
