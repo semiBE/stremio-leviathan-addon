@@ -45,6 +45,27 @@
     <img src="https://img.shields.io/badge/🔗_Magnet-Fusion_Engine-000?style=for-the-badge&labelColor=00eaff" />
   </p>
 
+  <div style="margin-top: 35px; margin-bottom: 10px;">
+    <a href="https://leaviathan-leviathanaddon.hf.space" target="_blank" style="
+       display: inline-block;
+       background: #00eaff;
+       color: #050a10;
+       font-family: sans-serif;
+       font-weight: 800;
+       font-size: 1.2rem;
+       padding: 15px 40px;
+       border-radius: 50px;
+       text-decoration: none;
+       box-shadow: 0 0 25px rgba(0, 234, 255, 0.6);
+       border: 2px solid #fff;
+       text-transform: uppercase;
+       letter-spacing: 1px;">
+       🚀 Installa Addon
+    </a>
+    <div style="margin-top: 10px; font-size: 0.8rem; color: #64748b;">
+      Hosted on Hugging Face Spaces
+    </div>
+  </div>
   <hr style="border: 0; height: 1px; background: linear-gradient(to right, transparent, #00eaff, transparent); margin: 40px auto; width: 60%; opacity: 0.5;">
 
 </div>
