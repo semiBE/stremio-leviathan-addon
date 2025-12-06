@@ -1,10 +1,9 @@
 /**
  * addon.js
- * Corsaro Brain — LEVIATHAN EDITION (v33.1 - Fixed & Polished)
- * * Changelog v33.1:
- * - FIX CRITICO: Aggiunta rotta base /manifest.json (fix installazione).
- * - FIX: Rimosso "catalog" dalle risorse (evita caricamenti vuoti in home).
- * - CORE: Logica di scraping, filtro e debrid invariata (v33.0).
+ * Corsaro Brain — LEVIATHAN EDITION (v33.2 - Install Fix)
+ * * Changelog v33.2:
+ * - FIX CRITICO: Logica 'configurationRequired' dinamica.
+ * - Ora il tasto INSTALLA appare correttamente dopo la configurazione.
  */
 
 const express = require("express");
@@ -400,36 +399,44 @@ async function generateStream(type, id, config, userConfStr) {
 // ROUTES & MANIFEST HANDLING
 // ==========================================
 
-// Helper Generazione Manifesto
-const getManifest = () => ({
+// Helper Generazione Manifesto Dinamico
+// FIX: Aggiunto parametro isConfigured
+const getManifest = (isConfigured = false) => ({
     id: "org.corsaro.brain.v33.1",
     version: "1.0.0",
     name: "Leviathan",
-    description: "Hybrid Architecture: Algorithmic Logic & High-Throughput Caching",
+    description: isConfigured 
+        ? "Leviathan: Hybrid Architecture (ACTIVE)" 
+        : "Leviathan: Please configure first",
     logo: "https://img.icons8.com/ios-filled/500/00f2ea/dragon.png",
-    // NOTA: Rimosso "catalog" per evitare problemi. Lasciamo solo stream.
     resources: ["stream"],
     types: ["movie", "series"],
     catalogs: [],
-    behaviorHints: { configurable: true, configurationRequired: true }
+    behaviorHints: { 
+        configurable: true, 
+        // FIX: Se è configurato, NON richiedere più la configurazione
+        configurationRequired: !isConfigured 
+    }
 });
 
 // 1. Pagina di configurazione (Statica)
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
-// 2. Health Check (Importante per Hugging Face)
+// 2. Health Check
 app.get("/health", (req, res) => res.send({ status: "OK", uptime: process.uptime() }));
 
-// 3. Manifesto SENZA configurazione (Fondamentale per l'installazione iniziale)
+// 3. Manifesto BASE (Non configurato)
 app.get("/manifest.json", (req, res) => {
-    const m = getManifest();
+    // Qui passiamo false, quindi Stremio mostrerà "Configure"
+    const m = getManifest(false);
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.json(m);
 });
 
-// 4. Manifesto CON configurazione
+// 4. Manifesto CONFIGURATO
 app.get("/:conf/manifest.json", (req, res) => {
-    const m = getManifest();
+    // Qui passiamo true, quindi Stremio mostrerà "Install"
+    const m = getManifest(true);
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.json(m);
 });
@@ -456,5 +463,5 @@ function withTimeout(promise, ms) {
 }
 
 // Avvio Server
-const PORT = process.env.PORT || 7860; // Default a 7860 per Hugging Face
-app.listen(PORT, () => console.log(`🚀 Leviathan (Hybrid) v33.1 attivo su porta ${PORT}`));
+const PORT = process.env.PORT || 7860;
+app.listen(PORT, () => console.log(`🚀 Leviathan (Hybrid) v33.2 attivo su porta ${PORT}`));
