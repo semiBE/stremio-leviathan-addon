@@ -129,10 +129,10 @@ Il modo più semplice, pulito e professionale per avviare Leviathan Core.
 ```bash
 
 📂  Clona il repository:
-git clone https://github.com/tuutente/Leviathan-Core.git
+git clone https://github.com/LUC4N3X/stremio-leviathan-addon
 
 ➡️  Entra nella cartella:
-cd Leviathan-Core
+cd stremio-leviathan-addon
 
 ```
 # 🐳 Avvia Leviathan tramite Docker Compose
