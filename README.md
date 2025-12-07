@@ -142,30 +142,23 @@ Non si limita a trovare il link. Lo potenzia.
 ---
 
 
-<h2 style="border-bottom: 2px solid #00eaff; padding-bottom: 10px;">
-  📦 INSTALLATION & DEPLOYMENT
-</h2>
+## ⚡ DEPLOYMENT PROTOCOL
 
-<p>
-  <img src="https://img.shields.io/badge/METHOD-DOCKER_COMPOSE-blue?style=for-the-badge&logo=docker&logoColor=white" />
-  <img src="https://img.shields.io/badge/DIFFICULTY-EASY-success?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/TIME-30_SEC-orange?style=for-the-badge" />
-</p>
+> **TARGET:** Local Host / VPS / NAS
+> **ACCESS LEVEL:** Root / User
+> **DEPLOYMENT TIME:** < 30s
 
-Il metodo **Full Auto-Deploy**. Clona, compila e lancia in una singola manovra.
+Inizializza il nucleo di Leviathan lanciando la sequenza automatizzata. Il metodo **Docker Compose** è l'unico che garantisce l'isolamento dei processi e il bypass nativo dei WAF.
 
 ```bash
-# -----------------------------------------------
-#  🚀 LEVIATHAN INITIALIZATION SEQUENCE
-# -----------------------------------------------
+# [1] RECUPERO SORGENTI (Source Retrieval)
+git clone [https://github.com/LUC4N3X/stremio-leviathan-addon](https://github.com/LUC4N3X/stremio-leviathan-addon)
 
-git clone [https://github.com/LUC4N3X/stremio-leviathan-addon](https://github.com/LUC4N3X/stremio-leviathan-addon) && \
-cd stremio-leviathan-addon && \
+# [2] ACCESSO AL NUCLEO (Access Core Directory)
+cd stremio-leviathan-addon
+
+# [3] INIZIALIZZAZIONE DAEMON (Ignite System)
 docker compose up -d --build
-
-# -----------------------------------------------
-#  ✅ SYSTEM ONLINE
-# -----------------------------------------------
 
 ```
 
