@@ -2,9 +2,10 @@
  * addon.js
  * Corsaro Brain — LEVIATHAN EDITION (AI Enhanced)
  * * Changelog:
- * - FIXED: Passaggio parametri Stagione/Episodio a smartMatch (Risolve "Nessun Risultato" per le serie).
- * - FIXED: Filtro "Lisa Frankenstein" specifico.
- * - FIXED: Tolleranza anno ±1.
+ * - FIXED: Aggiunta rotta /manifest.json diretta (risolve errore "Cannot GET").
+ * - REFACTOR: Manifesto caricato da file esterno manifest.js
+ * - FIXED: Passaggio parametri Stagione/Episodio a smartMatch.
+ * - FIXED: Filtro "Lisa Frankenstein" specifico e Tolleranza anno ±1.
  */
 
 const express = require("express");
@@ -26,6 +27,9 @@ const kitsuHandler = require("./kitsu_handler");
 const RD = require("./debrid/realdebrid");
 const AD = require("./debrid/alldebrid");
 const TB = require("./debrid/torbox");
+
+// --- IMPORTIAMO IL MANIFEST ---
+const { getManifest } = require("./manifest");
 
 // --- CONFIGURAZIONE ---
 const CONFIG = {
@@ -427,20 +431,18 @@ async function generateStream(type, id, config, userConfStr) {
 // --- ROUTES ---
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 
+// --- FIXED: Aggiunta rotta diretta /manifest.json (Senza Config) ---
+app.get("/manifest.json", (req, res) => {
+    const manifest = getManifest();
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.json(manifest);
+});
+
+// --- Rotta /:conf/manifest.json (Con Config) ---
 app.get("/:conf/manifest.json", (req, res) => { 
-    const m = { 
-        id: "org.corsaro.brain.v31.3", 
-        version: "31.3.0", 
-        name: "Leviathan (AI-Core)", 
-        description: "Deep Sea Streaming Core | AI Powered | ITA Priority", 
-        logo: "https://img.icons8.com/ios-filled/500/00f2ea/dragon.png",
-        resources: ["catalog", "stream"], 
-        types: ["movie", "series"], 
-        catalogs: [] 
-    }; 
-    m.behaviorHints = { configurable: true, configurationRequired: false }; 
+    const manifest = getManifest();
     res.setHeader("Access-Control-Allow-Origin", "*"); 
-    res.json(m); 
+    res.json(manifest); 
 });
 
 app.get("/:conf/catalog/:type/:id/:extra?.json", async (req, res) => { 
