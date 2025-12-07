@@ -140,32 +140,23 @@ Non si limita a trovare il link. Lo potenzia.
 
 
 ---
-## ⚡ DEPLOYMENT PROTOCOL
+# 🐳 DEPLOYMENT PROTOCOL
 
-<div align="center">
+**Il modo più veloce e pulito per eseguire Leviathan in locale o in produzione.**
 
-![Status](https://img.shields.io/badge/SYSTEM-OPERATIONAL-success?style=for-the-badge)
-![Docker](https://img.shields.io/badge/DOCKER-REQUIRED-blue?style=for-the-badge&logo=docker&logoColor=white)
-
-Il metodo **Docker Compose** è l'unico che garantisce l'isolamento dei processi, la persistenza dei dati e il bypass nativo dei WAF.
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker)](https://www.docker.com/)
+[![Stremio Addon](https://img.shields.io/badge/Stremio-Addon-green?logo=stremio)](https://www.stremio.com/)
 
 ### 💠 Sequenza di Avvio Rapido
 
 Copia l'intera sequenza e incollala nel terminale per l'inizializzazione immediata:
 
-<div align="center">
 ```bash
-git clone https://github.com/LUC4N3X/stremio-leviathan-addon
-cd stremio-leviathan-addon
-docker compose up -d --build
-```
-> [!TIP]
-> **Status Operativo:**
-> * ✔️ **Full Auto:** Avvio completamente automatizzato senza intervento umano.
-> * ✔️ **Zero Config:** Nessuna configurazione manuale complessa richiesta.
-> * ✔️ **High Performance:** Ideale per Server VPS, NAS e ambienti Home Lab 24/7.
+# Clona il repository
+git clone https://github.com/LUC4N3X/stremio-leviathan-addon.git
 
-```
+# Entra nella directory
+cd stremio-leviathan-addon
 ---
 
 ## ⚖️ Legal Disclaimer & Liability Warning
