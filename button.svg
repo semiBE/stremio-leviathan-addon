@@ -1,26 +1,55 @@
-<svg width="400" height="120" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
+<svg width="600" height="220" viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="btnGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" style="stop-color:#00ffff;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#0080ff;stop-opacity:1" />
     </linearGradient>
+
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.6" />
+      <stop offset="50%" style="stop-color:#00ffff;stop-opacity:0.1" />
+      <stop offset="100%" style="stop-color:#0080ff;stop-opacity:0.8" />
+    </linearGradient>
     
-    <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+    <filter id="intenseNeonGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="15" result="coloredBlur"/>
+      <feFlood flood-color="#00ffff" result="glowColor"/>
+      <feComposite in="glowColor" in2="coloredBlur" operator="in" result="softGlow"/>
       <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="softGlow"/>
+        <feMergeNode in="softGlow"/> <feMergeNode in="SourceGraphic"/>
       </feMerge>
+    </filter>
+
+    <filter id="textGlow">
+        <feGaussianBlur stdDeviation="2" result="blur"/>
+        <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+        </feMerge>
     </filter>
   </defs>
 
-  <rect width="100%" height="100%" fill="#0d1117" opacity="0"/>
-
-  <g filter="url(#neonGlow)" transform="translate(20, 20)">
-    <rect x="0" y="0" width="360" height="80" rx="40" ry="40" fill="url(#btnGrad)" stroke="white" stroke-width="3" />
+  <g transform="translate(30, 30)">
+      
+    <rect x="10" y="10" width="520" height="110" rx="55" ry="55" fill="#00ffff" filter="url(#intenseNeonGlow)" opacity="0.6"/>
     
-    <text x="180" y="50" font-family="Arial, sans-serif" font-size="28" font-weight="900" text-anchor="middle" fill="white" letter-spacing="2px">
-      🚀 INSTALLA ADDON
-    </text>
+    <rect x="0" y="0" width="540" height="130" rx="65" ry="65" fill="url(#mainGrad)" />
+    
+    <rect x="5" y="5" width="530" height="120" rx="60" ry="60" fill="none" stroke="url(#borderGrad)" stroke-width="6" opacity="0.9"/>
+    
+    <g transform="translate(40, 20)" filter="url(#textGlow)">
+        <path d="M60,15 C30,15 10,35 10,65 C10,95 40,100 60,100 C90,100 110,80 110,50 C110,20 80,15 60,15 Z M55,30 C70,30 85,40 85,60 C85,80 70,85 55,85 C40,85 30,75 30,55 C30,35 40,30 55,30 Z" fill="#00ffff" transform="translate(0, -5) scale(0.9)"/>
+        
+        <g font-family="Arial Black, Arial, sans-serif" font-weight="900" text-anchor="start" fill="white" letter-spacing="1px">
+            <text x="130" y="40" font-size="42">INSTALLA</text>
+            <text x="130" y="85" font-size="42">LEVIATANO</text>
+        </g>
+    </g>
   </g>
+
+  <text x="300" y="200" font-family="Arial, sans-serif" font-size="22" font-style="italic" text-anchor="middle" fill="#00ffff" filter="url(#textGlow)" opacity="0.9">
+    Ospitato su Hugging Face Spaces
+  </text>
+
 </svg>
