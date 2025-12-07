@@ -155,9 +155,9 @@ Copia l'intera sequenza e incollala nel terminale per l'inizializzazione immedia
 </div>
 
 ```bash
-            git clone https://github.com/LUC4N3X/stremio-leviathan-addon
-    cd stremio-leviathan-addon
-    docker compose up -d --build 
+               git clone https://github.com/LUC4N3X/stremio-leviathan-addon
+       cd stremio-leviathan-addon
+       docker compose up -d --build 
 ```
 ---
 
