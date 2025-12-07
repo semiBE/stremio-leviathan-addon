@@ -1,105 +1,48 @@
-<div align="center">
+---
 
-  <img src="https://api.iconify.design/game-icons:sea-dragon.svg?color=%2300eaff&width=200" style="filter: drop-shadow(0 0 20px rgba(0, 234, 255, 0.5)); margin-bottom: 20px;" />
+<p align="center">
+  <img src="https://api.iconify.design/material-symbols:cloud-sync-rounded.svg?color=%2300eaff&width=120" alt="Cloud Gateway Icon" />
+</p>
 
-  <h1 style="font-size: 5rem; font-weight: 800; margin: 0; line-height: 1; letter-spacing: -3px; color: #fff; text-shadow: 0 0 30px rgba(0, 234, 255, 0.25);">
-    LEVIATHAN
-  </h1>
+<h2 align="center">🌐 LEVIATHAN CLOUD GATEWAY</h2>
 
-  <div style="font-size: 1.1rem; color: #94a3b8; margin-top: 15px; font-weight: 400; letter-spacing: 3px; text-transform: uppercase; font-family: monospace;">
-    Advanced Torrent Aggregation Protocol
-  </div>
+<p align="center">
+  Accesso diretto al nodo cloud ufficiale di Leviathan.<br>
+  Infrastruttura ottimizzata per latenza minima, stabilità avanzata<br>
+  e aggiornamenti automatici del motore <b>HyperMode v3.5</b>.
+</p>
 
-  <br>
+<p align="center">
+  <img src="https://img.shields.io/badge/Auto--Scaling-ACTIVE-00eaff?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Sandbox-SECURE-00bcd4?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Cloud_Host-HuggingFace-ffcc00?style=for-the-badge&logo=huggingface&logoColor=000" />
+</p>
 
-  <p>
-    <img src="https://img.shields.io/badge/Real_Debrid-NATIVE_SUPPORT-A2B9F0?style=for-the-badge&logo=realdebrid&logoColor=black" />
-    <img src="https://img.shields.io/badge/AllDebrid-MODULE_ACTIVE-F5A623?style=for-the-badge&logo=alldebrid&logoColor=white" />
-    <img src="https://img.shields.io/badge/TorBox-COMPATIBLE-7A4EE3?style=for-the-badge&logo=torbox&logoColor=white" />
-  </p>
+---
 
-  <p>
-    <img src="https://img.shields.io/badge/Node.js-v18_LTS-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" />
-    <img src="https://img.shields.io/badge/Architecture-HyperMode_v3.5-8A2BE2?style=for-the-badge&logo=dependabot&logoColor=white" />
-    <img src="https://img.shields.io/badge/Status-OPERATIONAL-success?style=for-the-badge&logo=githubactions&logoColor=white" />
-  </p>
+<h3 align="center">🔐 Hosted on Hugging Face • Secure Node</h3>
 
-  <br>
+<p align="center">
+  Il nodo ufficiale Leviathan è ospitato su infrastruttura <b>HF Spaces</b>,<br>
+  con caching distribuita, auto-healing e analisi semantica real-time.<br>
+  Garantito uptime costante e prestazioni ottimizzate.
+</p>
 
-  <div style="background: linear-gradient(180deg, #050a10 0%, #0f172a 100%); border: 1px solid rgba(0, 234, 255, 0.15); border-radius: 12px; padding: 30px; width: 90%; max-width: 800px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-    <strong style="font-size: 1.3rem; color: #00eaff; display: block; margin-bottom: 12px; letter-spacing: 0.5px;">
-      🇮🇹 Engineered for Italian Content Precision
-    </strong>
-    <span style="color: #cbd5e1; line-height: 1.7; font-size: 1rem; font-family: sans-serif;">
-      Leviathan ridefinisce lo standard dei metamotori torrent attraverso un'architettura <b>Italy-First</b>.
-      Integra un sistema di validazione semantica dei titoli, gestione automatizzata delle challenge WAF e un algoritmo di routing a bassa latenza per garantire risultati pertinenti e immediati.
-    </span>
-  </div>
+<p align="center">
+  <a href="https://leaviathan-leviathan.hf.space" target="_blank">
+    <img
+      src="https://img.shields.io/badge/🚀%20Launch%20Leviathan%20Node-00eaff?style=for-the-badge&logo=huggingface&logoColor=000"
+      alt="Launch Node"
+    />
+  </a>
+</p>
 
-  <br>
+<p align="center">
+  <sub>Public Gateway • Latenza Ultra-Bassa • Deploy Immediato</sub>
+</p>
 
-  <p>
-    <img src="https://img.shields.io/badge/⚡_Adaptive-Latency_Scaling-000?style=for-the-badge&labelColor=00eaff" />
-    <img src="https://img.shields.io/badge/🔍_Smart-Query_Morphing-000?style=for-the-badge&labelColor=00eaff" />
-    <img src="https://img.shields.io/badge/🛡️_WAF-Bypass_Protocol-000?style=for-the-badge&labelColor=00eaff" />
-    <img src="https://img.shields.io/badge/🔗_Magnet-Fusion_Engine-000?style=for-the-badge&labelColor=00eaff" />
-  </p>
+---
 
-  <div style="margin-top: 45px; margin-bottom: 30px;">
-    
-   <a href="https://leaviathan-leviathan.hf.space" target="_blank" style="text-decoration: none;">
-      <div style="
-         display: inline-block;
-         background: linear-gradient(90deg, #00eaff 0%, #0088cc 100%);
-         color: #020617;
-         font-family: sans-serif;
-         font-weight: 900;
-         font-size: 1.3rem;
-         padding: 16px 45px;
-         border-radius: 50px;
-         box-shadow: 0 0 35px rgba(0, 234, 255, 0.4);
-         border: 2px solid rgba(255,255,255,0.8);
-         text-transform: uppercase;
-         letter-spacing: 1px;
-         transition: transform 0.2s;">
-         🚀 Installa Addon
-      </div>
-    </a>
-
-   <br><br>
-
-  <a href="https://leaviathan-leviathan.hf.space" target="_blank" style="text-decoration: none;">
-      <div style="
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          background: rgba(15, 23, 42, 0.8);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          padding: 8px 20px;
-          border-radius: 100px;
-          backdrop-filter: blur(5px);
-        ">
-        <img src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" width="20" />
-        <span style="color: #94a3b8; font-family: monospace; font-size: 0.85rem; font-weight: bold;">
-          DEPLOYED ON <span style="color: #fff;">HUGGING FACE</span>
-        </span>
-        <span style="
-          display: inline-block;
-          width: 6px;
-          height: 6px;
-          background-color: #4ade80;
-          border-radius: 50%;
-          box-shadow: 0 0 8px #4ade80;
-          margin-left: 4px;
-        "></span>
-      </div>
-    </a>
-
-  </div>
-
-  <hr style="border: 0; height: 1px; background: linear-gradient(to right, transparent, #00eaff, transparent); margin: 50px auto; width: 50%; opacity: 0.2;">
-
-</div>
 
 
 
