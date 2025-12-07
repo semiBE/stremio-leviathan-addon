@@ -45,33 +45,17 @@
     <img src="https://img.shields.io/badge/🔗_Magnet-Fusion_Engine-000?style=for-the-badge&labelColor=00eaff" />
   </p>
 
-<div style="margin-top: 35px; margin-bottom: 10px; text-align: center;">
-    <a href="https://leaviathan-leviathanaddon.hf.space" target="_blank" style="
-        display: inline-block;
-        background: linear-gradient(135deg, #00eaff, #007bff);
-        color: #ffffff;
-        font-family: 'Arial Black', sans-serif;
-        font-weight: 900;
-        font-size: 1.4rem;
-        padding: 18px 50px;
-        border-radius: 60px;
-        text-decoration: none;
-        box-shadow: 0 0 35px rgba(0, 234, 255, 0.8), 0 0 15px rgba(0, 123, 255, 0.5);
-        border: 3px solid #ffffff;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-    ">
-        <span style="position: relative; z-index: 2;">🚀 Installa Addon</span>
-        <span style="position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); transition: 0.5s;"></span>
-    </a>
-    <div style="margin-top: 12px; font-size: 0.9rem; color: #94a3b8; font-style: italic;">
-        Hosted on Hugging Face Spaces
-    </div>
+<div align="center">
+  <a href="https://leaviathan-leviathanaddon.hf.space" target="_blank">
+    <img src="./button.svg" width="350" alt="Installa Addon">
+  </a>
+  
+  <p>
+    <em>Hosted on Hugging Face Spaces</em>
+  </p>
+  
+  <hr style="width: 50%; border: 0; height: 1px; background: linear-gradient(to right, transparent, #00eaff, transparent);">
 </div>
-<hr style="border: 0; height: 2px; background: linear-gradient(to right, transparent, #00eaff, #007bff, transparent); margin: 45px auto; width: 70%; opacity: 0.7; box-shadow: 0 0 10px rgba(0, 234, 255, 0.4);">
 
 
 
