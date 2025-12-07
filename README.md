@@ -144,7 +144,7 @@ Non si limita a trovare il link. Lo potenzia.
 
 <div align="center">
 
-Il modo più veloce e pulito per eseguire Leviatano in locale o in produzione.
+Il modo più veloce e pulito per eseguire Leviathan in locale o in produzione.
 
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Stremio Addon](https://img.shields.io/badge/Stremio-Addon-green?logo=stremio&logoColor=white)](https://www.stremio.com/)
