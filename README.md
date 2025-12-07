@@ -140,25 +140,24 @@ Non si limita a trovare il link. Lo potenzia.
 
 
 ---
-## 📦 Installazione
+# 📦 DEPLOYMENT PROTOCOL
 
-### 🚀 Metodo 1: Docker Compose (Consigliato)
+### 🐳 Docker Compose Integration
+Il metodo **Docker Compose** è l'unico che garantisce l'isolamento dei processi e il bypass nativo dei WAF.
 
-Questa è la procedura standard per avviare il nucleo di Leviathan in un ambiente isolato e performante.
+| Step | Azione | Comando |
+| :--- | :--- | :--- |
+| **01** | **Acquisizione** | `git clone https://github.com/LUC4N3X/stremio-leviathan-addon` |
+| **02** | **Accesso** | `cd stremio-leviathan-addon` |
+| **03** | **Inizializzazione** | `docker compose up -d --build` |
 
-> [!TIP]
-> Assicurati di avere **Docker** e **Git** installati sulla tua macchina prima di procedere.
+<div align="center">
 
-Esegui questo blocco intero nel tuo terminale:
+**⬇️ Oppure usa il blocco unico ⬇️**
 
 ```bash
-# 1. Clona il repository
 git clone [https://github.com/LUC4N3X/stremio-leviathan-addon](https://github.com/LUC4N3X/stremio-leviathan-addon)
-
-# 2. Entra nella directory operativa
 cd stremio-leviathan-addon
-
-# 3. Inizializza il container (Build & Detach)
 docker compose up -d --build
 
 ```
