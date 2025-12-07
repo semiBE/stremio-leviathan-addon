@@ -208,8 +208,8 @@ Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico
 > **CLAUSOLA RISOLUTIVA ESPRESSA**
 > Se non concordi con anche solo una delle clausole sopra esposte, o se la legislazione del tuo paese non consente tale limitazione di responsabilità, non sei autorizzato a utilizzare questo software.
 >
-> **⚠️ INTERROMPI L'ESECUZIONE, ELIMINA IL CONTAINER E DISTRUGGI IL CODICE SORGENTE IMMEDIATAMENTE.**
-> ... altrimenti ...
+> **⚠️ INTERROMPI L'ESECUZIONE, ELIMINA IL CONTAINER E DISTRUGGI IL CODICE SORGENTE IMMEDIATAMENTE.**>
+>         ... altrimenti ...
 
 👁‍🗨 BENVENUTO NELL'ABISSO.
 ---
