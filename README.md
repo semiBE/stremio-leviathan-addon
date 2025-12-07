@@ -1,124 +1,65 @@
-<div style="margin-top: 60px;">
+<div align="center">
 
-  <!-- BLOCCO SUPERIORE -->
-  <div style="
-      text-align: center;
-      margin-bottom: 40px;
-  ">
-      <img src="https://api.iconify.design/material-symbols:cloud-sync-rounded.svg?color=%2300eaff&width=110"
-           style="filter: drop-shadow(0 0 12px #00eaffaa);" />
+  <a href="https://leaviathan-leviathan.hf.space" target="_blank" style="text-decoration: none;">
+    <div style="
+      display: inline-block;
+      background: linear-gradient(90deg, #00eaff 0%, #00aaff 100%);
+      color: #050a10;
+      font-family: sans-serif;
+      font-weight: 900;
+      font-size: 1.4rem;
+      padding: 18px 50px;
+      border-radius: 12px;
+      box-shadow: 0 0 30px rgba(0, 234, 255, 0.4);
+      border: 2px solid #fff;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 30px;
+      margin-bottom: 30px;
+    ">
+      🚀 Installa Addon
+    </div>
+  </a>
 
-      <h2 style="
-          font-size: 3rem;
-          color: #00eaff;
-          text-shadow: 0 0 15px #00eaff99;
-          margin-top: 10px;
-          margin-bottom: 5px;
-          letter-spacing: 2px;
-          font-weight: 800;
+  <br>
+
+  <a href="https://leaviathan-leviathan.hf.space" target="_blank" style="text-decoration: none;">
+    <div style="
+      display: inline-flex;
+      align-items: center;
+      background-color: #0b0f19;
+      border: 1px solid #334155;
+      border-radius: 50px;
+      padding: 8px 20px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+    ">
+      <img src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" width="20" style="margin-right: 10px;" />
+      
+      <span style="
+        color: #94a3b8;
+        font-family: monospace;
+        font-size: 0.9rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        margin-right: 12px;
       ">
-        LEVIATHAN CLOUD GATEWAY
-      </h2>
+        DEPLOYED ON <span style="color: #fff;">HUGGING FACE</span>
+      </span>
 
-      <p style="
-          font-size: 1.1rem;
-          color: #93a4b4;
-          max-width: 780px;
-          margin: auto;
-          line-height: 1.7;
-      ">
-        Accesso diretto all’istanza cloud di Leviathan: ottimizzata, scalabile,
-        protetta da sandbox avanzata e aggiornata automaticamente al motore
-        HyperMode <b>v3.5</b>.  
-        Protocolli di stabilizzazione e routing dinamico garantiscono
-        tempi di risposta <b>ultra-bassi</b>.
-      </p>
-  </div>
+      <span style="
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: #10b981;
+        border-radius: 50%;
+        box-shadow: 0 0 10px #10b981;
+      "></span>
+    </div>
+  </a>
 
-
-  <!-- CARD CENTRALE -->
-  <div style="
-      background: linear-gradient(145deg, #02070d 0%, #03101c 100%);
-      border: 1px solid rgba(0, 234, 255, 0.18);
-      border-radius: 20px;
-      padding: 40px 35px;
-      width: 90%;
-      max-width: 880px;
-      margin: auto;
-      box-shadow:
-        0 0 18px rgba(0, 234, 255, 0.12),
-        inset 0 0 25px rgba(0, 234, 255, 0.05);
-  ">
-```
-      <div style="text-align: center; margin-bottom: 25px;">
-        <img src="https://api.iconify.design/mdi:shield-lock.svg?color=%2300eaff&width=70"
-             style="filter: drop-shadow(0 0 8px #00eaff77);" />
-      </div>
-```
-      <h3 style="
-          text-align: center;
-          color: #00eaff;
-          font-size: 2rem;
-          letter-spacing: 1px;
-          margin: 0;
-          font-weight: 700;
-          text-shadow: 0 0 10px #00eaff77;
-      ">
-        Hosted on Hugging Face • Secure Node
-      </h3>
-```
-      <p style="
-          text-align: center;
-          color: #b4c4d6;
-          margin-top: 15px;
-          font-size: 1rem;
-          line-height: 1.6;
-      ">
-        Nodo ufficiale Leviathan deployato su infrastruttura HF cloud
-        con <b>auto-healing</b>, <b>caching distribuita</b> e <b>scansione semantica</b>
-        real-time per garantire qualità dei risultati e uptime costante.
-      </p>
-```
-      <!-- PULSANTE GIGANTE -->
-      <div style="text-align: center; margin-top: 35px;">
-          <a href="https://leaviathan-leviathan.hf.space" target="_blank" style="
-              display: inline-block;
-              padding: 20px 55px;
-              background: linear-gradient(90deg, #00eaff, #00c6ff);
-              color: #000;
-              font-size: 1.4rem;
-              font-weight: 900;
-              letter-spacing: 2px;
-              text-decoration: none;
-              border-radius: 80px;
-              border: 2px solid #0ff;
-              text-transform: uppercase;
-              box-shadow:
-                0 0 25px rgba(0, 234, 255, 0.7),
-                inset 0 0 10px rgba(255,255,255,0.3);
-          ">
-            🚀 Launch Leviathan Node
-          </a>
-```
-          <div style="margin-top: 15px; color: #6b7b8e; font-size: 0.9rem;">
-            Public Gateway • Auto-Scaling • Instant Deployment
-          </div>
-      </div>
-
-  </div>
+  <hr style="border: 0; height: 1px; background: linear-gradient(to right, transparent, #334155, transparent); margin: 50px auto; width: 40%;">
 
 </div>
-
-<br><br>
-
-<hr style="
-    border: 0;
-    height: 1px;
-    width: 75%;
-    margin: 50px auto;
-    background: linear-gradient(to right, transparent, #00eaff, transparent);
-    opacity: 0.35;
-">
 
 
 ## ⚡ Architettura del Sistema
