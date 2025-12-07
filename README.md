@@ -1,65 +1,54 @@
-<div align="center">
+<p align="center">
 
-  <a href="https://leaviathan-leviathan.hf.space" target="_blank" style="text-decoration: none;">
-    <div style="
-      display: inline-block;
-      background: linear-gradient(90deg, #00eaff 0%, #00aaff 100%);
-      color: #050a10;
-      font-family: sans-serif;
-      font-weight: 900;
-      font-size: 1.4rem;
-      padding: 18px 50px;
-      border-radius: 12px;
-      box-shadow: 0 0 30px rgba(0, 234, 255, 0.4);
-      border: 2px solid #fff;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-top: 30px;
-      margin-bottom: 30px;
-    ">
-      🚀 Installa Addon
-    </div>
+  <img alt="Leviathan logo" src="https://api.iconify.design/game-icons:sea-dragon.svg?color=%2300eaff&width=160" />
+
+  <h1 align="center">LEVIATHAN</h1>
+  <p align="center"><strong>ADVANCED TORRENT AGGREGATION PROTOCOL</strong></p>
+
+  <p>
+    <img src="https://img.shields.io/badge/Real_Debrid-NATIVE_SUPPORT-A2B9F0?style=for-the-badge&logo=realdebrid&logoColor=black" alt="RealDebrid" />
+    <img src="https://img.shields.io/badge/AllDebrid-MODULE_ACTIVE-F5A623?style=for-the-badge&logo=alldebrid&logoColor=white" alt="AllDebrid" />
+    <img src="https://img.shields.io/badge/HF-Spaces-Hosted-7A4EE3?style=for-the-badge&logo=huggingface&logoColor=white" alt="HuggingFace" />
+  </p>
+
+</p>
+
+---
+
+### 🚀 Deploy / Public Gateway
+
+<p align="center">
+  <strong>LEVIATHAN • Public Gateway</strong> — Nodo ufficiale deployato su Hugging Face Spaces.  
+  Auto-scaling, caching distribuito, sandboxing e aggiornamenti automatici del motore HyperMode v3.5.
+</p>
+
+<p align="center">
+  <!-- Big "button" made with Shields.io badge that acts as a link -->
+  <a href="https://leaviathan-leviathan.hf.space" target="_blank" rel="noopener">
+    <img alt="Launch Leviathan Node" src="https://img.shields.io/badge/🚀%20Launch%20Leviathan%20Node-Open%20on%20HuggingFace-00eaff?style=for-the-badge&logo=huggingface&logoColor=white" />
   </a>
+</p>
 
-  <br>
+<p align="center">
+  <sub>Public Gateway • Auto-Scaling • Secure Sandbox • Semantic result validation</sub>
+</p>
 
-  <a href="https://leaviathan-leviathan.hf.space" target="_blank" style="text-decoration: none;">
-    <div style="
-      display: inline-flex;
-      align-items: center;
-      background-color: #0b0f19;
-      border: 1px solid #334155;
-      border-radius: 50px;
-      padding: 8px 20px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-    ">
-      <img src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" width="20" style="margin-right: 10px;" />
-      
-      <span style="
-        color: #94a3b8;
-        font-family: monospace;
-        font-size: 0.9rem;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        margin-right: 12px;
-      ">
-        DEPLOYED ON <span style="color: #fff;">HUGGING FACE</span>
-      </span>
+---
 
-      <span style="
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        background-color: #10b981;
-        border-radius: 50%;
-        box-shadow: 0 0 10px #10b981;
-      "></span>
-    </div>
-  </a>
+### ⚙️ Quick Links
 
-  <hr style="border: 0; height: 1px; background: linear-gradient(to right, transparent, #334155, transparent); margin: 50px auto; width: 40%;">
+- **Live**: https://leaviathan-leviathan.hf.space  
+- **Docs / Setup**: `/docs` (inserisci qui il path reale nel repo)  
+- **Issues**: https://github.com/`<tuo-username>`/`<tuo-repo>`/issues
 
-</div>
+---
+
+> Se vuoi, ti fornisco anche:
+> - Variante “compact” per la **homepage** del repo (meno spazio verticale).  
+> - Una GIF o SVG animata compatibile con GitHub (fornisco file + markup).  
+> - Un QR code statico (immagine) che punta al link HF per README.
+
+
 
 
 ## ⚡ Architettura del Sistema
