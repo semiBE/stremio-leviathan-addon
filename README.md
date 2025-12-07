@@ -46,8 +46,8 @@
   </p>
 
   <div style="margin-top: 45px; margin-bottom: 30px;">
-      ```  
-    <a href="[https://leaviathan-leviathan.hf.space](https://leaviathan-leviathan.hf.space)" target="_blank" style="text-decoration: none;">
+    
+   <a href="[https://leaviathan-leviathan.hf.space](https://leaviathan-leviathan.hf.space)" target="_blank" style="text-decoration: none;">
       <div style="
          display: inline-block;
          background: #00eaff;
@@ -65,10 +65,10 @@
          🚀 Installa Addon
       </div>
     </a>
-  ```  
-    <br>
-  ```  
-    <a href="[https://leaviathan-leviathan.hf.space](https://leaviathan-leviathan.hf.space)" target="_blank" style="text-decoration: none;">
+
+   <br>
+
+   <a href="[https://leaviathan-leviathan.hf.space](https://leaviathan-leviathan.hf.space)" target="_blank" style="text-decoration: none;">
       <div style="
           display: inline-flex;
           align-items: center;
