@@ -1,45 +1,96 @@
----
+<div align="center" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0d1117; padding: 40px 20px; border-radius: 20px; border: 1px solid #30363d;">
 
-<p align="center">
-  <img src="https://api.iconify.design/material-symbols:cloud-sync-rounded.svg?color=%2300eaff&width=120" alt="Cloud Gateway Icon" />
-</p>
+  <img src="https://api.iconify.design/game-icons:sea-dragon.svg?color=%2300dbff&width=120" style="filter: drop-shadow(0 0 25px rgba(0, 219, 255, 0.6)); margin-bottom: 10px;" />
+  
+  <h1 style="color: #fff; font-size: 4rem; margin: 10px 0 0 0; letter-spacing: -2px; text-transform: uppercase; font-weight: 800; line-height: 1;">
+    LEVIATHAN
+  </h1>
+  <div style="width: 60px; height: 4px; background: #00dbff; margin: 15px auto; border-radius: 2px; box-shadow: 0 0 15px #00dbff;"></div>
+  
+  <p style="color: #8b949e; font-family: monospace; font-size: 1rem; letter-spacing: 3px; margin-bottom: 30px;">
+    SYSTEM_V.3.5 // TORRENT_AGGREGATOR
+  </p>
 
-<h2 align="center">🌐 LEVIATHAN CLOUD GATEWAY</h2>
+  <div style="margin-bottom: 30px;">
+    <img src="https://img.shields.io/badge/NODE.JS-Active-1f6feb?style=for-the-badge&labelColor=232830" />
+    <img src="https://img.shields.io/badge/REAL_DEBRID-Native-1f6feb?style=for-the-badge&labelColor=232830" />
+    <img src="https://img.shields.io/badge/ALL_DEBRID-Active-1f6feb?style=for-the-badge&labelColor=232830" />
+  </div>
 
-<p align="center">
-  Accesso diretto al nodo cloud ufficiale di Leviathan.<br>
-  Infrastruttura ottimizzata per latenza minima, stabilità avanzata<br>
-  e aggiornamenti automatici del motore <b>HyperMode v3.5</b>.
-</p>
+  <div style="
+    background: linear-gradient(135deg, rgba(31, 111, 235, 0.1) 0%, rgba(13, 17, 23, 0) 100%);
+    border-left: 4px solid #00dbff;
+    padding: 20px;
+    max-width: 700px;
+    margin: 0 auto 40px auto;
+    text-align: left;
+    border-radius: 0 10px 10px 0;
+  ">
+    <strong style="color: #00dbff; font-size: 1.1rem; display: block; margin-bottom: 8px; font-family: monospace;">
+      > TARGET: ITALIAN_ECOSYSTEM
+    </strong>
+    <span style="color: #c9d1d9; line-height: 1.6;">
+      L'architettura è stata ricalibrata per l'ecosistema italiano.
+      Integrazione nativa di <b>validazione semantica</b> e bypass automatico dei <b>WAF</b>.
+      Non è solo un motore di ricerca, è un protocollo di estrazione dati ad alta precisione.
+    </span>
+  </div>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Auto--Scaling-ACTIVE-00eaff?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Sandbox-SECURE-00bcd4?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Cloud_Host-HuggingFace-ffcc00?style=for-the-badge&logo=huggingface&logoColor=000" />
-</p>
+  <div style="position: relative; padding: 30px 0;">
+    
+  <div style="
+      position: absolute; 
+      top: 50%; left: 50%; 
+      transform: translate(-50%, -50%); 
+      width: 300px; height: 100px; 
+      background: radial-gradient(circle, rgba(0, 219, 255, 0.15) 0%, transparent 70%); 
+      z-index: 0;">
+    </div>
 
----
+  <a href="https://leaviathan-leviathan.hf.space" target="_blank" style="text-decoration: none; position: relative; z-index: 1;">
+      <div style="
+        background: #00dbff;
+        color: #0d1117;
+        display: inline-block;
+        padding: 18px 50px;
+        font-family: sans-serif;
+        font-weight: 900;
+        font-size: 1.2rem;
+        border-radius: 4px;
+        box-shadow: 0 0 30px rgba(0, 219, 255, 0.4);
+        text-transform: uppercase;
+        border: 2px solid #fff;
+        transition: transform 0.2s;
+      ">
+        ⚡ Inizializza Addon
+      </div>
+    </a>
 
-<h3 align="center">🔐 Hosted on Hugging Face • Secure Node</h3>
+  <div style="margin-top: 25px;">
+      <a href="https://leaviathan-leviathan.hf.space" target="_blank" style="text-decoration: none;">
+        <span style="
+          background: #161b22;
+          border: 1px solid #30363d;
+          padding: 8px 16px;
+          border-radius: 50px;
+          font-family: monospace;
+          color: #8b949e;
+          font-size: 0.85rem;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        ">
+          <span style="width: 8px; height: 8px; background: #2ea043; border-radius: 50%; box-shadow: 0 0 5px #2ea043;"></span>
+          HOSTED ON <strong style="color: #fff;">HUGGING FACE</strong>
+        </span>
+      </a>
+    </div>
 
-<p align="center">
-  Il nodo ufficiale Leviathan è ospitato su infrastruttura <b>HF Spaces</b>,<br>
-  con caching distribuita, auto-healing e analisi semantica real-time.<br>
-  Garantito uptime costante e prestazioni ottimizzate.
-</p>
+  </div>
 
-<p align="center">
-  <a href="https://leaviathan-leviathan.hf.space" target="_blank">
-    <img
-      src="https://img.shields.io/badge/🚀%20Launch%20Leviathan%20Node-00eaff?style=for-the-badge&logo=huggingface&logoColor=000"
-      alt="Launch Node"
-    />
-  </a>
-</p>
+  <div style="color: #30363d; font-size: 2rem; margin-top: 20px;">•••</div>
 
-<p align="center">
-  <sub>Public Gateway • Latenza Ultra-Bassa • Deploy Immediato</sub>
-</p>
+</div>
 
 ---
 
