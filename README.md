@@ -154,6 +154,7 @@ Il metodo **Docker Compose** è l'unico che garantisce l'isolamento dei processi
 Copia l'intera sequenza e incollala nel terminale per l'inizializzazione immediata:
 
 ```bash
+<div align="center">
 git clone https://github.com/LUC4N3X/stremio-leviathan-addon
 cd stremio-leviathan-addon
 docker compose up -d --build
