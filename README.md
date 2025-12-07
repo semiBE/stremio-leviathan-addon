@@ -1,53 +1,105 @@
-<p align="center">
+<div align="center">
 
-  <img alt="Leviathan logo" src="https://api.iconify.design/game-icons:sea-dragon.svg?color=%2300eaff&width=160" />
+  <img src="[https://api.iconify.design/game-icons:sea-dragon.svg?color=%2300eaff&width=200](https://api.iconify.design/game-icons:sea-dragon.svg?color=%2300eaff&width=200)" style="filter: drop-shadow(0 0 20px rgba(0, 234, 255, 0.5)); margin-bottom: 20px;" />
 
-  <h1 align="center">LEVIATHAN</h1>
-  <p align="center"><strong>ADVANCED TORRENT AGGREGATION PROTOCOL</strong></p>
+  <h1 style="font-size: 5rem; font-weight: 800; margin: 0; line-height: 1; letter-spacing: -3px; color: #fff; text-shadow: 0 0 30px rgba(0, 234, 255, 0.25);">
+    LEVIATHAN
+  </h1>
+
+  <div style="font-size: 1.1rem; color: #94a3b8; margin-top: 15px; font-weight: 400; letter-spacing: 3px; text-transform: uppercase; font-family: monospace;">
+    Advanced Torrent Aggregation Protocol
+  </div>
+
+  <br>
 
   <p>
-    <img src="https://img.shields.io/badge/Real_Debrid-NATIVE_SUPPORT-A2B9F0?style=for-the-badge&logo=realdebrid&logoColor=black" alt="RealDebrid" />
-    <img src="https://img.shields.io/badge/AllDebrid-MODULE_ACTIVE-F5A623?style=for-the-badge&logo=alldebrid&logoColor=white" alt="AllDebrid" />
-    <img src="https://img.shields.io/badge/HF-Spaces-Hosted-7A4EE3?style=for-the-badge&logo=huggingface&logoColor=white" alt="HuggingFace" />
+    <img src="[https://img.shields.io/badge/Real_Debrid-NATIVE_SUPPORT-A2B9F0?style=for-the-badge&logo=realdebrid&logoColor=black](https://img.shields.io/badge/Real_Debrid-NATIVE_SUPPORT-A2B9F0?style=for-the-badge&logo=realdebrid&logoColor=black)" />
+    <img src="[https://img.shields.io/badge/AllDebrid-MODULE_ACTIVE-F5A623?style=for-the-badge&logo=alldebrid&logoColor=white](https://img.shields.io/badge/AllDebrid-MODULE_ACTIVE-F5A623?style=for-the-badge&logo=alldebrid&logoColor=white)" />
+    <img src="[https://img.shields.io/badge/TorBox-COMPATIBLE-7A4EE3?style=for-the-badge&logo=torbox&logoColor=white](https://img.shields.io/badge/TorBox-COMPATIBLE-7A4EE3?style=for-the-badge&logo=torbox&logoColor=white)" />
   </p>
 
-</p>
+  <p>
+    <img src="[https://img.shields.io/badge/Node.js-v18_LTS-339933?style=for-the-badge&logo=nodedotjs&logoColor=white](https://img.shields.io/badge/Node.js-v18_LTS-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)" />
+    <img src="[https://img.shields.io/badge/Architecture-HyperMode_v3.5-8A2BE2?style=for-the-badge&logo=dependabot&logoColor=white](https://img.shields.io/badge/Architecture-HyperMode_v3.5-8A2BE2?style=for-the-badge&logo=dependabot&logoColor=white)" />
+    <img src="[https://img.shields.io/badge/Status-OPERATIONAL-success?style=for-the-badge&logo=githubactions&logoColor=white](https://img.shields.io/badge/Status-OPERATIONAL-success?style=for-the-badge&logo=githubactions&logoColor=white)" />
+  </p>
 
----
+  <br>
 
-### 🚀 Deploy / Public Gateway
+  <div style="background: linear-gradient(180deg, #050a10 0%, #0f172a 100%); border: 1px solid rgba(0, 234, 255, 0.15); border-radius: 12px; padding: 30px; width: 90%; max-width: 800px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+    <strong style="font-size: 1.3rem; color: #00eaff; display: block; margin-bottom: 12px; letter-spacing: 0.5px;">
+      🇮🇹 Engineered for Italian Content Precision
+    </strong>
+    <span style="color: #cbd5e1; line-height: 1.7; font-size: 1rem; font-family: sans-serif;">
+      Leviathan ridefinisce lo standard dei metamotori torrent attraverso un'architettura <b>Italy-First</b>.
+      Integra un sistema di validazione semantica dei titoli, gestione automatizzata delle challenge WAF e un algoritmo di routing a bassa latenza per garantire risultati pertinenti e immediati.
+    </span>
+  </div>
 
-<p align="center">
-  <strong>LEVIATHAN • Public Gateway</strong> — Nodo ufficiale deployato su Hugging Face Spaces.  
-  Auto-scaling, caching distribuito, sandboxing e aggiornamenti automatici del motore HyperMode v3.5.
-</p>
+  <br>
 
-<p align="center">
-  <!-- Big "button" made with Shields.io badge that acts as a link -->
-  <a href="https://leaviathan-leviathan.hf.space" target="_blank" rel="noopener">
-    <img alt="Launch Leviathan Node" src="https://img.shields.io/badge/🚀%20Launch%20Leviathan%20Node-Open%20on%20HuggingFace-00eaff?style=for-the-badge&logo=huggingface&logoColor=white" />
-  </a>
-</p>
+  <p>
+    <img src="[https://img.shields.io/badge/](https://img.shields.io/badge/)⚡_Adaptive-Latency_Scaling-000?style=for-the-badge&labelColor=00eaff" />
+    <img src="[https://img.shields.io/badge/](https://img.shields.io/badge/)🔍_Smart-Query_Morphing-000?style=for-the-badge&labelColor=00eaff" />
+    <img src="[https://img.shields.io/badge/](https://img.shields.io/badge/)🛡️_WAF-Bypass_Protocol-000?style=for-the-badge&labelColor=00eaff" />
+    <img src="[https://img.shields.io/badge/](https://img.shields.io/badge/)🔗_Magnet-Fusion_Engine-000?style=for-the-badge&labelColor=00eaff" />
+  </p>
 
-<p align="center">
-  <sub>Public Gateway • Auto-Scaling • Secure Sandbox • Semantic result validation</sub>
-</p>
+  <div style="margin-top: 45px; margin-bottom: 30px;">
+```    
+    <a href="[https://leaviathan-leviathan.hf.space](https://leaviathan-leviathan.hf.space)" target="_blank" style="text-decoration: none;">
+      <div style="
+         display: inline-block;
+         background: linear-gradient(90deg, #00eaff 0%, #0088cc 100%);
+         color: #020617;
+         font-family: sans-serif;
+         font-weight: 900;
+         font-size: 1.3rem;
+         padding: 16px 45px;
+         border-radius: 50px;
+         box-shadow: 0 0 35px rgba(0, 234, 255, 0.4);
+         border: 2px solid rgba(255,255,255,0.8);
+         text-transform: uppercase;
+         letter-spacing: 1px;
+         margin-bottom: 25px;">
+         🚀 Installa Addon
+      </div>
+    </a>
+```
+    <br>
+```
+    <a href="[https://leaviathan-leviathan.hf.space](https://leaviathan-leviathan.hf.space)" target="_blank" style="text-decoration: none;">
+      <div style="
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          background: #0f172a;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          padding: 8px 20px;
+          border-radius: 100px;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        ">
+        <img src="[https://huggingface.co/front/assets/huggingface_logo-noborder.svg](https://huggingface.co/front/assets/huggingface_logo-noborder.svg)" width="20" />
+        <span style="color: #94a3b8; font-family: monospace; font-size: 0.85rem; font-weight: bold;">
+          DEPLOYED ON <span style="color: #fff;">HUGGING FACE</span>
+        </span>
+        <span style="
+          display: inline-block;
+          width: 8px;
+          height: 8px;
+          background-color: #4ade80;
+          border-radius: 50%;
+          box-shadow: 0 0 8px #4ade80;
+          margin-left: 5px;
+        "></span>
+      </div>
+    </a>
 
----
+  </div>
 
-### ⚙️ Quick Links
+  <hr style="border: 0; height: 1px; background: linear-gradient(to right, transparent, #00eaff, transparent); margin: 50px auto; width: 50%; opacity: 0.2;">
 
-- **Live**: https://leaviathan-leviathan.hf.space  
-- **Docs / Setup**: `/docs` (inserisci qui il path reale nel repo)  
-- **Issues**: https://github.com/`<tuo-username>`/`<tuo-repo>`/issues
-
----
-
-> Se vuoi, ti fornisco anche:
-> - Variante “compact” per la **homepage** del repo (meno spazio verticale).  
-> - Una GIF o SVG animata compatibile con GitHub (fornisco file + markup).  
-> - Un QR code statico (immagine) che punta al link HF per README.
-
+</div>
 
 
 
