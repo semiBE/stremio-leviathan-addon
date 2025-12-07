@@ -159,6 +159,15 @@ Copia l'intera sequenza e incollala nel terminale per l'inizializzazione immedia
                cd stremio-leviathan-addon
                docker compose up -d --build 
 ```
+✅ Fatto! Leviathan sarà raggiungibile su:
+http://localhost:7000
+
+> [!TIP]
+> **Status Operativo:**
+> * ✔️ **Full Auto:** Avvio completamente automatizzato senza intervento umano.
+> * ✔️ **Zero Config:** Nessuna configurazione manuale complessa richiesta.
+> * ✔️ **High Performance:** Ideale per Server VPS, NAS e ambienti Home Lab 24/7.
+
 ---
 
 ## ⚖️ Legal Disclaimer & Liability Warning
