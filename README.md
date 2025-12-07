@@ -1,57 +1,110 @@
-<div style="margin-top: 45px; margin-bottom: 20px; text-align: center;">
+<div align="center">
 
-  <!-- Pulsante INSTALLA ADDON disattivato -->
-  <div style="
-      display: inline-block;
-      background: linear-gradient(135deg, #00eaff, #007bff);
-      color: #0a0f16;
-      font-family: 'Segoe UI', sans-serif;
-      font-weight: 900;
-      font-size: 1.6rem;
-      padding: 20px 60px;
-      border-radius: 60px;
-      box-shadow:
-        0 0 30px rgba(0, 234, 255, 0.65),
-        0 0 80px rgba(0, 140, 255, 0.45),
-        inset 0 0 25px rgba(255, 255, 255, 0.35);
-      text-transform: uppercase;
-      letter-spacing: 3px;
-      cursor: not-allowed;
-      opacity: 0.5;
-      filter: grayscale(20%);
-      border: 3px solid rgba(255,255,255,0.9);
-      user-select: none;
-      margin-bottom: 18px;
-  ">
-    🚀 Installa Addon (Disabilitato)
+  <img src="https://api.iconify.design/game-icons:sea-dragon.svg?color=%2300eaff&width=200" style="filter: drop-shadow(0 0 10px rgba(0, 234, 255, 0.4)); margin-bottom: 15px;" />
+
+  <h1 style="font-size: 5rem; font-weight: 800; margin: 0; line-height: 1; letter-spacing: -2px; color: #fff;">
+    LEVIATHAN
+  </h1>
+
+  <div style="font-size: 1.1rem; color: #94a3b8; margin-top: 10px; font-weight: 400; letter-spacing: 1px;">
+    ADVANCED TORRENT AGGREGATION PROTOCOL
   </div>
 
-  <!-- Link Hugging Face CLICCABILE -->
-  <div style="margin-top: 10px;">
-    <a href="https://leaviathan-leviathanaddon.hf.space" target="_blank" style="
-       display: inline-block;
-       background: rgba(0, 234, 255, 0.15);
-       backdrop-filter: blur(6px);
-       padding: 14px 30px;
-       border-radius: 40px;
-       font-family: 'Segoe UI', sans-serif;
-       font-weight: 700;
-       font-size: 1rem;
-       color: #00eaff;
-       border: 1px solid rgba(0, 234, 255, 0.5);
-       box-shadow: 0 0 20px rgba(0, 234, 255, 0.4);
-       text-decoration: none;
-       letter-spacing: 1px;
-       transition: all 0.25s ease;
-    ">
-      🌐 Apri su Hugging Face
+  <br>
+
+  <p>
+    <img src="https://img.shields.io/badge/Real_Debrid-NATIVE_SUPPORT-A2B9F0?style=for-the-badge&logo=realdebrid&logoColor=black" />
+    <img src="https://img.shields.io/badge/AllDebrid-MODULE_ACTIVE-F5A623?style=for-the-badge&logo=alldebrid&logoColor=white" />
+    <img src="https://img.shields.io/badge/TorBox-COMPATIBLE-7A4EE3?style=for-the-badge&logo=torbox&logoColor=white" />
+  </p>
+
+  <p>
+    <img src="https://img.shields.io/badge/Node.js-v18_LTS-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" />
+    <img src="https://img.shields.io/badge/Architecture-HyperMode_v3.5-8A2BE2?style=for-the-badge&logo=dependabot&logoColor=white" />
+    <img src="https://img.shields.io/badge/Status-OPERATIONAL-success?style=for-the-badge&logo=githubactions&logoColor=white" />
+  </p>
+
+  <br>
+
+  <div style="background: #050a10; border: 1px solid rgba(0, 234, 255, 0.15); border-radius: 8px; padding: 25px; width: 85%; max-width: 800px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+    <strong style="font-size: 1.3rem; color: #00eaff; display: block; margin-bottom: 10px;">
+      🇮🇹 Engineered for Italian Content Precision
+    </strong>
+    <span style="color: #cbd5e1; line-height: 1.6; font-size: 1rem;">
+      Leviathan ridefinisce lo standard dei metamotori torrent attraverso un'architettura <b>Italy-First</b>.
+      Integra un sistema di validazione semantica dei titoli, gestione automatizzata delle challenge WAF e un algoritmo di routing a bassa latenza per garantire risultati pertinenti e immediati.
+    </span>
+  </div>
+
+  <br>
+
+  <p>
+    <img src="https://img.shields.io/badge/⚡_Adaptive-Latency_Scaling-000?style=for-the-badge&labelColor=00eaff" />
+    <img src="https://img.shields.io/badge/🔍_Smart-Query_Morphing-000?style=for-the-badge&labelColor=00eaff" />
+    <img src="https://img.shields.io/badge/🛡️_WAF-Bypass_Protocol-000?style=for-the-badge&labelColor=00eaff" />
+    <img src="https://img.shields.io/badge/🔗_Magnet-Fusion_Engine-000?style=for-the-badge&labelColor=00eaff" />
+  </p>
+
+<div style="margin-top: 40px; margin-bottom: 20px; text-align: center; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    
+  <a href="https://leaviathan-leviathanaddon.hf.space" target="_blank" 
+       style="
+           display: inline-flex;
+           align-items: center;
+           justify-content: center;
+           gap: 12px;
+           background: linear-gradient(135deg, #00eaff 0%, #0080ff 100%);
+           color: #ffffff;
+           font-weight: 800;
+           font-size: 1.1rem;
+           padding: 18px 45px;
+           border-radius: 12px;
+           text-decoration: none;
+           text-transform: uppercase;
+           letter-spacing: 1.5px;
+           border: 1px solid rgba(255, 255, 255, 0.4);
+           box-shadow: 0 0 20px rgba(0, 234, 255, 0.4), inset 0 0 0 1px rgba(255,255,255,0.2);
+           transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+           position: relative;
+           overflow: hidden;
+       "
+       onmouseover="this.style.transform='translateY(-3px) scale(1.02)'; this.style.boxShadow='0 10px 40px rgba(0, 234, 255, 0.6)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 0 20px rgba(0, 234, 255, 0.4), inset 0 0 0 1px rgba(255,255,255,0.2)';">
+       
+  <div style="position: absolute; top: 0; left: 0; width: 100%; height: 50%; background: linear-gradient(to bottom, rgba(255,255,255,0.2), transparent); pointer-events: none;"></div>
+       
+   <span style="font-size: 1.4rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">🚀</span>
+       
+   <span style="text-shadow: 0 2px 4px rgba(0,0,0,0.2);">Installa Addon</span>
     </a>
-  </div>
-</div>
 
-<hr style="border: 0; height: 1px;
-    background: linear-gradient(to right, transparent, #00eaff, transparent);
-    margin: 45px auto; width: 65%; opacity: 0.5;">
+  <div style="
+        margin-top: 18px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        gap: 8px;
+        opacity: 0.8;
+    ">
+        <span style="display: block; width: 6px; height: 6px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981;"></span>
+        <span style="font-size: 0.75rem; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase; font-weight: 600;">
+            Hosted on Hugging Face Spaces
+        </span>
+    </div>
+
+  <div style="
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #00eaff, transparent);
+        margin: 40px auto;
+        width: 100%;
+        max-width: 400px;
+        opacity: 0.4;
+        box-shadow: 0 0 10px #00eaff;
+    ">
+    
+  </div>
+
+</div>
 
 
 ## ⚡ Architettura del Sistema
