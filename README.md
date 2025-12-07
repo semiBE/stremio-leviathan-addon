@@ -150,16 +150,20 @@ Non si limita a trovare il link. Lo potenzia.
 
 Inizializza il nucleo di Leviathan lanciando la sequenza automatizzata. Il metodo **Docker Compose** è l'unico che garantisce l'isolamento dei processi e il bypass nativo dei WAF.
 
-# 🧩 Step 1 — Clona il repository
-```bash
-📂  Clona il repository:
+# ----------------------------------------------------
+# 🚀 INIZIALIZZAZIONE PROTOCOLLO LEVIATHAN
+# ----------------------------------------------------
+
+echo ">> 📥 CLONING REPOSITORY..."
 git clone https://github.com/LUC4N3X/stremio-leviathan-addon
 
-➡️  Entra nella cartella:
+echo ">> 📂 ACCESSING TARGET DIRECTORY..."
 cd stremio-leviathan-addon
 
+echo ">> 🏗️  BUILDING CONTAINER ARCHITECTURE..."
 docker compose up -d --build
 
+echo ">> ✅ SYSTEM ONLINE. LEVIATHAN IS WATCHING."
 
 ```
 
