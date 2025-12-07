@@ -1,13 +1,13 @@
 <div align="center">
 
-  <img src="https://api.iconify.design/game-icons:sea-dragon.svg?color=%2300eaff&width=200" style="filter: drop-shadow(0 0 10px rgba(0, 234, 255, 0.4)); margin-bottom: 15px;" />
+  <img src="https://api.iconify.design/game-icons:sea-dragon.svg?color=%2300eaff&width=200" style="filter: drop-shadow(0 0 20px rgba(0, 234, 255, 0.5)); margin-bottom: 20px;" />
 
-  <h1 style="font-size: 5rem; font-weight: 800; margin: 0; line-height: 1; letter-spacing: -2px; color: #fff;">
+  <h1 style="font-size: 5rem; font-weight: 800; margin: 0; line-height: 1; letter-spacing: -3px; color: #fff; text-shadow: 0 0 30px rgba(0, 234, 255, 0.25);">
     LEVIATHAN
   </h1>
 
-  <div style="font-size: 1.1rem; color: #94a3b8; margin-top: 10px; font-weight: 400; letter-spacing: 1px;">
-    ADVANCED TORRENT AGGREGATION PROTOCOL
+  <div style="font-size: 1.1rem; color: #94a3b8; margin-top: 15px; font-weight: 400; letter-spacing: 3px; text-transform: uppercase; font-family: monospace;">
+    Advanced Torrent Aggregation Protocol
   </div>
 
   <br>
@@ -26,11 +26,11 @@
 
   <br>
 
-  <div style="background: #050a10; border: 1px solid rgba(0, 234, 255, 0.15); border-radius: 8px; padding: 25px; width: 85%; max-width: 800px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-    <strong style="font-size: 1.3rem; color: #00eaff; display: block; margin-bottom: 10px;">
+  <div style="background: linear-gradient(180deg, #050a10 0%, #0f172a 100%); border: 1px solid rgba(0, 234, 255, 0.15); border-radius: 12px; padding: 30px; width: 90%; max-width: 800px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+    <strong style="font-size: 1.3rem; color: #00eaff; display: block; margin-bottom: 12px; letter-spacing: 0.5px;">
       🇮🇹 Engineered for Italian Content Precision
     </strong>
-    <span style="color: #cbd5e1; line-height: 1.6; font-size: 1rem;">
+    <span style="color: #cbd5e1; line-height: 1.7; font-size: 1rem; font-family: sans-serif;">
       Leviathan ridefinisce lo standard dei metamotori torrent attraverso un'architettura <b>Italy-First</b>.
       Integra un sistema di validazione semantica dei titoli, gestione automatizzata delle challenge WAF e un algoritmo di routing a bassa latenza per garantire risultati pertinenti e immediati.
     </span>
@@ -45,44 +45,61 @@
     <img src="https://img.shields.io/badge/🔗_Magnet-Fusion_Engine-000?style=for-the-badge&labelColor=00eaff" />
   </p>
 
- <div align="center" style="margin-top: 50px; margin-bottom: 20px;">
+  <div style="margin-top: 45px; margin-bottom: 30px;">
+    
+   <a href="https://leaviathan-leviathan.hf.space" target="_blank" style="text-decoration: none;">
+      <div style="
+         display: inline-block;
+         background: linear-gradient(90deg, #00eaff 0%, #0088cc 100%);
+         color: #020617;
+         font-family: sans-serif;
+         font-weight: 900;
+         font-size: 1.3rem;
+         padding: 16px 45px;
+         border-radius: 50px;
+         box-shadow: 0 0 35px rgba(0, 234, 255, 0.4);
+         border: 2px solid rgba(255,255,255,0.8);
+         text-transform: uppercase;
+         letter-spacing: 1px;
+         transition: transform 0.2s;">
+         🚀 Installa Addon
+      </div>
+    </a>
 
-  <a href="https://leaviathan-leviathanaddon.hf.space" target="_blank"
-     style="
-       display: inline-block;
-       padding: 18px 55px;
-       font-size: 1.4rem;
-       font-weight: 900;
-       font-family: 'Segoe UI', sans-serif;
-       text-transform: uppercase;
-       letter-spacing: 2px;
-       color: #000;
-       background: linear-gradient(135deg, #00eaff, #29f3ff);
-       border-radius: 50px;
-       text-decoration: none;
-       border: 3px solid #ffffff;
-       box-shadow: 0 0 20px rgba(0, 234, 255, 0.7),
-                   0 0 40px rgba(0, 234, 255, 0.4);
-       transition: all 0.25s ease-in-out;">
-         ```  
-      🚀 Install Addon
-  </a>
+   <br><br>
 
-  <div style="margin-top: 12px; font-size: 0.9rem; color: #7b8a9a;">
-    <img src="https://api.iconify.design/fa6-brands:hugging-face.svg?color=%23ffdd00" width="18" style="vertical-align: middle; margin-right: 5px;">
-    Hosted on Hugging Face Spaces
+  <a href="https://leaviathan-leviathan.hf.space" target="_blank" style="text-decoration: none;">
+      <div style="
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          background: rgba(15, 23, 42, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          padding: 8px 20px;
+          border-radius: 100px;
+          backdrop-filter: blur(5px);
+        ">
+        <img src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" width="20" />
+        <span style="color: #94a3b8; font-family: monospace; font-size: 0.85rem; font-weight: bold;">
+          DEPLOYED ON <span style="color: #fff;">HUGGING FACE</span>
+        </span>
+        <span style="
+          display: inline-block;
+          width: 6px;
+          height: 6px;
+          background-color: #4ade80;
+          border-radius: 50%;
+          box-shadow: 0 0 8px #4ade80;
+          margin-left: 4px;
+        "></span>
+      </div>
+    </a>
+
   </div>
 
+  <hr style="border: 0; height: 1px; background: linear-gradient(to right, transparent, #00eaff, transparent); margin: 50px auto; width: 50%; opacity: 0.2;">
+
 </div>
-
-<hr style="
-  border: 0;
-  height: 1px;
-  width: 65%;
-  margin: 45px auto;
-  background: linear-gradient(to right, transparent, #00eaff, transparent);
-  opacity: 0.4;">
-
 
 
 
