@@ -64,8 +64,8 @@
        box-shadow: 0 0 20px rgba(0, 234, 255, 0.7),
                    0 0 40px rgba(0, 234, 255, 0.4);
        transition: all 0.25s ease-in-out;">
-       
-     🚀 Install Addon
+         ```  
+      🚀 Install Addon
   </a>
 
   <div style="margin-top: 12px; font-size: 0.9rem; color: #7b8a9a;">
