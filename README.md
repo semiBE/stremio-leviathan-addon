@@ -249,54 +249,58 @@ Vuoi anche la versione dark mode only con sfondo nero e neon verde? O aggiungo i
 
 ---
 
-## ⚖️ Disclaimer Legale e Condizioni d’Uso
+## ⚖️ Disclaimer Legale & Termini di Servizio (EULA)
 
-> **Ultimo aggiornamento: Dicembre 2025**
+> [!CAUTION]
+> **AVVISO CRITICO DI CONFORMITÀ LEGALE**
+> L'accesso, l'installazione e l'esecuzione del codice contenuto in questo repository costituiscono l'accettazione incondizionata delle seguenti clausole di esclusione della responsabilità.
 
-### 1. Architettura e Funzionamento del Software
-**Leviathan** è un motore di ricerca automatizzato open-source e framework di web scraping progettato **esclusivamente** per l’acquisizione e l’indicizzazione di **metadati pubblici** (testo HTML, titoli, descrizioni e magnet link/hash) presenti su pagine web accessibili a tutti.
+### 1. 🛡️ Natura Agnostica e Neutralità Tecnologica
+**Leviathan** è definito tecnicamente come un *Web Scraper User-Agent* e un *Framework di Indicizzazione Distribuita*.
+Il software opera secondo il principio della **Neutralità Tecnologica**:
+* **Funzione Esclusiva:** Il codice agisce come un interprete automatizzato di linguaggi di markup (HTML/XML/JSON). La sua funzione è limitata all'estrazione di stringhe di testo (metadati) da sorgenti pubbliche definite dall'utente.
+* **Assenza di Hosting:** Leviathan **NON** ospita, **NON** trasmette, **NON** memorizza e **NON** indicizza sui propri server alcun contenuto protetto da diritto d'autore (Video, Audio, Binari).
+* **Non-Interferenza:** Il software non possiede capacità intrinseche di decriptazione (DRM bypass), elusione di misure tecnologiche di protezione o accesso abusivo a sistemi informatici.
 
-- Nessun hosting, upload o distribuzione di file protetti da copyright  
-- Nessuna memorizzazione o trasferimento di contenuti video, audio o eseguibili  
-- Opera esclusivamente come lettore/parser di pagine web pubbliche (analogo a Googlebot, Bingbot o qualsiasi comune crawler)
+### 2. 🧪 Finalità di Ricerca e Sviluppo (R&D)
+Il presente repository è pubblicato sotto licenza Open Source con finalità strettamente limitate a:
+* **Proof of Concept (PoC):** Dimostrazione teorica di algoritmi di scraping ed estrazione dati.
+* **Interoperabilità:** Studio delle interazioni tra protocolli di rete decentralizzati e client multimediali.
+* **Analisi Forense:** Test di sicurezza e analisi del traffico web in ambienti controllati (Sandboxed Environment).
 
-### 2. Finalità del Progetto
-Il software è rilasciato **esclusivamente** per:
-- Ricerca accademica e scientifica
-- Studio di architetture web e automazione distribuita
-- Penetration testing autorizzato, red teaming e security research
-- Sviluppo di tecniche avanzate di parsing ed estrazione dati
+### 3. 🚫 Limitazione di Responsabilità e Manleva (Indemnification)
+L'autore (**LUC4N3X**), i contributori e i maintainer del progetto non esercitano alcun controllo, monitoraggio o supervisione sull'utilizzo del software da parte dell'utente finale.
 
-Il codice viene fornito **“AS IS”** senza alcuna garanzia, espressa o implicita.
+**L'Utente Finale dichiara e garantisce che:**
+1.  **Utilizzo Autonomo:** L'utilizzo del software avviene a proprio esclusivo rischio e pericolo su infrastrutture locali o private.
+2.  **Conformità Giurisdizionale:** L'utente si assume l'onere di verificare che l'uso di Leviathan sia conforme alle leggi vigenti nel proprio territorio (inclusi, ma non limitati a: DMCA 17 U.S.C. § 512, Direttiva Copyright UE 2019/790).
+3.  **Esonero di Responsabilità:** L'utente accetta di manlevare, indennizzare e tenere indenne lo sviluppatore da qualsiasi rivendicazione, azione legale, sanzione o richiesta di risarcimento danni derivante dall'uso improprio, illecito o non autorizzato del codice.
 
-### 3. Responsabilità dell’Utente
-L’autore, i contributori e i distributori **declinano ogni responsabilità** sull’uso che verrà fatto del software.
-
-Utilizzando Leviathan l’utente si assume **in via esclusiva e totale**:
-- Ogni responsabilità civile, penale e amministrativa
-- L’obbligo di verificare la piena conformità alle leggi vigenti nel proprio Paese (a titolo esemplificativo: DMCA, Direttiva UE 2019/790 sul diritto d’autore, normative nazionali)
-
-### 4. Posizione sulla Pirateria e sul Copyright
-Condanniamo fermamente ogni forma di pirateria e violazione del diritto d’autore.
-
-**Leviathan non è stato ideato, sviluppato né distribuito per facilitare, incoraggiare o consentire il download non autorizzato di opere protette.**  
-Ogni utilizzo illecito è espressamente vietato e non sarà in alcun modo supportato.
+### 4. 🏴‍☠️ Politica Zero-Tolerance sulla Pirateria
+Il software è progettato per l'indicizzazione di contenuti di pubblico dominio (Public Domain) o licenziati liberamente (Creative Commons).
+**Qualsiasi utilizzo volto alla violazione del copyright, alla pirateria digitale o alla distribuzione non autorizzata di proprietà intellettuale è severamente proibito.**
+Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico a configurazioni volte a tale scopo.
 
 ---
 
-**L’installazione, l’esecuzione o l’utilizzo del software comportano l’accettazione integrale e incondizionata di tutte le condizioni sopra indicate.**  
-In caso di mancata accettazione, interrompere immediatamente l’uso ed eliminare ogni copia del software.
+> **CLAUSOLA RISOLUTIVA ESPRESSA**
+> Se non concordi con anche solo una delle clausole sopra esposte, o se la legislazione del tuo paese non consente tale limitazione di responsabilità, non sei autorizzato a utilizzare questo software.
+>
+> **⚠️ INTERROMPI L'ESECUZIONE, ELIMINA IL CONTAINER E DISTRUGGI IL CODICE SORGENTE IMMEDIATAMENTE.**
 
 ---
 
 <div align="center">
 
-**Sviluppato con precisione e caffeina**  
-da [**LUC4N3X**](https://github.com/LUC4N3X)  
-Leviathan Project © 2024–2025 — Tutti i diritti riservati
+**Sviluppato con precisione e caffeina**
+<br>
+da [**LUC4N3X**](https://github.com/LUC4N3X)
+<br>
+<sub>Leviathan Project © 2024–2025 — Tutti i diritti riservati</sub>
 
 <br>
+<br>
 
-<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1000&color=39FF14&center=true&vCenter=true&width=550&lines=Rimani+legale.+Rimani+lucido." alt="Typing SVG" />
+<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1000&color=39FF14&center=true&vCenter=true&width=550&lines=Rimani+legale.;Rimani+lucido.;Lunga+vita+al+codice." alt="Typing SVG" />
 
 </div>
