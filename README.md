@@ -140,34 +140,28 @@ Non si limita a trovare il link. Lo potenzia.
 
 
 ---
-#!/bin/bash
-# 🚀 Leviathan Auto-Deploy Script
-# 🔹 Scopo: Deploy rapido di Leviathan su Host locale, VPS o NAS
-# 🔹 Requisiti: Docker & Docker Compose installati
-# 🔹 Tempo stimato: < 30s
+## 📦 Installazione
 
-# --- 🎯 Step 1: Clona il repository ---
-echo -e "\e[36m📂 Clonando il repository Leviathan...\e[0m"
-git clone https://github.com/LUC4N3X/stremio-leviathan-addon || {
-    echo -e "\e[31m❌ Il repository esiste già. Procedo nella cartella esistente.\e[0m"
-}
-cd stremio-leviathan-addon || exit
+### 🚀 Metodo 1: Docker Compose (Consigliato)
 
-# --- 🐳 Step 2: Avvia Leviathan con Docker Compose ---
-echo -e "\e[32m🐳 Costruendo e avviando i container Docker...\e[0m"
+Questa è la procedura standard per avviare il nucleo di Leviathan in un ambiente isolato e performante.
+
+> [!TIP]
+> Assicurati di avere **Docker** e **Git** installati sulla tua macchina prima di procedere.
+
+Esegui questo blocco intero nel tuo terminale:
+
+```bash
+# 1. Clona il repository
+git clone [https://github.com/LUC4N3X/stremio-leviathan-addon](https://github.com/LUC4N3X/stremio-leviathan-addon)
+
+# 2. Entra nella directory operativa
+cd stremio-leviathan-addon
+
+# 3. Inizializza il container (Build & Detach)
 docker compose up -d --build
 
-# --- ✅ Step 3: Stato dei container ---
-echo -e "\e[33m🔍 Controllo lo stato dei container...\e[0m"
-docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-
-# --- 🎉 Step 4: Completato ---
-echo -e "\e[35m🎉 Leviathan è ora attivo e funzionante!\e[0m"
-echo -e "\e[36m🌐 Accedi al tuo Addon Stremio e goditi il potere di Leviathan.\e[0m"
-
-
-
-
+```
 > [!TIP]
 > **Status Operativo:**
 > * ✔️ **Full Auto:** Avvio completamente automatizzato senza intervento umano.
