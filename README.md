@@ -158,7 +158,6 @@ Copia l'intera sequenza e incollala nel terminale per l'inizializzazione immedia
 git clone https://github.com/LUC4N3X/stremio-leviathan-addon
 cd stremio-leviathan-addon
 docker compose up -d --build
-
 ```
 > [!TIP]
 > **Status Operativo:**
@@ -166,7 +165,7 @@ docker compose up -d --build
 > * ✔️ **Zero Config:** Nessuna configurazione manuale complessa richiesta.
 > * ✔️ **High Performance:** Ideale per Server VPS, NAS e ambienti Home Lab 24/7.
 
-
+```
 ---
 
 ## ⚖️ Legal Disclaimer & Liability Warning
