@@ -102,6 +102,21 @@ Non si limita a trovare il link. Lo potenzia.
 
 <div align="center">
 
+<br>
+
+<div align="center">
+  <div style="background: rgba(245, 166, 35, 0.1); border: 1px solid rgba(245, 166, 35, 0.3); border-radius: 6px; padding: 15px; width: 90%; max-width: 800px;">
+    <strong style="color: #F5A623; font-size: 0.9rem; display: block; margin-bottom: 5px;">
+      ⚠️ RESTRIZIONE ISTANZA PUBBLICA
+    </strong>
+    <span style="color: #cbd5e1; font-size: 0.85rem;">
+      Per motivi di carico e gestione dei CAPTCHA, alcuni provider (es. <b>1337x, TorrentGalaxy</b>) sono disabilitati sull'istanza pubblica.
+      <br>
+      Esegui il <b>Self-Hosting</b> (Docker) per sbloccare il pieno potenziale del Network e bypassare le restrizioni WAF.
+    </span>
+  </div>
+</div>
+
 ## 🌐 LEVIATHAN NETWORK NODES
 
 <br>
