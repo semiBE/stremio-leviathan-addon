@@ -11,28 +11,13 @@ const CONFIG = {
     KNABEN_API: "https://api.knaben.org/v1",
     // Pool di User-Agents per rotazione
     USER_AGENTS: [
-        // Windows Chrome
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-        // Windows Firefox
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
-        // Windows Edge
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0',
-        // macOS Safari & Chrome
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-        // Linux Chrome & Firefox
         'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0',
-        // Android Chrome
         'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
-        'Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36',
-        // iOS Safari
-        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-        'Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-        // Opera
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 OPR/100.0.0.0'
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
     ],
     // Lista statica di tracker di fallback
     TRACKERS: [
@@ -93,37 +78,79 @@ async function cfGet(url, config = {}) {
     }
 }
 
-// --- HELPER DI PARSING ---
+// --- HELPER DI PARSING (OTTIMIZZATI) ---
+
+/**
+ * Pulisce e normalizza un titolo (VERSIONE MIGLIORATA)
+ */
 function clean(title) {
     if (!title) return "";
-    const decoded = title.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'");
-    return decoded.replace(/[:"'’]/g, "").replace(/[^a-zA-Z0-9\s\-.\[\]]/g, " ").replace(/\s+/g, " ").trim();
+    // Decodifica entità HTML comuni
+    const htmlDecode = title
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#039;/g, "'")
+        .replace(/&apos;/g, "'");
+
+    // Rimuove caratteri problematici ma mantiene parentesi () e []
+    const cleaned = htmlDecode
+        .replace(/[:"'’]/g, "")
+        .replace(/[^a-zA-Z0-9\s\-.\[\]()]/g, " ") 
+        .replace(/\s+/g, " ") // riduce spazi multipli
+        .trim();
+
+    return cleaned;
 }
 
+/**
+ * Determina se il titolo indica contenuto in Italiano (VERSIONE MIGLIORATA)
+ */
 function isItalianResult(name) {
+    if (!name) return false;
     const nameUpper = name.toUpperCase();
+
+    // Se contiene solo ENG ma non ITA/MULTI
     if (/\b(ENG|ENGLISH)\b/i.test(nameUpper) && !/\b(ITA|MULTI|DUAL)\b/i.test(nameUpper)) return false;
-    const regex = /\b(ITA|ITALIAN|ITALIANO|MULTI|DUAL|MD|SUB.?ITA|SUBITA|SUB-ITA|ITALUB|FORCED|AC3.?ITA|DTS.?ITA|AUDIO.?ITA|ITA.?AC3|ITA.?HD|BDMUX|DVDRIP.?ITA|CiNEFiLE|NovaRip|MeM|robbyrs|iDN_CreW|SPEEDVIDEO|WMS|TRIDIM)\b/i;
-    return regex.test(nameUpper);
+
+    // Pattern Italiano aggiornato e ampliato
+    const ITA_REGEX = /\b(ITA(LIANO)?|MULTI|DUAL|MD|SUB\.?ITA|SUB-?ITA|ITALUB|FORCED|AC3\.?ITA|DTS\.?ITA|AUDIO\.?ITA|ITA\.?AC3|ITA\.?HD|BDMUX|DVDRIP\.?ITA|CiNEFiLE|NovaRip|MeM|robbyrs|iDN_CreW|SPEEDVIDEO|WMS|TRIDIM)\b/i;
+
+    return ITA_REGEX.test(nameUpper);
 }
 
+/**
+ * Controlla se l'anno nel titolo corrisponde (VERSIONE MIGLIORATA)
+ */
 function checkYear(name, year, type) {
     if (!year) return true;
     if (type === 'tv' || type === 'series') return true;
+
     const y = parseInt(year);
-    return [y - 1, y, y + 1].some(ay => name.includes(ay.toString()));
+    if (isNaN(y)) return true;
+
+    const yearsToCheck = [y - 1, y, y + 1].map(String);
+    return yearsToCheck.some(yStr => name.includes(yStr));
 }
 
+/**
+ * Parsing IMDb ID (VERSIONE MIGLIORATA)
+ */
 function parseImdbId(imdbId) {
-    if (!imdbId || !imdbId.includes(':')) return { season: null, episode: null };
+    if (!imdbId || typeof imdbId !== 'string') return { season: null, episode: null };
+
     const parts = imdbId.split(':');
     if (parts.length >= 3) {
-        return { season: parseInt(parts[parts.length - 2]), episode: parseInt(parts[parts.length - 1]) };
+        const season = parseInt(parts[parts.length - 2]) || null;
+        const episode = parseInt(parts[parts.length - 1]) || null;
+        return { season, episode };
     }
     return { season: null, episode: null };
 }
 
-// --- PARSER EPISODI ---
+// --- HELPER STANDARD (MANTENUTI DAL FILE ORIGINALE) ---
+
 function extractInfo(name) {
     const upper = name.toUpperCase();
     let season = null;
@@ -389,7 +416,7 @@ async function searchSolidTorrents(title, year, type, reqSeason, reqEpisode) {
         if (!query.toUpperCase().includes("ITA")) query += " ITA";
 
         const url = `${domain}/search?q=${encodeURIComponent(query)}&sort=seeders`;
-        console.log(`[Solid] Scraping URL: ${url}`);
+        // console.log(`[Solid] Scraping URL: ${url}`);
 
         const { data } = await cfGet(url, { timeout: CONFIG.TIMEOUT });
 
@@ -399,8 +426,6 @@ async function searchSolidTorrents(title, year, type, reqSeason, reqEpisode) {
         const results = [];
 
         const magnets = $('a[href^="magnet:?"]');
-
-        console.log(`[Solid] Trovati ${magnets.length} magnet link.`);
 
         magnets.each((i, el) => {
             const magnet = $(el).attr('href');
@@ -440,12 +465,9 @@ async function searchSolidTorrents(title, year, type, reqSeason, reqEpisode) {
                 });
             }
         });
-
-        console.log(`[Solid] Risultati validi: ${results.length}`);
         return results;
 
     } catch (e) {
-        console.error(`[Solid] Error: ${e.message}`);
         return [];
     }
 }
@@ -569,7 +591,7 @@ async function searchGlo(title, year, type, reqSeason, reqEpisode) {
 CONFIG.ENGINES = [
     searchCorsaro,
     searchTPB,
-    searchSolidTorrents, // Sostituisce 1337x
+    searchSolidTorrents, 
     searchBitSearch,
     searchTorrentGalaxy,
     searchNyaa,
@@ -589,9 +611,7 @@ async function searchMagnet(title, year, type, imdbId) {
     const engineTimeouts = new Map([
         [searchKnaben, CONFIG.TIMEOUT_API],
         [searchTPB, CONFIG.TIMEOUT_API],
-        // SolidTorrents via scraping può richiedere più tempo dell'API, usiamo il default (6s)
-        [searchUindex, 4000] // Una via di mezzo per Uindex
-        // Tutti gli altri useranno il default CONFIG.TIMEOUT (6000ms)
+        [searchUindex, 4000] 
     ]);
 
     // Esecuzione parallela con timeout specifici per engine
