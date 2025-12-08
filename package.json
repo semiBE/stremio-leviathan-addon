@@ -1,5 +1,5 @@
 {
-  "name": "stremio-corsaro-unleashed",
+  "name": "Leviathan",
   "version": "31.3.0",
   "description": "Leviathan Edition - AI Core + NLP Parser + Debrid + Cache",
   "main": "addon.js",
@@ -20,6 +20,7 @@
     "fuzzyset": "^1.0.7",
     "helmet": "^7.1.0",
     "node-cache": "^5.1.2",
+    "p-limit": "^3.1.0",
     "stremio-addon-sdk": "^1.6.9"
   },
   "devDependencies": {
