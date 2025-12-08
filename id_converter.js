@@ -13,6 +13,8 @@ const CONFIG = {
     OMDB_URL: 'http://www.omdbapi.com',
 };
 
+
+
 // --- 💾 DATABASE PERSISTENTE (SQLITE) ---
 // Ispirato alla robustezza del "DatabaseManager" Python
 const DATA_DIR = path.join(__dirname, 'data');
@@ -100,6 +102,11 @@ async function getTmdbExternalIds(tmdbId, type) {
 
 async function searchTrakt(id, type = 'imdb') {
     if (!CONFIG.TRAKT_CLIENT_ID) return null;
+    // SSRF Protection: Only allow certain id formats
+    if (!isValidTraktId(id, type)) {
+        console.warn(`[SECURITY] Blocked suspicious Trakt ID: ${id} [type: ${type}]`);
+        return null;
+    }
     try {
         const url = `/search/${type}/${id}?type=movie,show`;
         const { data } = await traktClient.get(url);
