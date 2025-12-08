@@ -1,8 +1,3 @@
-// Aggiunto per forzare i DNS di Google, risolvendo l'errore Read-only file system
-const dns = require('dns');
-// Configura Node.js per usare i resolver DNS di Google
-dns.setServers(['8.8.8.8', '8.8.4.4']); 
-
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -197,23 +192,42 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
 // 🧠 CORE LOGIC
 // ==========================================
 
+// 🔥 FIX SICUREZZA APPLICATO QUI 🔥
 async function getMetadata(id, type) {
   try {
+    // 1. VALIDAZIONE STRICT DEL TYPE (Whitelist)
+    const allowedTypes = ["movie", "series"];
+    if (!allowedTypes.includes(type)) {
+        console.warn(`[Security] Type non valido ricevuto: ${type}`);
+        return null;
+    }
+
     let tmdbId = id, s = 1, e = 1;
     if (type === "series" && id.includes(":")) [tmdbId, s, e] = id.split(":");
     
-    const { data: cData } = await axios.get(`${CONFIG.CINEMETA_URL}/meta/${type}/${tmdbId.split(":")[0]}.json`, { timeout: CONFIG.TIMEOUT_TMDB }).catch(() => ({ data: {} }));
+    // 2. SANIFICAZIONE DELL'ID
+    // Blocca path traversal (es. "../") permettendo solo caratteri sicuri
+    const rawId = tmdbId.split(":")[0];
+    const cleanId = rawId.replace(/[^a-zA-Z0-9_-]/g, ""); 
+
+    if (!cleanId) return null;
+
+    // 3. COSTRUZIONE URL SICURA
+    const { data: cData } = await axios.get(`${CONFIG.CINEMETA_URL}/meta/${type}/${cleanId}.json`, { timeout: CONFIG.TIMEOUT_TMDB }).catch(() => ({ data: {} }));
     
     return cData?.meta ? {
       title: cData.meta.name,
       originalTitle: cData.meta.name, 
       year: cData.meta.year?.split("–")[0],
-      imdb_id: tmdbId.split(":")[0], 
+      imdb_id: cleanId, 
       isSeries: type === "series",
       season: parseInt(s),
       episode: parseInt(e)
     } : null;
-  } catch { return null; }
+  } catch (err) { 
+      console.error("Metadata Error:", err.message);
+      return null; 
+  }
 }
 
 async function resolveDebridLink(config, item, showFake) {
