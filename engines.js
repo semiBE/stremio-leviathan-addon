@@ -2,6 +2,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const https = require("https");
 const cloudscraper = require("cloudscraper");
+const pLimit = require("p-limit"); // Richiede npm install p-limit@3
 
 // --- CONFIGURAZIONE CENTRALE ---
 const CONFIG = {
@@ -66,26 +67,7 @@ async function updateTrackers() {
     }
 }
 
-// 3. Concurrency Limiter (Implementazione nativa di p-limit)
-const limitConcurrency = (concurrency) => {
-    const queue = [];
-    let active = 0;
-    const next = () => {
-        active--;
-        if (queue.length > 0) queue.shift()();
-    };
-    const run = (fn) => new Promise((resolve, reject) => {
-        const execute = async () => {
-            active++;
-            try { resolve(await fn()); } catch (e) { reject(e); } finally { next(); }
-        };
-        if (active < concurrency) execute();
-        else queue.push(execute);
-    });
-    return run;
-};
-
-// 4. Strict Engine Timeout Wrapper
+// 3. Strict Engine Timeout Wrapper
 const withTimeout = (promise, ms) => Promise.race([
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error("Engine Timeout")), ms))
@@ -233,7 +215,8 @@ async function searchCorsaro(title, year, type, reqSeason, reqEpisode) {
             }
         });
 
-        const limit = limitConcurrency(5);
+        // UTILIZZO P-LIMIT
+        const limit = pLimit(5);
         const promises = items.map(item => limit(async () => {
             try {
                 const detailPage = await cfGet(item.url, { timeout: 3000 });
@@ -276,7 +259,7 @@ async function searchKnaben(title, year, type, reqSeason, reqEpisode) {
                 'Content-Type': 'application/json',
                 'User-Agent': getRandomUA()
             },
-            timeout: CONFIG.TIMEOUT_API // Usa timeout breve per API
+            timeout: CONFIG.TIMEOUT_API 
         });
 
         if (!data || !data.hits) return [];
@@ -314,7 +297,7 @@ async function searchUindex(title, year, type, reqSeason, reqEpisode) {
         const { data } = await axios.get(url, { 
             headers: { 'User-Agent': getRandomUA() }, 
             httpsAgent, 
-            timeout: 4000, // Timeout medio
+            timeout: 4000, 
             validateStatus: s => s < 500 
         });
         if (!data || typeof data !== 'string') return [];
@@ -375,7 +358,7 @@ async function searchTPB(title, year, type, reqSeason, reqEpisode) {
         const { data } = await axios.get("https://apibay.org/q.php", {
             params: { q, cat: type === 'tv' ? 0 : 201 },
             headers: { 'User-Agent': getRandomUA() },
-            timeout: CONFIG.TIMEOUT_API // Timeout breve per API
+            timeout: CONFIG.TIMEOUT_API 
         }).catch(() => ({ data: [] }));
 
         if (!Array.isArray(data) || data[0]?.name === "No results returned") return [];
@@ -403,7 +386,6 @@ async function searchSolidTorrents(title, year, type, reqSeason, reqEpisode) {
         const domain = "https://solidtorrents.eu";
         
         let query = clean(title);
-        // Cerchiamo senza "ITA" forzato per vedere se l'ordinamento seeders porta su i risultati corretti
         if (!query.toUpperCase().includes("ITA")) query += " ITA";
 
         const url = `${domain}/search?q=${encodeURIComponent(query)}&sort=seeders`;
@@ -416,57 +398,37 @@ async function searchSolidTorrents(title, year, type, reqSeason, reqEpisode) {
         const $ = cheerio.load(data);
         const results = [];
 
-        // NUOVA STRATEGIA: "Magnet First"
-        // Invece di cercare il contenitore, cerchiamo tutti i bottoni magnet.
         const magnets = $('a[href^="magnet:?"]');
 
         console.log(`[Solid] Trovati ${magnets.length} magnet link.`);
 
         magnets.each((i, el) => {
             const magnet = $(el).attr('href');
-            
-            // Risaliamo nell'albero DOM per trovare il "contenitore" della riga.
-            // Solitamente: Bottone -> Div Bottoni -> Div Riga -> Div Card
-            // Usiamo .parents() e prendiamo il primo div che contiene testo significativo
             const row = $(el).closest('div.border-b, div.shadow-sm, div.rounded-lg');
-            
-            // Se non troviamo una riga con le classi tailwind, risaliamo genericamente di 3 livelli
             const container = row.length ? row : $(el).parents().eq(3);
 
-            // Cerchiamo il Titolo
-            // È solitamente un h5 o un link che NON è il magnet e NON è il download
             let name = container.find('h5').text().trim();
             if (!name) {
-                // Fallback: cerca il primo link che ha del testo e non è un bottone
                 name = container.find('a').not('[href^="magnet:"]').not('[class*="btn"]').first().text().trim();
             }
 
-            // Se ancora non abbiamo il nome, proviamo a prendere il testo dell'attributo alt di un'immagine (raro ma possibile)
-            if (!name) return; // Se non c'è nome, saltiamo
+            if (!name) return;
 
-            // --- Parsing Statistiche ---
-            // Estraggiamo tutto il testo del contenitore per cercare seeders e size con Regex
             const rawText = container.text().replace(/\s+/g, ' ');
 
-            // Seeders: Cerchiamo numeri vicino a parole chiave o colori
             let seeders = 0;
-            // Regex per "72 seminatrici" (italiano) o "72 seeders" (inglese) o numeri isolati verdi
             const seedMatch = rawText.match(/(\d+)\s*(seminatrici|seeders|seeds)/i);
             if (seedMatch) {
                 seeders = parseInt(seedMatch[1]);
             } else {
-                // Tentativo fallback: cerca numeri dentro elementi verdi (spesso usati per i seeders)
                 const greenText = container.find('.text-green-500, .text-green-600').text();
                 if (greenText) seeders = parseInt(greenText.replace(/[^0-9]/g, '')) || 0;
             }
 
-            // Size: Cerchiamo pattern tipo "1.99 GB"
             let sizeStr = "??";
             const sizeMatch = rawText.match(/(\d+([.,]\d+)?\s*(GB|MB|KB))/i);
             if (sizeMatch) sizeStr = sizeMatch[0];
 
-            // --- FILTRAGGIO ---
-            // Siamo permissivi: se ha il magnet e "ITA" nel titolo, lo prendiamo.
             if (isItalianResult(name)) {
                 results.push({
                     title: name,
@@ -551,7 +513,8 @@ async function searchLime(title, year, type, reqSeason, reqEpisode) {
             }
         });
 
-        const limit = limitConcurrency(4);
+        // UTILIZZO P-LIMIT
+        const limit = pLimit(4);
         const promises = candidates.slice(0, 5).map(cand => limit(async () => {
             try {
                 const { data } = await cfGet(cand.link, { timeout: 3000 });
@@ -586,7 +549,8 @@ async function searchGlo(title, year, type, reqSeason, reqEpisode) {
             }
         });
 
-        const limit = limitConcurrency(4);
+        // UTILIZZO P-LIMIT
+        const limit = pLimit(4);
         const promises = candidates.slice(0, 5).map(cand => limit(async () => {
             try {
                 const { data } = await cfGet(cand.detailLink, { timeout: 3000 });
