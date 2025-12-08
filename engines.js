@@ -10,10 +10,28 @@ const CONFIG = {
     KNABEN_API: "https://api.knaben.org/v1",
     // Pool di User-Agents per rotazione
     USER_AGENTS: [
+        // Windows Chrome
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        // Windows Firefox
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
+        // Windows Edge
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0',
+        // macOS Safari & Chrome
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        // Linux Chrome & Firefox
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0',
+        // Android Chrome
+        'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Mobile Safari/537.36',
+        // iOS Safari
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+        'Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+        // Opera
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 OPR/100.0.0.0'
     ],
     // Lista statica di tracker di fallback
     TRACKERS: [
@@ -380,46 +398,94 @@ async function searchTPB(title, year, type, reqSeason, reqEpisode) {
     } catch { return []; }
 }
 
-async function search1337x(title, year, type, reqSeason, reqEpisode) {
+async function searchSolidTorrents(title, year, type, reqSeason, reqEpisode) {
     try {
-        const domain = "https://1337x.ninjaproxy1.com";
-        const url = `${domain}/search/${encodeURIComponent(clean(title) + " ITA")}/1/`;
+        const domain = "https://solidtorrents.eu";
+        
+        let query = clean(title);
+        // Cerchiamo senza "ITA" forzato per vedere se l'ordinamento seeders porta su i risultati corretti
+        if (!query.toUpperCase().includes("ITA")) query += " ITA";
+
+        const url = `${domain}/search?q=${encodeURIComponent(query)}&sort=seeders`;
+        console.log(`[Solid] Scraping URL: ${url}`);
 
         const { data } = await cfGet(url, { timeout: CONFIG.TIMEOUT });
-        const $ = cheerio.load(data || "");
-        const candidates = [];
 
-        $("table.table-list tbody tr").slice(0, 8).each((i, row) => {
-            const name = $(row).find("td.name a").last().text().trim();
-            const link = $(row).find("td.name a").last().attr("href");
-            const seeders = parseInt($(row).find("td.seeds").text().replace(/,/g, "")) || 0;
+        if (!data) return [];
 
-            if (name && link && isItalianResult(name) && checkYear(name, year, type) && isCorrectFormat(name, reqSeason, reqEpisode)) {
-                candidates.push({ name, link: `${domain}${link}`, seeders });
+        const $ = cheerio.load(data);
+        const results = [];
+
+        // NUOVA STRATEGIA: "Magnet First"
+        // Invece di cercare il contenitore, cerchiamo tutti i bottoni magnet.
+        const magnets = $('a[href^="magnet:?"]');
+
+        console.log(`[Solid] Trovati ${magnets.length} magnet link.`);
+
+        magnets.each((i, el) => {
+            const magnet = $(el).attr('href');
+            
+            // Risaliamo nell'albero DOM per trovare il "contenitore" della riga.
+            // Solitamente: Bottone -> Div Bottoni -> Div Riga -> Div Card
+            // Usiamo .parents() e prendiamo il primo div che contiene testo significativo
+            const row = $(el).closest('div.border-b, div.shadow-sm, div.rounded-lg');
+            
+            // Se non troviamo una riga con le classi tailwind, risaliamo genericamente di 3 livelli
+            const container = row.length ? row : $(el).parents().eq(3);
+
+            // Cerchiamo il Titolo
+            // È solitamente un h5 o un link che NON è il magnet e NON è il download
+            let name = container.find('h5').text().trim();
+            if (!name) {
+                // Fallback: cerca il primo link che ha del testo e non è un bottone
+                name = container.find('a').not('[href^="magnet:"]').not('[class*="btn"]').first().text().trim();
+            }
+
+            // Se ancora non abbiamo il nome, proviamo a prendere il testo dell'attributo alt di un'immagine (raro ma possibile)
+            if (!name) return; // Se non c'è nome, saltiamo
+
+            // --- Parsing Statistiche ---
+            // Estraggiamo tutto il testo del contenitore per cercare seeders e size con Regex
+            const rawText = container.text().replace(/\s+/g, ' ');
+
+            // Seeders: Cerchiamo numeri vicino a parole chiave o colori
+            let seeders = 0;
+            // Regex per "72 seminatrici" (italiano) o "72 seeders" (inglese) o numeri isolati verdi
+            const seedMatch = rawText.match(/(\d+)\s*(seminatrici|seeders|seeds)/i);
+            if (seedMatch) {
+                seeders = parseInt(seedMatch[1]);
+            } else {
+                // Tentativo fallback: cerca numeri dentro elementi verdi (spesso usati per i seeders)
+                const greenText = container.find('.text-green-500, .text-green-600').text();
+                if (greenText) seeders = parseInt(greenText.replace(/[^0-9]/g, '')) || 0;
+            }
+
+            // Size: Cerchiamo pattern tipo "1.99 GB"
+            let sizeStr = "??";
+            const sizeMatch = rawText.match(/(\d+([.,]\d+)?\s*(GB|MB|KB))/i);
+            if (sizeMatch) sizeStr = sizeMatch[0];
+
+            // --- FILTRAGGIO ---
+            // Siamo permissivi: se ha il magnet e "ITA" nel titolo, lo prendiamo.
+            if (isItalianResult(name)) {
+                results.push({
+                    title: name,
+                    magnet: magnet,
+                    size: sizeStr,
+                    sizeBytes: parseSize(sizeStr),
+                    seeders: seeders,
+                    source: "SolidTorrents"
+                });
             }
         });
 
-        const limit = limitConcurrency(4);
-        const promises = candidates.map(cand => limit(async () => {
-            try {
-                const { data } = await cfGet(cand.link, { timeout: 3000 });
-                const $d = cheerio.load(data);
-                const magnet = $d("a[href^='magnet:?']").first().attr("href");
-                const sizeStr = $d("ul.list li").filter((i, el) => $(el).text().includes("Size")).text().replace(/.*Size:\s*/, '').trim();
+        console.log(`[Solid] Risultati validi: ${results.length}`);
+        return results;
 
-                return magnet ? {
-                    title: cand.name,
-                    magnet,
-                    seeders: cand.seeders,
-                    size: sizeStr || "?",
-                    sizeBytes: parseSize(sizeStr),
-                    source: "1337x"
-                } : null;
-            } catch { return null; }
-        }));
-
-        return (await Promise.all(promises)).filter(Boolean);
-    } catch { return []; }
+    } catch (e) {
+        console.error(`[Solid] Error: ${e.message}`);
+        return [];
+    }
 }
 
 async function searchTorrentGalaxy(title, year, type, reqSeason, reqEpisode) {
@@ -539,7 +605,7 @@ async function searchGlo(title, year, type, reqSeason, reqEpisode) {
 CONFIG.ENGINES = [
     searchCorsaro,
     searchTPB,
-    search1337x,
+    searchSolidTorrents, // Sostituisce 1337x
     searchBitSearch,
     searchTorrentGalaxy,
     searchNyaa,
@@ -559,6 +625,7 @@ async function searchMagnet(title, year, type, imdbId) {
     const engineTimeouts = new Map([
         [searchKnaben, CONFIG.TIMEOUT_API],
         [searchTPB, CONFIG.TIMEOUT_API],
+        // SolidTorrents via scraping può richiedere più tempo dell'API, usiamo il default (6s)
         [searchUindex, 4000] // Una via di mezzo per Uindex
         // Tutti gli altri useranno il default CONFIG.TIMEOUT (6000ms)
     ]);
