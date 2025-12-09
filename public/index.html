@@ -43,7 +43,7 @@
             overflow: hidden;
         }
         .wave {
-            background: ur[](https://s3-us-west-2.amazonaws.com/s.cdpn.io/85486/wave.svg) repeat-x;
+            background: url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/85486/wave.svg) repeat-x;
             position: absolute;
             top: -198px;
             width: 6400px;
@@ -452,12 +452,52 @@
     </div>
     <script>
         let currentService = 'rd';
+
+        // --- AUTOLOAD CONFIGURAZIONE ESISTENTE ---
+        window.onload = function() {
+            try {
+                const pathParts = window.location.pathname.split('/');
+                // Esempio URL: /<config_base64>/configure
+                // pathParts[1] dovrebbe contenere la config
+                if (pathParts.length >= 2 && pathParts[1].length > 10) {
+                    const configStr = atob(pathParts[1]);
+                    const config = JSON.parse(configStr);
+
+                    // 1. Chiavi
+                    if (config.key) document.getElementById('apiKey').value = config.key;
+                    if (config.tmdb) document.getElementById('tmdbKey').value = config.tmdb;
+                    
+                    // 2. Servizio
+                    if (config.service) {
+                        selectService(config.service);
+                    }
+
+                    // 3. Filtri
+                    if (config.filters) {
+                        document.getElementById('onlyIta').checked = config.filters.onlyIta || false;
+                        document.getElementById('no4k').checked = config.filters.no4k || false;
+                        document.getElementById('noCam').checked = config.filters.noCam || false;
+                        document.getElementById('showFake').checked = config.filters.showFake || false;
+                    }
+                }
+            } catch (e) {
+                // Nessuna config o errore nel parsing, rimaniamo su default
+                console.log("Nessuna configurazione precedente trovata.");
+            }
+        };
+
         function selectService(service) {
             currentService = service;
            
             // UI Updates
             document.querySelectorAll('.service-card').forEach(el => el.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+            
+            // Attiviamo la card corretta
+            const cards = document.querySelectorAll('.service-card');
+            if (service === 'rd') cards[0].classList.add('active');
+            if (service === 'ad') cards[1].classList.add('active');
+            if (service === 'tb') cards[2].classList.add('active');
+
             const link = document.getElementById('apiLink');
             const input = document.getElementById('apiKey');
             if(service === 'rd') {
@@ -471,6 +511,7 @@
                 input.placeholder = "Incolla qui la tua Key TorBox...";
             }
         }
+
         function install() {
             const key = document.getElementById('apiKey').value.trim();
             const tmdb = document.getElementById('tmdbKey').value.trim();
@@ -491,7 +532,9 @@
             };
             const configStr = btoa(JSON.stringify(config));
             const host = window.location.host;
-            window.location.href = `stremio://${host}/${configStr}/manifest.json`;
+            // Rileviamo automaticamente se usare http o https per lo schema stremio
+            const protocol = window.location.protocol.replace('http', 'stremio');
+            window.location.href = `${protocol}//${host}/${configStr}/manifest.json`;
         }
     </script>
 </body>
