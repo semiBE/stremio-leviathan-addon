@@ -192,32 +192,19 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
 // 🧠 CORE LOGIC
 // ==========================================
 
-// 🔥 FIX SICUREZZA APPLICATO QUI (WHITELIST STRICT) 🔥
 async function getMetadata(id, type) {
   try {
-    // 1. VALIDAZIONE STRICT DEL TYPE (Whitelist)
     const allowedTypes = ["movie", "series"];
-    if (!allowedTypes.includes(type)) {
-        console.warn(`[Security] Type non valido ricevuto: ${type}`);
-        return null;
-    }
+    if (!allowedTypes.includes(type)) return null;
 
     let tmdbId = id, s = 1, e = 1;
     if (type === "series" && id.includes(":")) [tmdbId, s, e] = id.split(":");
     
-    // 2. SANIFICAZIONE STRICT DELL'ID
     const rawId = tmdbId.split(":")[0];
-    
-    // Accetta SOLO: "tt" + numeri (IMDb) OPPURE solo numeri (TMDB)
-    // Rimuove qualsiasi altro carattere o tentativo di injection
     const cleanId = rawId.match(/^(tt\d+|\d+)$/i)?.[0] || "";
 
-    if (!cleanId) {
-        console.warn(`[Security] ID non valido o formato sconosciuto: ${rawId}`);
-        return null;
-    }
+    if (!cleanId) return null;
 
-    // 3. COSTRUZIONE URL SICURA
     const { data: cData } = await axios.get(`${CONFIG.CINEMETA_URL}/meta/${type}/${cleanId}.json`, { timeout: CONFIG.TIMEOUT_TMDB }).catch(() => ({ data: {} }));
     
     return cData?.meta ? {
@@ -279,7 +266,6 @@ async function generateStream(type, id, config, userConfStr) {
   
   let finalId = id; 
   
-  // 1. RILEVAMENTO E CONVERSIONE ID TMDB
   if (id.startsWith("tmdb:")) {
       try {
           const parts = id.split(":");
@@ -297,7 +283,6 @@ async function generateStream(type, id, config, userConfStr) {
       } catch (err) { console.error("ID Convert Error:", err.message); }
   }
 
-  // 1.5 RILEVAMENTO KITSU
   if (id.startsWith("kitsu:")) {
       try {
           const parts = id.split(":");
@@ -318,7 +303,6 @@ async function generateStream(type, id, config, userConfStr) {
   const meta = await getMetadata(finalId, type); 
   if (!meta) return { streams: [] };
   
-  // 2. 🔥 AI QUERY EXPANSION 🔥
   const queries = generateSmartQueries(meta);
   const onlyIta = config.filters?.onlyIta !== false;
 
@@ -339,29 +323,21 @@ async function generateStream(type, id, config, userConfStr) {
 
   let resultsRaw = (await Promise.all(promises)).flat();
 
-  // 3. 🔥 FILTERING (NLP + FIX LISA + TAGS) 🔥
+  // 3. FILTERING
   resultsRaw = resultsRaw.filter(item => {
     if (!item?.magnet) return false;
     
-    // --- BLOCCO LOGICO BILANCIATO ---
     const fileYearMatch = item.title.match(/\b(19|20)\d{2}\b/);
     if (fileYearMatch) {
         const fileYear = parseInt(fileYearMatch[0]);
         const metaYear = parseInt(meta.year);
-
-        // 1. TOLLERANZA ANNO: Accetta +/- 1 anno (Es. Cerca 2025, accetta 2024 e 2026)
         if (Math.abs(fileYear - metaYear) > 1) return false;
         
-        // 2. FIX LISA FRANKENSTEIN: Se il titolo ha "Lisa" ma il meta NO, scarta.
-        if (/\bLisa\b/i.test(item.title) && !/\bLisa\b/i.test(meta.title)) {
-            return false;
-        }
+        if (/\bLisa\b/i.test(item.title) && !/\bLisa\b/i.test(meta.title)) return false;
 
-        // 3. FIX PREFISSI INTELLIGENTE
         const tLower = item.title.toLowerCase();
         const mLower = meta.title.toLowerCase();
         const idx = tLower.indexOf(mLower);
-        
         if (idx > 0) {
             const prefix = tLower.substring(0, idx).trim();
             if (/[a-z0-9]$/i.test(prefix)) {
@@ -372,10 +348,7 @@ async function generateStream(type, id, config, userConfStr) {
             }
         }
     }
-    // ------------------------------------------------
 
-    // 🔥 FIX: Passiamo Stagione ed Episodio al parser!
-    // Prima mancavano e quindi il controllo Strict veniva saltato.
     const isSemanticallySafe = smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode);
     if (!isSemanticallySafe) return false;
 
@@ -383,7 +356,7 @@ async function generateStream(type, id, config, userConfStr) {
     return true;
   });
 
-  // Fallback se pochi risultati
+  // Fallback se pochi risultati iniziali
   if (resultsRaw.length <= 5) {
     const extPromises = FALLBACK_SCRAPERS.map(fb => {
         return LIMITERS.scraper.schedule(async () => {
@@ -402,7 +375,6 @@ async function generateStream(type, id, config, userConfStr) {
         const extResultsRaw = await Promise.race([searchPromise, timeoutPromise]);
         
         if (Array.isArray(extResultsRaw)) {
-            // Anche qui applichiamo il fix dei parametri
             const filteredExt = extResultsRaw.flat().filter(item => 
                 smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)
             );
@@ -428,7 +400,7 @@ async function generateStream(type, id, config, userConfStr) {
   
   if (!cleanResults.length) return { streams: [{ name: "⛔", title: "Nessun risultato trovato" }] };
 
-  // Ranking e Sort (Usa ranking.js)
+  // Ranking
   const ranked = rankAndFilterResults(cleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
   
   // Risoluzione Link Debrid
@@ -438,37 +410,64 @@ async function generateStream(type, id, config, userConfStr) {
       return LIMITERS.rd.schedule(() => resolveDebridLink(config, item, config.filters?.showFake));
   });
   
-  const streams = (await Promise.all(rdPromises)).filter(Boolean);
+  let streams = (await Promise.all(rdPromises)).filter(Boolean);
+
+  // 🔥🔥🔥 FALLBACK ESTREMO: SE RD NON RESTITUISCE NULLA 🔥🔥🔥
+  if (streams.length === 0) {
+    console.log(`⚠️ Tutti i link RD iniziali sono uncached/falliti. Attivo EXTERNAL.JS di emergenza...`);
+    
+    try {
+        // Forza l'uso di External anche se non è stato usato prima
+        const externalEngine = require("./external");
+        
+        // Cerca usando la query principale (la più accurata)
+        const fallbackRaw = await withTimeout(
+            externalEngine.searchMagnet(queries[0], meta.year, type, finalId),
+            CONFIG.SCRAPER_TIMEOUT + 1000
+        );
+
+        if (Array.isArray(fallbackRaw)) {
+            // Filtra e prepara
+            const fallbackFiltered = fallbackRaw.filter(item => 
+                smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)
+            );
+
+            // Deduplica rapida (opzionale, per evitare di riprocessare gli stessi hash se external era già partito)
+            const newItems = fallbackFiltered.filter(item => {
+                const hashMatch = item.magnet.match(/btih:([a-f0-9]{40})/i);
+                const hash = hashMatch ? hashMatch[1].toUpperCase() : item.magnet;
+                return !seen.has(hash);
+            });
+
+            console.log(`🔥 External Emergency Found: ${newItems.length} nuovi candidati.`);
+
+            // Risolvi RD sui nuovi item
+            const fallbackRdPromises = newItems.map(item => {
+                item.season = meta.season;
+                item.episode = meta.episode;
+                return LIMITERS.rd.schedule(() => resolveDebridLink(config, item, config.filters?.showFake));
+            });
+
+            const fallbackStreams = (await Promise.all(fallbackRdPromises)).filter(Boolean);
+            streams = fallbackStreams; // Assegna i nuovi stream
+        }
+    } catch (e) {
+        console.error("External Fallback Error:", e.message);
+    }
+  }
+
+  // Se ancora vuoto, mostra messaggio
+  if (!streams.length) return { streams: [{ name: "⛔", title: "Nessun link cached trovato" }] };
+
   return { streams }; 
 }
 
 // --- ROUTES ---
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
-
-// --- FIXED: Aggiunta rotta diretta /manifest.json (Senza Config) ---
-app.get("/manifest.json", (req, res) => {
-    const manifest = getManifest();
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.json(manifest);
-});
-
-// --- Rotta /:conf/manifest.json (Con Config) ---
-app.get("/:conf/manifest.json", (req, res) => { 
-    const manifest = getManifest();
-    res.setHeader("Access-Control-Allow-Origin", "*"); 
-    res.json(manifest); 
-});
-
-app.get("/:conf/catalog/:type/:id/:extra?.json", async (req, res) => { 
-    res.setHeader("Access-Control-Allow-Origin", "*"); 
-    res.json({metas:[]}); 
-});
-
-app.get("/:conf/stream/:type/:id.json", async (req, res) => { 
-    const result = await generateStream(req.params.type, req.params.id.replace(".json", ""), getConfig(req.params.conf), req.params.conf); 
-    res.setHeader("Access-Control-Allow-Origin", "*"); 
-    res.json(result); 
-});
+app.get("/manifest.json", (req, res) => { const manifest = getManifest(); res.setHeader("Access-Control-Allow-Origin", "*"); res.json(manifest); });
+app.get("/:conf/manifest.json", (req, res) => { const manifest = getManifest(); res.setHeader("Access-Control-Allow-Origin", "*"); res.json(manifest); });
+app.get("/:conf/catalog/:type/:id/:extra?.json", async (req, res) => { res.setHeader("Access-Control-Allow-Origin", "*"); res.json({metas:[]}); });
+app.get("/:conf/stream/:type/:id.json", async (req, res) => { const result = await generateStream(req.params.type, req.params.id.replace(".json", ""), getConfig(req.params.conf), req.params.conf); res.setHeader("Access-Control-Allow-Origin", "*"); res.json(result); });
 
 function getConfig(configStr) { try { return JSON.parse(Buffer.from(configStr, "base64").toString()); } catch { return {}; } }
 function withTimeout(promise, ms) { return Promise.race([promise, new Promise(r => setTimeout(() => r([]), ms))]); }
