@@ -464,6 +464,9 @@ async function generateStream(type, id, config, userConfStr) {
 
 // --- ROUTES ---
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+
+app.get("/:conf/configure", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+
 app.get("/manifest.json", (req, res) => { const manifest = getManifest(); res.setHeader("Access-Control-Allow-Origin", "*"); res.json(manifest); });
 app.get("/:conf/manifest.json", (req, res) => { const manifest = getManifest(); res.setHeader("Access-Control-Allow-Origin", "*"); res.json(manifest); });
 app.get("/:conf/catalog/:type/:id/:extra?.json", async (req, res) => { res.setHeader("Access-Control-Allow-Origin", "*"); res.json({metas:[]}); });
