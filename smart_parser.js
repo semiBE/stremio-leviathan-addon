@@ -1,42 +1,73 @@
 const FuzzySet = require("fuzzyset");
 
-// 1. JUNK TECNICO (ALLINEATO CON AI_QUERY BOMBA EDITION)
-// Questi token vengono rimossi PRIMA del confronto per capire se è il film giusto.
-const JUNK_TOKENS = new Set([
-    // Video
-    "h264","x264","h265","x265","hevc","1080p","720p","4k","2160p","480p","sd","hd","fhd","uhd",
-    "hdr","web","web-dl","webrip","bdrip","dvdrip","bluray","rip","remux","proper","repack",
-    "internal","extended","director","cut","edition","remastered",
-    // Audio & Lingua (Li rimuoviamo per il match del TITOLO, il controllo lingua si fa dopo)
-    "ita","eng","multi","sub","dub","ac3","aac","dts","truehd","atmos","dd5.1","5.1","7.1",
-    // Container & Extra
-    "mkv","mp4","avi","complete","pack","season","stagione","episode","episodio","vol",
-    "torrent","magnet","streaming"
+// ==========================================
+// 1. LISTE  DI FILTRAGGIO
+// ==========================================
+
+// Token tecnici da rimuovere PRIMA del confronto
+const ULTRA_JUNK_TOKENS = new Set([
+    // Codec & Risoluzione
+    "h264","x264","h265","x265","hevc","1080p","720p","4k","2160p",
+    "1080i", "720i", "480p", "sd", "hd", "fhd", "uhd", "sdr", "hdr", "vision",
+    // Sorgenti & Formati
+    "web","web-dl","bluray","rip","webrip", "bdrip", "dvdrip", "hdrip", "brrip", 
+    "tsrip", "camrip", "cam", "ts", "hdtv", "mkv", "mp4", "avi", "divx", "xvid",
+    // Audio
+    "ac3", "aac", "dts", "truehd", "atmos", "dd5.1", "ddp5.1", "7.1", "5.1", 
+    "stereo", "dual audio", "dolby",
+    // Lingua & Sottotitoli
+    "ita", "eng", "multi", "sub", "subs included", "multi sub", "forced subs", 
+    "hardcoded", "softsubs", "dub",
+    // Edizioni & Extra
+    "repack", "remux", "proper", "complete", "pack", "season", "stagione", 
+    "episode", "episodio", "vol", "extended", "directors cut", "unrated", 
+    "theatrical", "imax", "series",
+    // Streaming Services (Spesso nel nome file)
+    "netflix", "amazon", "disney", "hulu", "hbo", "prime", "amzn", "dsnp", "nf",
+    // Network & Distribuzione
+    "torrent", "magnet", "ddl"
 ]);
 
-// 2. STOP WORDS (Parole grammaticali da ignorare)
-const STOP_WORDS = new Set([
-    "il","lo","la","i","gli","le","un","uno","una","del","della","dei","al","alla","ai",
-    "the","a","an","of","in","on","at","to","for","by","with","and","&",
-    "chapter", "capitolo", "part", "parte"
+// Parole comuni da ignorare nel confronto (Stop Words estese)
+const ULTRA_STOP_WORDS = new Set([
+    // Italiano
+    "il","lo","la","i","gli","le","un","uno","una","di","del","della","dei",
+    "delle","da","in","con","su","per","tra","fra",
+    // Inglese
+    "the","a","an","of","on","at","to","for","by","with","and","&","it","chapter",
+    // Francese / Tedesco (comuni in multi)
+    "les","une","des","du","au","aux","der","die","das","ein","eine","im","am","zum"
 ]);
 
-// 3. BLACKLIST (Parole che se presenti nel file ma non nella query indicano un altro film)
-const FORBIDDEN_EXPANSIONS = new Set([
+// Parole che indicano un contenuto diverso dall'originale (Sequel, ecc.)
+const ULTRA_FORBIDDEN_EXPANSIONS = new Set([
     "new","blood","resurrection","returns","reborn",
     "origins","legacy","revival","sequel",
-    "redemption", "evolution", "dead city", "world beyond", "fear the"
+    "redemption", "evolution", "dead city", "world beyond", "fear the",
+    "remake", "reimagined", "extended edition", "fan edit", "bootleg", 
+    "unaired", "pilot"
 ]);
 
-// Spinoff noti da escludere
-const SPINOFF_KEYWORDS = {
-    "dexter": ["new blood"],
-    "the walking dead": ["dead city", "world beyond", "fear", "daryl"],
-    "breaking bad": ["better call saul"],
-    "game of thrones": ["house of the dragon"],
-    "naruto": ["shippuden", "boruto"], // Aggiunto per anime
-    "dragon ball": ["z", "super", "gt", "kai"] // Aggiunto per anime
+// Regex per contenuti spazzatura (Fanfic, Parodie)
+const FORBIDDEN_REGEX = [/fanfic/i, /parody/i, /spoof/i, /mock/i, /fake/i];
+
+// Grafo Spinoff Avanzato
+const ULTRA_SPINOFF_GRAPH = {
+    "dexter": { spinoffs: ["new blood", "original sin"] },
+    "the walking dead": { spinoffs: ["dead city", "world beyond", "fear the walking dead", "daryl dixon", "ones who live"] },
+    "breaking bad": { spinoffs: ["better call saul", "el camino"] },
+    "game of thrones": { spinoffs: ["house of the dragon", "snow"] },
+    "csi": { spinoffs: ["miami", "ny", "cyber", "vegas"] },
+    "ncis": { spinoffs: ["los angeles", "new orleans", "hawaii", "sydney"] },
+    "star trek": { spinoffs: ["next generation", "deep space nine", "voyager", "enterprise", "discovery", "picard", "strange new worlds"] },
+    "star wars": { spinoffs: ["mandalorian", "andor", "obi-wan", "ahsoka", "book of boba fett"] },
+    "naruto": { spinoffs: ["shippuden", "boruto"] },
+    "dragon ball": { spinoffs: ["z", "super", "gt", "kai"] }
 };
+
+// ==========================================
+// 2. FUNZIONI DI SUPPORTO
+// ==========================================
 
 function romanToArabic(str) {
     const map = { i:1,v:5,x:10,l:50,c:100 };
@@ -50,15 +81,14 @@ function romanToArabic(str) {
     return total;
 }
 
-// Normalizzazione "Ultra" (Coerente con ai_query)
 function normalizeTitle(t) {
     if (!t) return "";
     return t.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Via accenti
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Rimuove accenti
         .replace(/[':;-]/g, " ") // Punteggiatura -> Spazi
-        .replace(/[^a-z0-9\s]/g, " ") // Via simboli strani
+        .replace(/[^a-z0-9\s]/g, " ") // Via simboli
         .replace(/\b(ii|iii|iv|vi|vii|viii|ix|x)\b/gi, r => romanToArabic(r)) // Romani -> Arabi
-        .replace(/\s+/g, " ").trim(); // Trim spazi
+        .replace(/\s+/g, " ").trim();
 }
 
 function tokenize(str) {
@@ -67,28 +97,34 @@ function tokenize(str) {
 
 function extractEpisodeInfo(filename) {
     const upper = filename.toUpperCase();
-    // Match Standard: S01E01, S1E1
+    // S01E01
     const sxeMatch = upper.match(/S(\d{1,2})(?:[._\s-]*E|x)(\d{1,3})/i);
     if (sxeMatch) return { season: parseInt(sxeMatch[1]), episode: parseInt(sxeMatch[2]) };
     
-    // Match Alternativo: 1x01
+    // 1x01
     const xMatch = upper.match(/(\d{1,2})X(\d{1,3})/i);
     if (xMatch) return { season: parseInt(xMatch[1]), episode: parseInt(xMatch[2]) };
     
-    // Match Italiano: Stagione 1 Episodio 1 (Raro nei filename torrent, ma possibile)
+    // Stagione 1 Episodio 1
     const itaMatch = upper.match(/STAGIONE\s*(\d{1,2}).*EPISODIO\s*(\d{1,3})/i);
     if (itaMatch) return { season: parseInt(itaMatch[1]), episode: parseInt(itaMatch[2]) };
 
     return null;
 }
 
+// Funzione Aggiornata per leggere ULTRA_SPINOFF_GRAPH
 function isUnwantedSpinoff(cleanMeta, cleanFile) {
-    for (const [parent, spinoffs] of Object.entries(SPINOFF_KEYWORDS)) {
-        // Se cerchiamo il padre (es. "The Walking Dead")
-        if (cleanMeta.includes(parent) && !spinoffs.some(s => cleanMeta.includes(s))) {
-            // Ma il file contiene uno spinoff (es. "Dead City")
-            for (const sp of spinoffs) {
-                if (cleanFile.includes(sp)) return true; // Scarta
+    for (const [parent, data] of Object.entries(ULTRA_SPINOFF_GRAPH)) {
+        
+        if (cleanMeta.includes(parent)) {
+            
+            const isSearchingForSpinoff = data.spinoffs.some(s => cleanMeta.includes(s));
+            
+            if (!isSearchingForSpinoff) {
+                // Se NON cerco uno spinoff, ma il FILE ne contiene uno -> SCARTA
+                for (const sp of data.spinoffs) {
+                    if (cleanFile.includes(sp)) return true; // Trovato spinoff indesiderato
+                }
             }
         }
     }
@@ -96,30 +132,33 @@ function isUnwantedSpinoff(cleanMeta, cleanFile) {
 }
 
 // ==========================================
-//  FUNZIONE PRINCIPALE: SMART MATCH
+// 3. FUNZIONE PRINCIPALE: SMART MATCH
 // ==========================================
 function smartMatch(metaTitle, filename, isSeries = false, metaSeason = null, metaEpisode = null) {
     if (!filename) return false;
     const fLower = filename.toLowerCase();
     
-    // Filtri preliminari rapidi
+    // Controllo Regex Spazzatura (Fanfic, Fake, ecc.)
+    if (FORBIDDEN_REGEX.some(r => r.test(fLower))) return false;
     if (fLower.includes("sample") || fLower.includes("trailer") || fLower.includes("bonus")) return false;
 
     const cleanMetaString = normalizeTitle(metaTitle);
     const cleanFileString = normalizeTitle(filename);
 
+    // Controllo Spinoff
     if (isUnwantedSpinoff(cleanMetaString, cleanFileString)) return false;
 
-    // Tokenizzazione
-    const fTokens = tokenize(filename).filter(t => !JUNK_TOKENS.has(t) && !STOP_WORDS.has(t));
-    const mTokens = tokenize(metaTitle).filter(t => !STOP_WORDS.has(t));
+    // Tokenizzazione con Liste ULTRA
+    const fTokens = tokenize(filename).filter(t => !ULTRA_JUNK_TOKENS.has(t) && !ULTRA_STOP_WORDS.has(t));
+    const mTokens = tokenize(metaTitle).filter(t => !ULTRA_STOP_WORDS.has(t));
 
     if (mTokens.length === 0) return false;
 
-    // Controllo "Forbidden Expansions" (Sequel/Prequel non richiesti)
-    const isCleanSearch = !mTokens.some(mt => FORBIDDEN_EXPANSIONS.has(mt));
+    // Controllo "Forbidden Expansions" (Sequel/Remake non richiesti)
+    
+    const isCleanSearch = !mTokens.some(mt => ULTRA_FORBIDDEN_EXPANSIONS.has(mt));
     if (isCleanSearch) {
-        if (fTokens.some(ft => FORBIDDEN_EXPANSIONS.has(ft))) return false;
+        if (fTokens.some(ft => ULTRA_FORBIDDEN_EXPANSIONS.has(ft))) return false;
     }
 
     // === LOGICA SERIE TV ===
@@ -127,14 +166,13 @@ function smartMatch(metaTitle, filename, isSeries = false, metaSeason = null, me
         // 1. Cerca Episodio Specifico
         const epInfo = extractEpisodeInfo(filename);
         if (epInfo) {
-            // Se c'è info episodio, deve combaciare perfettamente
             if (epInfo.season !== metaSeason || epInfo.episode !== metaEpisode) return false;
             
-            // Verifica semantica titolo (il nome della serie deve combaciare)
+            // Verifica Titolo Serie
             const fuz = FuzzySet([mTokens.join(" ")]).get(fTokens.join(" "));
-            if (fuz && fuz[0][0] > 0.75) return true; // Soglia 0.75 per tollerare piccole differenze
+            if (fuz && fuz[0][0] > 0.75) return true;
             
-            // Fallback Token Match (se Fuzzy fallisce)
+            // Fallback Token Match
             let matchCount = 0;
             mTokens.forEach(mt => { if (fTokens.some(ft => ft.includes(mt))) matchCount++; });
             if (matchCount / mTokens.length >= 0.6) return true;
@@ -142,44 +180,39 @@ function smartMatch(metaTitle, filename, isSeries = false, metaSeason = null, me
             return false;
         }
 
-        // 2. Cerca Season Pack (Senza info episodio)
-        // Regex per: "S01", "Season 1", "Stagione 1", "Complete S1"
+        // 2. Cerca Season Pack
         const seasonMatch = filename.match(/(?:S|Season|Stagione|Stg)[._\s-]*(\d{1,2})(?!\d|E|x)/i);
         if (seasonMatch) {
              const foundSeason = parseInt(seasonMatch[1]);
              if (foundSeason !== metaSeason) return false;
 
-             // Verifica titolo per i pack
              const fuz = FuzzySet([mTokens.join(" ")]).get(fTokens.join(" "));
-             // Soglia leggermente più bassa per i pack (spesso hanno nomi strani)
              if (fuz && fuz[0][0] > 0.70) return true; 
              
-             // Fallback Token
              let matchCount = 0;
              mTokens.forEach(mt => { if (fTokens.includes(mt)) matchCount++; });
              if (matchCount / mTokens.length >= 0.7) return true;
         }
         
-        return false; // Se è serie ma non è match episodio né match stagione -> scarta
+        return false;
     }
 
     // === LOGICA FILM ===
     const cleanF = fTokens.join(" ");
     const cleanM = mTokens.join(" ");
     
-    // 1. Fuzzy Match (Alta precisione)
+    // Fuzzy Match
     const fuzzyScore = FuzzySet([cleanM]).get(cleanF)?.[0]?.[0] || 0;
     if (fuzzyScore > 0.85) return true;
 
-    // 2. Token Inclusion (Fallback per titoli lunghi)
+    // Token Match Fallback
     if (!isSeries) {
         let found = 0;
         fTokens.forEach(ft => {
-            // Match esatto o substring significativa (>3 char)
             if (mTokens.some(mt => mt === ft || (mt.length > 3 && ft.includes(mt)))) found++;
         });
         const ratio = found / mTokens.length;
-        if (ratio >= 0.80) return true; // 80% dei token devono esserci
+        if (ratio >= 0.80) return true;
     }
 
     return false;
