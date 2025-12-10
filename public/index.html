@@ -317,9 +317,16 @@
         .slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: var(--primary); box-shadow: 0 0 10px var(--primary); }
         input:checked + .slider:before { transform: translateX(20px); }
+        
+        /* BUTTONS GROUP */
+        .btn-group {
+            display: flex;
+            gap: 20px;
+            flex-direction: row;
+        }
         /* INSTALL BUTTON */
         .install-btn {
-            width: 100%;
+            flex: 2;
             padding: 25px;
             background: linear-gradient(to right, var(--primary), #00b3aa);
             color: #000;
@@ -343,12 +350,41 @@
             box-shadow: 0 15px 60px rgba(255, 255, 255, 0.5);
             transform: translateY(-4px) scale(1.02);
         }
+        /* COPY BUTTON */
+        .copy-btn {
+            flex: 1;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            border-radius: 15px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: 0.4s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .copy-btn:hover {
+            background: rgba(0, 242, 234, 0.1);
+            box-shadow: 0 0 20px rgba(0, 242, 234, 0.2);
+            transform: translateY(-4px);
+        }
+
         @media(max-width: 700px) {
             .features-grid, .options-list { grid-template-columns: 1fr; }
             h1 { font-size: 3.5rem; }
             .container { padding: 25px; margin: 15px; }
             .wave { height: 120px; }
             .service-grid { grid-template-columns: 1fr; }
+            .btn-group { flex-direction: column; }
+            .install-btn { font-size: 1.5rem; }
         }
     </style>
 </head>
@@ -445,34 +481,33 @@
                     <label class="switch"><input type="checkbox" id="showFake"><span class="slider"></span></label>
                 </div>
             </div>
-            <button class="install-btn" onclick="install()">
-                INSTALLA LEVIATHAN <i class="fas fa-bolt"></i>
-            </button>
+            
+            <div class="btn-group">
+                <button class="install-btn" onclick="install()">
+                    INSTALLA <i class="fas fa-bolt"></i>
+                </button>
+                <button class="copy-btn" onclick="copyLink()" id="copyBtn">
+                    <i class="fas fa-copy"></i>
+                    <span id="copyText">COPIA LINK</span>
+                </button>
+            </div>
         </div>
     </div>
     <script>
         let currentService = 'rd';
 
-        // --- AUTOLOAD CONFIGURAZIONE ESISTENTE ---
         window.onload = function() {
             try {
                 const pathParts = window.location.pathname.split('/');
-                // Esempio URL: /<config_base64>/configure
-                // pathParts[1] dovrebbe contenere la config
                 if (pathParts.length >= 2 && pathParts[1].length > 10) {
                     const configStr = atob(pathParts[1]);
                     const config = JSON.parse(configStr);
 
-                    // 1. Chiavi
                     if (config.key) document.getElementById('apiKey').value = config.key;
                     if (config.tmdb) document.getElementById('tmdbKey').value = config.tmdb;
                     
-                    // 2. Servizio
-                    if (config.service) {
-                        selectService(config.service);
-                    }
+                    if (config.service) selectService(config.service);
 
-                    // 3. Filtri
                     if (config.filters) {
                         document.getElementById('onlyIta').checked = config.filters.onlyIta || false;
                         document.getElementById('no4k').checked = config.filters.no4k || false;
@@ -481,18 +516,13 @@
                     }
                 }
             } catch (e) {
-                // Nessuna config o errore nel parsing, rimaniamo su default
                 console.log("Nessuna configurazione precedente trovata.");
             }
         };
 
         function selectService(service) {
             currentService = service;
-           
-            // UI Updates
             document.querySelectorAll('.service-card').forEach(el => el.classList.remove('active'));
-            
-            // Attiviamo la card corretta
             const cards = document.querySelectorAll('.service-card');
             if (service === 'rd') cards[0].classList.add('active');
             if (service === 'ad') cards[1].classList.add('active');
@@ -512,13 +542,16 @@
             }
         }
 
-        function install() {
+        // Funzione helper per generare l'URL
+        function getStremioUrl() {
             const key = document.getElementById('apiKey').value.trim();
             const tmdb = document.getElementById('tmdbKey').value.trim();
+            
             if(!key || !tmdb) {
                 alert("⚠️ ATTENZIONE: Mancano le chiavi API!\n\nInserisci sia la chiave del servizio Debrid che la chiave TMDB.");
-                return;
+                return null;
             }
+
             const config = {
                 service: currentService,
                 key: key,
@@ -532,9 +565,37 @@
             };
             const configStr = btoa(JSON.stringify(config));
             const host = window.location.host;
-            // Rileviamo automaticamente se usare http o https per lo schema stremio
-            const protocol = window.location.protocol.replace('http', 'stremio');
-            window.location.href = `${protocol}//${host}/${configStr}/manifest.json`;
+            
+            // Logica protocollo fissa: se siamo in HTTPS usa stremios, altrimenti stremio
+            // Questo è il formato corretto che Stremio si aspetta per aprire l'app
+            const protocol = window.location.protocol === 'https:' ? 'stremios' : 'stremio';
+            
+            return `${protocol}://${host}/${configStr}/manifest.json`;
+        }
+
+        function install() {
+            const url = getStremioUrl();
+            if(url) {
+                // Forza il cambio di location per aprire l'app
+                window.location.href = url;
+            }
+        }
+
+        function copyLink() {
+            const url = getStremioUrl();
+            if(url) {
+                // Copia negli appunti
+                navigator.clipboard.writeText(url).then(() => {
+                    const btnText = document.getElementById('copyText');
+                    const originalText = btnText.innerText;
+                    btnText.innerText = "COPIATO!";
+                    setTimeout(() => {
+                        btnText.innerText = originalText;
+                    }, 2000);
+                }).catch(err => {
+                    alert("Impossibile copiare il link automaticamente. Prova manualmente.");
+                });
+            }
         }
     </script>
 </body>
