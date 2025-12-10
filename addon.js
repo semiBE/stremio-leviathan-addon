@@ -1,603 +1,481 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leviathan - Configurator</title>
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary: #00f2ea; /* Cyan Elettrico */
-            --primary-dim: #009893;
-            --accent: #ffffff;
-            --bg-deep: #050a14; /* Blu Abisso */
-            --bg-panel: rgba(13, 22, 40, 0.85);
-            --text-main: #e2e8f0;
-            --text-muted: #94a3b8;
-            --glow: 0 0 25px rgba(0, 242, 234, 0.3);
-            --shadow-deep: 0 20px 60px rgba(0,0,0,0.6);
-        }
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-deep);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow-x: hidden;
-            position: relative;
-        }
-        /* --- BACKGROUND ONDE ANIMATE AVANZATE --- */
-        .ocean {
-            height: 15%;
-            width: 100%;
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            background: linear-gradient(to bottom, transparent, #015871);
-            z-index: -1;
-            overflow: hidden;
-        }
-        .wave {
-            background: url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/85486/wave.svg) repeat-x;
-            position: absolute;
-            top: -198px;
-            width: 6400px;
-            height: 198px;
-            animation: wave 7s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
-            transform: translate3d(0, 0, 0);
-            filter: drop-shadow(0 10px 20px rgba(0, 242, 234, 0.2));
-        }
-        .wave:nth-of-type(2) {
-            top: -175px;
-            animation: wave 7s cubic-bezier(0.36, 0.45, 0.63, 0.53) -0.125s infinite, swell 7s ease -1.25s infinite;
-            opacity: 0.8;
-        }
-        .wave:nth-of-type(3) {
-            top: -150px;
-            animation: wave 9s cubic-bezier(0.36, 0.45, 0.63, 0.53) -0.25s infinite, swell 8s ease -1.5s infinite;
-            opacity: 0.6;
-        }
-        @keyframes wave {
-            0% { margin-left: 0; }
-            100% { margin-left: -1600px; }
-        }
-        @keyframes swell {
-            0%, 100% { transform: translate3d(0,-25px,0); }
-            50% { transform: translate3d(0,5px,0); }
-        }
-        /* Effetto particelle dinamiche */
-        .particles {
-            position: absolute; top:0; left:0; width:100%; height:100%;
-            background-image: radial-gradient(#00f2ea 1px, transparent 1px);
-            background-size: 50px 50px;
-            opacity: 0.15;
-            z-index: -2;
-            animation: particles-float 20s linear infinite;
-        }
-        @keyframes particles-float {
-            0% { background-position: 0 0; }
-            100% { background-position: 50px 50px; }
-        }
-        /* Bolle che salgono */
-        .bubbles {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            overflow: hidden;
-        }
-        .bubble {
-            position: absolute;
-            bottom: -50px;
-            background: rgba(0, 242, 234, 0.1);
-            border-radius: 50%;
-            animation: rise 10s infinite ease-in;
-            box-shadow: 0 0 10px rgba(0, 242, 234, 0.2);
-        }
-        .bubble:nth-child(1) { left: 10%; width: 40px; height: 40px; animation-duration: 8s; animation-delay: 1s; }
-        .bubble:nth-child(2) { left: 20%; width: 20px; height: 20px; animation-duration: 10s; animation-delay: 2s; }
-        .bubble:nth-child(3) { left: 30%; width: 30px; height: 30px; animation-duration: 9s; animation-delay: 0s; }
-        .bubble:nth-child(4) { left: 40%; width: 50px; height: 50px; animation-duration: 7s; animation-delay: 3s; }
-        .bubble:nth-child(5) { left: 50%; width: 25px; height: 25px; animation-duration: 11s; animation-delay: 4s; }
-        .bubble:nth-child(6) { left: 60%; width: 35px; height: 35px; animation-duration: 8s; animation-delay: 2s; }
-        .bubble:nth-child(7) { left: 70%; width: 45px; height: 45px; animation-duration: 10s; animation-delay: 1s; }
-        .bubble:nth-child(8) { left: 80%; width: 15px; height: 15px; animation-duration: 12s; animation-delay: 5s; }
-        .bubble:nth-child(9) { left: 90%; width: 55px; height: 55px; animation-duration: 6s; animation-delay: 0s; }
-        @keyframes rise {
-            0% { transform: translateY(0); opacity: 1; }
-            100% { transform: translateY(-100vh); opacity: 0; }
-        }
-        /* --- CONTAINER PRINCIPALE --- */
-        .container {
-            width: 100%;
-            max-width: 950px;
-            padding: 50px;
-            margin: 30px;
-            z-index: 10;
-            position: relative;
-        }
-        /* --- HEADER & LOGO --- */
-        header { text-align: center; margin-bottom: 50px; }
-       
-        .logo-wrapper {
-            width: 140px;
-            height: 140px;
-            margin: 0 auto 25px;
-            background: linear-gradient(135deg, #0b1c36, #00384d);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 4px solid var(--primary);
-            box-shadow: var(--glow), 0 0 60px rgba(0, 242, 234, 0.5);
-            animation: float 5s ease-in-out infinite, pulse-glow 2s ease-in-out infinite alternate;
-        }
-        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
-        @keyframes pulse-glow { 0% { box-shadow: 0 0 40px rgba(0, 242, 234, 0.3); } 100% { box-shadow: 0 0 70px rgba(0, 242, 234, 0.6); } }
-        .logo-icon { font-size: 4rem; color: #fff; filter: drop-shadow(0 0 15px var(--primary)); animation: rotate-slight 20s linear infinite; }
-        @keyframes rotate-slight { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h1 {
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 5rem;
-            margin: 0;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: -3px;
-            background: linear-gradient(to right, #fff, var(--primary), #fff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 10px 40px rgba(0,0,0,0.6), 0 0 20px var(--primary);
-            animation: text-glow 2s ease-in-out infinite alternate;
-        }
-        @keyframes text-glow { 0% { text-shadow: 0 10px 40px rgba(0,0,0,0.6); } 100% { text-shadow: 0 10px 40px rgba(0,0,0,0.6), 0 0 30px var(--primary); } }
-        p.subtitle {
-            color: var(--text-muted);
-            font-size: 1.2rem;
-            letter-spacing: 3px;
-            margin-top: -5px;
-            text-transform: uppercase;
-            opacity: 0.8;
-        }
-        /* --- FEATURE BOX (Stile Avanzato) --- */
-        .feature-box {
-            background: linear-gradient(to bottom, rgba(8, 14, 28, 0.9), rgba(8, 14, 28, 0.7));
-            border: 1px solid rgba(0, 242, 234, 0.3);
-            border-radius: 16px;
-            padding: 40px;
-            margin-bottom: 50px;
-            box-shadow: var(--shadow-deep), inset 0 0 30px rgba(0, 242, 234, 0.1);
-            position: relative;
-            overflow: hidden;
-            animation: fade-in 1s ease-out;
-        }
-        @keyframes fade-in { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
-        .feature-box::before {
-            content: ''; position: absolute; top:0; left:0; width: 100%; height: 4px;
-            background: linear-gradient(to right, transparent, var(--primary), transparent);
-            animation: scan-line 3s linear infinite;
-        }
-        @keyframes scan-line { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-        .feature-header {
-            color: var(--primary);
-            font-family: 'Rajdhani', sans-serif;
-            font-weight: 700;
-            font-size: 1.5rem;
-            margin-bottom: 25px;
-            text-transform: uppercase;
-            text-shadow: 0 0 10px rgba(0, 242, 234, 0.4);
-        }
-        .features-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 25px 50px;
-        }
-        .feature-item {
-            font-size: 1rem;
-            color: var(--text-muted);
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            transition: transform 0.3s;
-        }
-        .feature-item:hover { transform: translateX(5px); color: #fff; }
-       
-        .feature-bullet { color: var(--primary); font-size: 1.4rem; line-height: 1; animation: bullet-pulse 2s infinite; }
-        @keyframes bullet-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .feature-item strong { color: #fff; font-weight: 600; }
-        /* --- CONFIG SECTION --- */
-        .config-panel {
-            background: var(--bg-panel);
-            backdrop-filter: blur(15px);
-            border-radius: 25px;
-            border: 1px solid rgba(255,255,255,0.08);
-            padding: 50px;
-            box-shadow: var(--shadow-deep);
-            animation: fade-in 1.5s ease-out;
-        }
-        .section-label {
-            text-align: center;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            font-size: 1rem;
-            margin-bottom: 25px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        .section-label::before, .section-label::after { content:''; height: 1px; background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent); flex: 1; }
-        /* SERVICE SELECTOR */
-        .service-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-bottom: 40px;
-        }
-        .service-card {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.4s ease;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-        .service-card:hover { background: rgba(255,255,255,0.1); transform: translateY(-5px) scale(1.05); box-shadow: 0 10px 30px rgba(0, 242, 234, 0.2); }
-       
-        .service-card.active {
-            border-color: var(--primary);
-            background: rgba(0, 242, 234, 0.15);
-            box-shadow: 0 0 25px rgba(0, 242, 234, 0.3) inset, 0 10px 30px rgba(0, 242, 234, 0.2);
-        }
-        .service-icon { font-size: 2.2rem; margin-bottom: 10px; display: block; transition: transform 0.3s; }
-        .service-card:hover .service-icon { transform: rotate(360deg); }
-        .service-name { font-weight: 700; font-size: 1rem; letter-spacing: 1px; }
-        /* INPUTS */
-        .input-wrapper { position: relative; margin-bottom: 30px; }
-       
-        input[type="text"] {
-            width: 100%;
-            padding: 20px 20px;
-            padding-right: 150px; /* Space for the button */
-            background: rgba(0,0,0,0.4);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 12px;
-            color: #fff;
-            font-family: 'Inter', sans-serif;
-            font-size: 1.1rem;
-            transition: 0.4s;
-            box-sizing: border-box;
-        }
-        input[type="text"]:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 20px rgba(0, 242, 234, 0.3); background: rgba(0,0,0,0.5); }
-        .api-link-btn {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(0, 242, 234, 0.2);
-            color: var(--primary);
-            text-decoration: none;
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            transition: 0.3s;
-            border: 1px solid rgba(0, 242, 234, 0.4);
-        }
-        .api-link-btn:hover { background: var(--primary); color: #000; transform: translateY(-50%) scale(1.05); }
-        /* SWITCHES */
-        .options-list {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 50px;
-        }
-        .option-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255,255,255,0.05);
-            padding: 18px;
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.08);
-            transition: background 0.3s;
-        }
-        .option-item:hover { background: rgba(255,255,255,0.1); }
-        .switch { position: relative; display: inline-block; width: 48px; height: 28px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #1e293b; transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 22px; width: 22px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--primary); box-shadow: 0 0 10px var(--primary); }
-        input:checked + .slider:before { transform: translateX(20px); }
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const path = require("path");
+const axios = require("axios");
+const Bottleneck = require("bottleneck");
+
+// --- IMPORTIAMO I NUOVI MODULI SMART ---
+const { generateSmartQueries } = require("./ai_query");
+const { smartMatch } = require("./smart_parser");
+// IMPORTIAMO IL RANKING ESTERNO
+const { rankAndFilterResults } = require("./ranking");
+
+//  IMPORTIAMO ALTRI MODULI
+const { tmdbToImdb } = require("./id_converter");
+const kitsuHandler = require("./kitsu_handler");
+const RD = require("./debrid/realdebrid");
+const AD = require("./debrid/alldebrid");
+const TB = require("./debrid/torbox");
+
+// --- IMPORTIAMO IL MANIFEST ---
+const { getManifest } = require("./manifest");
+
+// --- CONFIGURAZIONE ---
+const CONFIG = {
+  CINEMETA_URL: "https://v3-cinemeta.strem.io",
+  REAL_SIZE_FILTER: 80 * 1024 * 1024, // Filtra file < 80MB
+  TIMEOUT_TMDB: 2000,
+  SCRAPER_TIMEOUT: 6000, 
+  MAX_RESULTS: 40, 
+};
+
+// --- LIMITERS ---
+const LIMITERS = {
+  scraper: new Bottleneck({ maxConcurrent: 40, minTime: 10 }), 
+  rd: new Bottleneck({ maxConcurrent: 25, minTime: 40 }), 
+};
+
+// --- MOTORI DI RICERCA ---
+const SCRAPER_MODULES = [
+  require("./engines") 
+];
+
+const FALLBACK_SCRAPERS = [
+  require("./external"),
+];
+
+const app = express();
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(cors());
+app.use(express.static(path.join(__dirname, "public")));
+
+// --- UTILITIES ---
+const UNITS = ["B", "KB", "MB", "GB", "TB"];
+function formatBytes(bytes) {
+  if (!+bytes) return "0 B";
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${UNITS[i]}`;
+}
+
+function parseSize(sizeStr) {
+  if (!sizeStr) return 0;
+  if (typeof sizeStr === "number") return sizeStr;
+  const m = sizeStr.toString().match(/([\d.]+)\s*([KMGTP]?B)/i);
+  if (!m) return 0;
+  const val = parseFloat(m[1]);
+  const unit = m[2].toUpperCase();
+  const mult = { TB: 1099511627776, GB: 1073741824, MB: 1048576, KB: 1024, B: 1 };
+  return val * (mult[unit] || 1);
+}
+
+// ==========================================
+//  HELPER DI FORMATTAZIONE & FILTRO AGGIUNTIVI
+// ==========================================
+
+function isSafeForItalian(item) {
+  if (!item || !item.title) return false;
+  const t = item.title.toUpperCase();
+  const itaPatterns = [
+    /\b(ITA|ITALIAN|IT|ITL|ITALY)\b/,
+    /\b(MULTI|MUII|MUL|MULTILANGUAGE)\b.*\b(ITA|IT|ITALIAN)\b/,
+    /\b(AC3|DTS).*\b(ITA|IT|ITALIAN)\b/, 
+    /\b(SUB.?ITA|SUBS.?ITA|SOTTOTITOLI.?ITA)\b/,
+    /\b(VC[._-]?I|VO.?ITA|AUD.?ITA)\b/,            
+    /\b(ITA.?ENG)\b/,                      
+    /ITALIAN.*(DL|Mux|WEBRip|BluRay)/i,
+    /\b(SPEEDVIDEO|WMS|TRIDIM|iDN_CreW)\b/
+  ];
+  return itaPatterns.some(p => p.test(t));
+}
+
+function cleanFilename(filename) {
+  if (!filename) return "";
+  const yearMatch = filename.match(/(19|20)\d{2}/);
+  let cleanTitle = filename;
+  let year = "";
+  if (yearMatch) {
+    year = ` (${yearMatch[0]})`;
+    cleanTitle = filename.substring(0, yearMatch.index);
+  }
+  cleanTitle = cleanTitle.replace(/[._]/g, " ").trim();
+  cleanTitle = cleanTitle.replace(/\b(ita|eng|sub|h264|h265|x264|x265|1080p|720p|4k|bluray|webdl|rip)\b.*/yi, "");
+  return `${cleanTitle.trim()}${year}`;
+}
+
+function getEpisodeTag(filename) {
+    const f = filename.toLowerCase();
+    const matchEp = f.match(/s(\d+)[ex](\d+)/i);
+    if (matchEp) return `🍿 S${matchEp[1]}E${matchEp[2]}`;
+    const matchX = f.match(/(\d+)x(\d+)/i);
+    if (matchX) return `🍿 S${matchX[1].padStart(2, '0')}E${matchX[2].padStart(2, '0')}`;
+    if (/s(\d+)\b|stagione (\d+)|season (\d+)/i.test(f)) {
+        const s = f.match(/s(\d+)|stagione (\d+)|season (\d+)/i);
+        const num = s[1] || s[2] || s[3];
+        return `📦 STAGIONE ${num}`;
+    }
+    return "";
+}
+
+function extractStreamInfo(title, source) {
+  const t = String(title).toLowerCase();
+  let q = "HD"; let qIcon = "📺";
+  if (/2160p|4k|uhd/.test(t)) { q = "4K"; qIcon = "✨"; }
+  else if (/1080p/.test(t)) { q = "1080p"; qIcon = "🌕"; }
+  else if (/720p/.test(t)) { q = "720p"; qIcon = "🌗"; }
+  else if (/480p|\bsd\b/.test(t)) { q = "SD"; qIcon = "🌑"; }
+
+  const videoTags = []; const audioTags = [];
+  if (/hdr/.test(t)) videoTags.push("HDR");
+  if (/dolby|vision|\bdv\b/.test(t)) videoTags.push("DV");
+  if (/imax/.test(t)) videoTags.push("IMAX");
+  if (/h265|hevc|x265/.test(t)) videoTags.push("HEVC");
+  
+  if (/atmos/.test(t)) audioTags.push("Atmos");
+  if (/dts:?x?|\bdts\b/.test(t)) audioTags.push("DTS");
+  if (/dd\+|eac3/.test(t)) audioTags.push("DD+");
+  if (/5\.1/.test(t)) audioTags.push("5.1");
+
+  let lang = "🇬🇧 ENG"; 
+  if (source === "Corsaro") {
+      lang = "🇮🇹 ITA";
+      if (/multi|mui/i.test(t)) lang = "🇮🇹 MULTI";
+  } 
+  else if (/\b(ita|italian|it)\b/i.test(t)) {
+      lang = "🇮🇹 ITA";
+  } else if (/multi|mui/i.test(t)) {
+      lang = "🌐 MULTI"; 
+  }
+
+  let detailsParts = [];
+  if (videoTags.length) detailsParts.push(`✨ ${videoTags.join(" ")}`);
+  if (audioTags.length) detailsParts.push(`🔊 ${audioTags.join(" ")}`);
+  
+  return { quality: q, qIcon, info: detailsParts.join(" • "), lang };
+}
+
+function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag = "RD") {
+    const { quality, qIcon, info, lang } = extractStreamInfo(fileTitle, source);
+    const sizeStr = size ? `📦 ${formatBytes(size)}` : "📦 ❓"; 
+    const seedersStr = seeders ? `👤 ${seeders}` : "";
+
+    const name = `[${serviceTag} ${qIcon} ${quality}] ${source}`;
+    const detailLines = [];
+
+    let cleanName = cleanFilename(fileTitle)
+        .replace(/s\d+e\d+/i, "")
+        .replace(/s\d+/i, "")
+        .trim();
+    const epTag = getEpisodeTag(fileTitle);
+    detailLines.push(`🎬 ${cleanName}${epTag ? ` ${epTag}` : ""} • ${quality}`);
+
+    let sizeSeedLine = sizeStr;
+    if (seedersStr) sizeSeedLine += ` • ${seedersStr}`;
+    detailLines.push(sizeSeedLine);
+
+    const langTag = lang.replace('🌐', '').replace('🇮🇹', 'IT').replace('🇬🇧', 'GB').trim();
+    detailLines.push(`🔍 ${source} • 🗣️ ${langTag}`);
+
+    if (info) {
+        const tags = info.split(' • ');
+        const videoTags = tags.filter(t => t.includes('✨')).map(t => t.replace('✨', ''));
+        const audioTags = tags.filter(t => t.includes('🔊'));
+        if (videoTags.length) detailLines.push(`🎞️ ${videoTags.join(' • ')}`);
+        if (audioTags.length) detailLines.push(`🔊 ${audioTags.join(' • ')}`);
+    }
+
+    const fullTitle = detailLines.join('\n');
+    return { name, title: fullTitle };
+}
+
+// ==========================================
+// 🧠 CORE LOGIC
+// ==========================================
+
+async function getMetadata(id, type) {
+  try {
+    const allowedTypes = ["movie", "series"];
+    if (!allowedTypes.includes(type)) return null;
+
+    let tmdbId = id, s = 1, e = 1;
+    if (type === "series" && id.includes(":")) [tmdbId, s, e] = id.split(":");
+    
+    const rawId = tmdbId.split(":")[0];
+    const cleanId = rawId.match(/^(tt\d+|\d+)$/i)?.[0] || "";
+
+    if (!cleanId) return null;
+
+    const { data: cData } = await axios.get(`${CONFIG.CINEMETA_URL}/meta/${type}/${cleanId}.json`, { timeout: CONFIG.TIMEOUT_TMDB }).catch(() => ({ data: {} }));
+    
+    return cData?.meta ? {
+      title: cData.meta.name,
+      originalTitle: cData.meta.name, 
+      year: cData.meta.year?.split("–")[0],
+      imdb_id: cleanId, 
+      isSeries: type === "series",
+      season: parseInt(s),
+      episode: parseInt(e)
+    } : null;
+  } catch (err) { 
+      console.error("Metadata Error:", err.message);
+      return null; 
+  }
+}
+
+async function resolveDebridLink(config, item, showFake) {
+    try {
+        const service = config.service || 'rd';
+        const apiKey = config.key || config.rd;
         
-        /* BUTTONS GROUP */
-        .btn-group {
-            display: flex;
-            gap: 20px;
-            flex-direction: row;
-        }
-        /* INSTALL BUTTON */
-        .install-btn {
-            flex: 2;
-            padding: 25px;
-            background: linear-gradient(to right, var(--primary), #00b3aa);
-            color: #000;
-            border: none;
-            border-radius: 15px;
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 1.8rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            cursor: pointer;
-            transition: 0.4s;
-            box-shadow: 0 10px 40px rgba(0, 242, 234, 0.4), inset 0 0 20px rgba(255,255,255,0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-        }
-        .install-btn:hover {
-            background: linear-gradient(to right, #fff, var(--primary));
-            box-shadow: 0 15px 60px rgba(255, 255, 255, 0.5);
-            transform: translateY(-4px) scale(1.02);
-        }
-        /* COPY BUTTON */
-        .copy-btn {
-            flex: 1;
-            padding: 25px;
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--primary);
-            border: 2px solid var(--primary);
-            border-radius: 15px;
-            font-family: 'Rajdhani', sans-serif;
-            font-size: 1.2rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            cursor: pointer;
-            transition: 0.4s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-        }
-        .copy-btn:hover {
-            background: rgba(0, 242, 234, 0.1);
-            box-shadow: 0 0 20px rgba(0, 242, 234, 0.2);
-            transform: translateY(-4px);
+        if (!apiKey) return null;
+
+        let streamData = null;
+
+        if (service === 'rd') {
+            streamData = await RD.getStreamLink(apiKey, item.magnet, item.season, item.episode);
+        } else if (service === 'ad') {
+            streamData = await AD.getStreamLink(apiKey, item.magnet, item.season, item.episode);
+        } else if (service === 'tb') {
+            streamData = await TB.getStreamLink(apiKey, item.magnet, item.season, item.episode);
         }
 
-        @media(max-width: 700px) {
-            .features-grid, .options-list { grid-template-columns: 1fr; }
-            h1 { font-size: 3.5rem; }
-            .container { padding: 25px; margin: 15px; }
-            .wave { height: 120px; }
-            .service-grid { grid-template-columns: 1fr; }
-            .btn-group { flex-direction: column; }
-            .install-btn { font-size: 1.5rem; }
-        }
-    </style>
-</head>
-<body>
-    <div class="particles"></div>
-    <div class="ocean">
-        <div class="wave"></div>
-        <div class="wave"></div>
-        <div class="wave"></div>
-    </div>
-    <div class="bubbles">
-        <div class="bubble"></div>
-        <div class="bubble"></div>
-        <div class="bubble"></div>
-        <div class="bubble"></div>
-        <div class="bubble"></div>
-        <div class="bubble"></div>
-        <div class="bubble"></div>
-        <div class="bubble"></div>
-        <div class="bubble"></div>
-    </div>
-    <div class="container">
-        <header>
-            <div class="logo-wrapper">
-                <i class="fas fa-dragon logo-icon"></i> </div>
-            <h1>LEVIATHAN</h1>
-            <p class="subtitle">Deep Sea Streaming Core</p>
-        </header>
-        <div class="feature-box">
-            <div class="feature-header">Caratteristiche Principali:</div>
-            <div class="features-grid">
-                <div class="feature-item">
-                    <span class="feature-bullet">✦</span>
-                    <div><strong>Multi-Sorgente:</strong> Database Locale + Cache Debrid Reale + Motori Smart.</div>
-                </div>
-                <div class="feature-item">
-                    <span class="feature-bullet">✦</span>
-                    <div><strong>Debrid Ready:</strong> Supporto Nativo per Real-Debrid, TorBox e AllDebrid.</div>
-                </div>
-                <div class="feature-item">
-                    <span class="feature-bullet">✦</span>
-                    <div><strong>Ottimizzato ITA:</strong> Priorità assoluta ai contenuti audio/sub italiani.</div>
-                </div>
-                <div class="feature-item">
-                    <span class="feature-bullet">✦</span>
-                    <div><strong>Fall-Back Sicuro:</strong> Gestione intelligente dei link P2P e Cache.</div>
-                </div>
-            </div>
-        </div>
-        <div class="config-panel">
-            <div class="section-label">1. Seleziona Servizio</div>
-            <div class="service-grid">
-                <div class="service-card active" onclick="selectService('rd')">
-                    <span class="service-icon">🚀</span>
-                    <span class="service-name">Real-Debrid</span>
-                </div>
-                <div class="service-card" onclick="selectService('ad')">
-                    <span class="service-icon">🦅</span>
-                    <span class="service-name">AllDebrid</span>
-                </div>
-                <div class="service-card" onclick="selectService('tb')">
-                    <span class="service-icon">📦</span>
-                    <span class="service-name">TorBox</span>
-                </div>
-            </div>
-            <div class="input-wrapper">
-                <input type="text" id="apiKey" placeholder="Incolla la tua API Key qui...">
-                <a href="https://real-debrid.com/apitoken" target="_blank" id="apiLink" class="api-link-btn">
-                    <i class="fas fa-key"></i> PRENDI KEY
-                </a>
-            </div>
-            <div class="input-wrapper">
-                <input type="text" id="tmdbKey" placeholder="TMDB API Key (Metadati)">
-                <a href="https://www.themoviedb.org/settings/api" target="_blank" class="api-link-btn">
-                    <i class="fas fa-database"></i> PRENDI KEY
-                </a>
-            </div>
-            <div class="section-label">2. Personalizza</div>
-            <div class="options-list">
-                <div class="option-item">
-                    <span>Solo Materiale ITA</span>
-                    <label class="switch"><input type="checkbox" id="onlyIta"><span class="slider"></span></label>
-                </div>
-                <div class="option-item">
-                    <span>Rimuovi 4K</span>
-                    <label class="switch"><input type="checkbox" id="no4k"><span class="slider"></span></label>
-                </div>
-                <div class="option-item">
-                    <span>Rimuovi CAM/Screener</span>
-                    <label class="switch"><input type="checkbox" id="noCam" checked><span class="slider"></span></label>
-                </div>
-                <div class="option-item">
-                    <span>Mostra P2P/Fake</span>
-                    <label class="switch"><input type="checkbox" id="showFake"><span class="slider"></span></label>
-                </div>
-            </div>
-            
-            <div class="btn-group">
-                <button class="install-btn" onclick="install()">
-                    INSTALLA <i class="fas fa-bolt"></i>
-                </button>
-                <button class="copy-btn" onclick="copyLink()" id="copyBtn">
-                    <i class="fas fa-copy"></i>
-                    <span id="copyText">COPIA LINK</span>
-                </button>
-            </div>
-        </div>
-    </div>
-    <script>
-        let currentService = 'rd';
+        if (!streamData || (streamData.type === "ready" && streamData.size < CONFIG.REAL_SIZE_FILTER)) return null;
 
-        window.onload = function() {
-            try {
-                const pathParts = window.location.pathname.split('/');
-                if (pathParts.length >= 2 && pathParts[1].length > 10) {
-                    const configStr = atob(pathParts[1]);
-                    const config = JSON.parse(configStr);
+        let serviceTag = "RD";
+        if (service === 'ad') serviceTag = "AD";
+        if (service === 'tb') serviceTag = "TB";
 
-                    if (config.key) document.getElementById('apiKey').value = config.key;
-                    if (config.tmdb) document.getElementById('tmdbKey').value = config.tmdb;
-                    
-                    if (config.service) selectService(config.service);
-
-                    if (config.filters) {
-                        document.getElementById('onlyIta').checked = config.filters.onlyIta || false;
-                        document.getElementById('no4k').checked = config.filters.no4k || false;
-                        document.getElementById('noCam').checked = config.filters.noCam || false;
-                        document.getElementById('showFake').checked = config.filters.showFake || false;
-                    }
-                }
-            } catch (e) {
-                console.log("Nessuna configurazione precedente trovata.");
-            }
+        const { name, title } = formatStreamTitleCinePro(streamData.filename || item.title, item.source, streamData.size || item.size, item.seeders, serviceTag);
+        
+        return { 
+            name, 
+            title, 
+            url: streamData.url, 
+            behaviorHints: { notWebReady: false, bingieGroup: `corsaro-${service}` } 
         };
 
-        function selectService(service) {
-            currentService = service;
-            document.querySelectorAll('.service-card').forEach(el => el.classList.remove('active'));
-            const cards = document.querySelectorAll('.service-card');
-            if (service === 'rd') cards[0].classList.add('active');
-            if (service === 'ad') cards[1].classList.add('active');
-            if (service === 'tb') cards[2].classList.add('active');
+    } catch (e) {
+        if (showFake) return { name: `[P2P ⚠️]`, title: `${item.title}\n⚠️ Cache Assente`, url: item.magnet, behaviorHints: { notWebReady: true } };
+        return null;
+    }
+}
 
-            const link = document.getElementById('apiLink');
-            const input = document.getElementById('apiKey');
-            if(service === 'rd') {
-                link.href = "https://real-debrid.com/apitoken";
-                input.placeholder = "Incolla qui la tua Key Real-Debrid...";
-            } else if(service === 'ad') {
-                link.href = "https://alldebrid.com/apikeys";
-                input.placeholder = "Incolla qui la tua Key AllDebrid...";
-            } else if(service === 'tb') {
-                link.href = "https://torbox.app/settings";
-                input.placeholder = "Incolla qui la tua Key TorBox...";
+// 🔥 GENERATE STREAM - FUNZIONE PRINCIPALE 🔥
+async function generateStream(type, id, config, userConfStr) {
+  if (!config.key && !config.rd) return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key nel configuratore" }] };
+  
+  let finalId = id; 
+  
+  if (id.startsWith("tmdb:")) {
+      try {
+          const parts = id.split(":");
+          const tmdbId = parts[1];
+          const imdbId = await tmdbToImdb(tmdbId, type);
+          if (imdbId) {
+              if (type === "series" && parts.length >= 4) {
+                  const s = parts[2];
+                  const e = parts[3];
+                  finalId = `${imdbId}:${s}:${e}`; 
+              } else {
+                  finalId = imdbId; 
+              }
+          }
+      } catch (err) { console.error("ID Convert Error:", err.message); }
+  }
+
+  if (id.startsWith("kitsu:")) {
+      try {
+          const parts = id.split(":");
+          const kitsuId = parts[1];
+          const kitsuEp = parts[2] ? parseInt(parts[2]) : 1;
+          const kData = await kitsuHandler(kitsuId);
+          if (kData && kData.imdbID) {
+              if (kData.type === 'series' || type === 'series') {
+                  const s = kData.season || 1; 
+                  finalId = `${kData.imdbID}:${s}:${kitsuEp}`;
+              } else {
+                  finalId = kData.imdbID;
+              }
+          }
+      } catch (err) { console.error("🦊 Kitsu Error:", err.message); }
+  }
+
+  const meta = await getMetadata(finalId, type); 
+  if (!meta) return { streams: [] };
+  
+  const queries = generateSmartQueries(meta);
+  const onlyIta = config.filters?.onlyIta !== false;
+
+  console.log(`\n🧠 [AI-CORE] Cerco "${meta.title}" (${meta.year}): ${queries.length} varianti.`);
+
+  let promises = [];
+  queries.forEach(q => {
+    SCRAPER_MODULES.forEach(scraper => {
+      if (scraper.searchMagnet) {
+        promises.push(
+          LIMITERS.scraper.schedule(() => 
+            withTimeout(scraper.searchMagnet(q, meta.year, type, finalId), CONFIG.SCRAPER_TIMEOUT).catch(err => [])
+          )
+        );
+      }
+    });
+  });
+
+  let resultsRaw = (await Promise.all(promises)).flat();
+
+  // 3. FILTERING
+  resultsRaw = resultsRaw.filter(item => {
+    if (!item?.magnet) return false;
+    
+    const fileYearMatch = item.title.match(/\b(19|20)\d{2}\b/);
+    if (fileYearMatch) {
+        const fileYear = parseInt(fileYearMatch[0]);
+        const metaYear = parseInt(meta.year);
+        if (Math.abs(fileYear - metaYear) > 1) return false;
+        
+        if (/\bLisa\b/i.test(item.title) && !/\bLisa\b/i.test(meta.title)) return false;
+
+        const tLower = item.title.toLowerCase();
+        const mLower = meta.title.toLowerCase();
+        const idx = tLower.indexOf(mLower);
+        if (idx > 0) {
+            const prefix = tLower.substring(0, idx).trim();
+            if (/[a-z0-9]$/i.test(prefix)) {
+                const words = prefix.split(/[^a-z0-9]+/);
+                const lastWord = words[words.length - 1];
+                const badPrefixes = ["lisa", "bride", "son", "curse", "house", "i", "return", "revenge"];
+                if (badPrefixes.includes(lastWord)) return false;
             }
         }
+    }
 
-        // Funzione base per generare la parte configurazione dell'URL
-        function getBaseManifestUrl() {
-            const key = document.getElementById('apiKey').value.trim();
-            const tmdb = document.getElementById('tmdbKey').value.trim();
-            
-            if(!key || !tmdb) {
-                alert("⚠️ ATTENZIONE: Mancano le chiavi API!\n\nInserisci sia la chiave del servizio Debrid che la chiave TMDB.");
-                return null;
-            }
+    const isSemanticallySafe = smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode);
+    if (!isSemanticallySafe) return false;
 
-            const config = {
-                service: currentService,
-                key: key,
-                tmdb: tmdb,
-                filters: {
-                    onlyIta: document.getElementById('onlyIta').checked,
-                    no4k: document.getElementById('no4k').checked,
-                    noCam: document.getElementById('noCam').checked,
-                    showFake: document.getElementById('showFake').checked
-                }
-            };
-            const configStr = btoa(JSON.stringify(config));
-            const host = window.location.host;
-            
-            return `${host}/${configStr}/manifest.json`;
+    if (onlyIta && !isSafeForItalian(item)) return false;
+    return true;
+  });
+
+  // Fallback se pochi risultati iniziali
+  if (resultsRaw.length <= 5) {
+    const extPromises = FALLBACK_SCRAPERS.map(fb => {
+        return LIMITERS.scraper.schedule(async () => {
+            try {
+                return await withTimeout(fb.searchMagnet(queries[0], meta.year, type, finalId), CONFIG.SCRAPER_TIMEOUT);
+            } catch (err) { return []; }
+        });
+    });
+
+    try {
+        let timeoutHandle;
+        const timeoutPromise = new Promise(resolve => {
+            timeoutHandle = setTimeout(() => { resolve([]); }, CONFIG.SCRAPER_TIMEOUT + 1500); 
+        });
+        const searchPromise = Promise.all(extPromises).then(res => { clearTimeout(timeoutHandle); return res; });
+        const extResultsRaw = await Promise.race([searchPromise, timeoutPromise]);
+        
+        if (Array.isArray(extResultsRaw)) {
+            const filteredExt = extResultsRaw.flat().filter(item => 
+                smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)
+            );
+            resultsRaw = [...resultsRaw, ...filteredExt];
         }
+    } catch (e) {}
+  }
 
-        // BOTTONE INSTALLA: Usa SEMPRE stremio:// (per app nativa PC/Android)
-        function install() {
-            const basePath = getBaseManifestUrl();
-            if(basePath) {
-                // Forziamo stremio:// invece di stremios:// o https://
-                // L'app Stremio sa gestire la connessione sicura internamente
-                window.location.href = `stremio://${basePath}`;
-            }
-        }
+  // Deduplicazione
+  const seen = new Set(); 
+  let cleanResults = [];
+  for (const item of resultsRaw) {
+    if (!item || !item.magnet) continue;
+    try {
+        const hashMatch = item.magnet.match(/btih:([a-f0-9]{40})/i);
+        const hash = hashMatch ? hashMatch[1].toUpperCase() : item.magnet;
+        if (seen.has(hash)) continue;
+        seen.add(hash);
+        item._size = parseSize(item.size || item.sizeBytes);
+        cleanResults.push(item);
+    } catch (err) { continue; }
+  }
+  
+  if (!cleanResults.length) return { streams: [{ name: "⛔", title: "Nessun risultato trovato" }] };
 
-        // BOTTONE COPIA: Usa SEMPRE https:// (per Stremio Web)
-        function copyLink() {
-            const basePath = getBaseManifestUrl();
-            if(basePath) {
-                const protocol = window.location.protocol; // http: o https:
-                const fullUrl = `${protocol}//${basePath}`;
-                
-                navigator.clipboard.writeText(fullUrl).then(() => {
-                    const btnText = document.getElementById('copyText');
-                    const originalText = btnText.innerText;
-                    btnText.innerText = "COPIATO!";
-                    setTimeout(() => {
-                        btnText.innerText = originalText;
-                    }, 2000);
-                }).catch(err => {
-                    alert("Impossibile copiare il link automaticamente. Prova manualmente.");
-                });
-            }
+  // Ranking
+  const ranked = rankAndFilterResults(cleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
+  
+  // Risoluzione Link Debrid
+  const rdPromises = ranked.map(item => {
+      item.season = meta.season;
+      item.episode = meta.episode;
+      return LIMITERS.rd.schedule(() => resolveDebridLink(config, item, config.filters?.showFake));
+  });
+  
+  let streams = (await Promise.all(rdPromises)).filter(Boolean);
+
+  // 🔥🔥🔥 FALLBACK ESTREMO: SE RD NON RESTITUISCE NULLA 🔥🔥🔥
+  if (streams.length === 0) {
+    console.log(`⚠️ Tutti i link RD iniziali sono uncached/falliti. Attivo EXTERNAL.JS di emergenza...`);
+    
+    try {
+        // Forza l'uso di External anche se non è stato usato prima
+        const externalEngine = require("./external");
+        
+        // Cerca usando la query principale (la più accurata)
+        const fallbackRaw = await withTimeout(
+            externalEngine.searchMagnet(queries[0], meta.year, type, finalId),
+            CONFIG.SCRAPER_TIMEOUT + 1000
+        );
+
+        if (Array.isArray(fallbackRaw)) {
+            // Filtra e prepara
+            const fallbackFiltered = fallbackRaw.filter(item => 
+                smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)
+            );
+
+            // Deduplica rapida (opzionale, per evitare di riprocessare gli stessi hash se external era già partito)
+            const newItems = fallbackFiltered.filter(item => {
+                const hashMatch = item.magnet.match(/btih:([a-f0-9]{40})/i);
+                const hash = hashMatch ? hashMatch[1].toUpperCase() : item.magnet;
+                return !seen.has(hash);
+            });
+
+            console.log(`🔥 External Emergency Found: ${newItems.length} nuovi candidati.`);
+
+            // Risolvi RD sui nuovi item
+            const fallbackRdPromises = newItems.map(item => {
+                item.season = meta.season;
+                item.episode = meta.episode;
+                return LIMITERS.rd.schedule(() => resolveDebridLink(config, item, config.filters?.showFake));
+            });
+
+            const fallbackStreams = (await Promise.all(fallbackRdPromises)).filter(Boolean);
+            streams = fallbackStreams; // Assegna i nuovi stream
         }
-    </script>
-</body>
-</html>
+    } catch (e) {
+        console.error("External Fallback Error:", e.message);
+    }
+  }
+
+  // Se ancora vuoto, mostra messaggio
+  if (!streams.length) return { streams: [{ name: "⛔", title: "Nessun link cached trovato" }] };
+
+  return { streams }; 
+}
+
+// --- ROUTES ---
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+// Route per configurazione esistente
+app.get("/:conf/configure", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+// 🔥 FIX: Route per configurazione NUOVA (resolve "Cannot GET /configure")
+app.get("/configure", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+
+app.get("/manifest.json", (req, res) => { const manifest = getManifest(); res.setHeader("Access-Control-Allow-Origin", "*"); res.json(manifest); });
+app.get("/:conf/manifest.json", (req, res) => { const manifest = getManifest(); res.setHeader("Access-Control-Allow-Origin", "*"); res.json(manifest); });
+app.get("/:conf/catalog/:type/:id/:extra?.json", async (req, res) => { res.setHeader("Access-Control-Allow-Origin", "*"); res.json({metas:[]}); });
+app.get("/:conf/stream/:type/:id.json", async (req, res) => { const result = await generateStream(req.params.type, req.params.id.replace(".json", ""), getConfig(req.params.conf), req.params.conf); res.setHeader("Access-Control-Allow-Origin", "*"); res.json(result); });
+
+function getConfig(configStr) { try { return JSON.parse(Buffer.from(configStr, "base64").toString()); } catch { return {}; } }
+function withTimeout(promise, ms) { return Promise.race([promise, new Promise(r => setTimeout(() => r([]), ms))]); }
+
+const PORT = process.env.PORT || 7000;
+app.listen(PORT, () => console.log(`🚀 Leviathan (AI-Core) v31.3 attivo su porta ${PORT}`));
