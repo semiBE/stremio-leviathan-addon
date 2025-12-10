@@ -542,8 +542,8 @@
             }
         }
 
-        // Funzione helper per generare l'URL
-        function getStremioUrl() {
+        // Funzione base per generare la parte configurazione dell'URL
+        function getBaseManifestUrl() {
             const key = document.getElementById('apiKey').value.trim();
             const tmdb = document.getElementById('tmdbKey').value.trim();
             
@@ -566,26 +566,27 @@
             const configStr = btoa(JSON.stringify(config));
             const host = window.location.host;
             
-            // Logica protocollo fissa: se siamo in HTTPS usa stremios, altrimenti stremio
-            // Questo è il formato corretto che Stremio si aspetta per aprire l'app
-            const protocol = window.location.protocol === 'https:' ? 'stremios' : 'stremio';
-            
-            return `${protocol}://${host}/${configStr}/manifest.json`;
+            return `${host}/${configStr}/manifest.json`;
         }
 
+        // BOTTONE INSTALLA: Usa SEMPRE stremio:// (per app nativa PC/Android)
         function install() {
-            const url = getStremioUrl();
-            if(url) {
-                // Forza il cambio di location per aprire l'app
-                window.location.href = url;
+            const basePath = getBaseManifestUrl();
+            if(basePath) {
+                // Forziamo stremio:// invece di stremios:// o https://
+                // L'app Stremio sa gestire la connessione sicura internamente
+                window.location.href = `stremio://${basePath}`;
             }
         }
 
+        // BOTTONE COPIA: Usa SEMPRE https:// (per Stremio Web)
         function copyLink() {
-            const url = getStremioUrl();
-            if(url) {
-                // Copia negli appunti
-                navigator.clipboard.writeText(url).then(() => {
+            const basePath = getBaseManifestUrl();
+            if(basePath) {
+                const protocol = window.location.protocol; // http: o https:
+                const fullUrl = `${protocol}//${basePath}`;
+                
+                navigator.clipboard.writeText(fullUrl).then(() => {
                     const btnText = document.getElementById('copyText');
                     const originalText = btnText.innerText;
                     btnText.innerText = "COPIATO!";
