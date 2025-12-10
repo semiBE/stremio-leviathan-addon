@@ -75,7 +75,7 @@ const ULTRA_SEMANTIC_ALIASES = {
 // 3. FUNZIONI DI NORMALIZZAZIONE E LOGICA
 // ==========================================
 
-// Funzione potente per pulire i titoli (rimuove accenti e caratteri strani)
+// Funzione potente per pulire i titoli 
 function ultraNormalizeTitle(t) {
     if (!t) return "";
     return t.toLowerCase()
@@ -107,7 +107,7 @@ function autoExpandAliases(cleanTitle) {
                 // Rimuove il pattern (es: "Batman Returns" -> "Batman")
                 const stripped = cleanTitle.replace(p, '').trim();
                 
-                // SICUREZZA: Evitiamo alias troppo corti (< 3 caratteri)
+                // SICUREZZA: Evita alias troppo corti (< 3 caratteri)
                 if (stripped.length > 3) {
                     aliases.add(stripped);
                 }
@@ -121,7 +121,7 @@ function autoExpandAliases(cleanTitle) {
 // 4. GENERATORE QUERY (CORE)
 // ==========================================
 function generateSmartQueries(meta) {
-    // Impostiamo "ITA" come lingua predefinita se non specificata
+    // Imposta "ITA" come lingua predefinita se non specificata
     const { title, originalTitle, year, season, episode, isSeries, language = "ita" } = meta;
     
     // Normalizzazione
@@ -144,7 +144,7 @@ function generateSmartQueries(meta) {
     let queries = new Set();
     const sStr = season ? String(season).padStart(2, "0") : "";
     const eStr = episode ? String(episode).padStart(2, "0") : "";
-    const langSuffix = "ITA"; // Forziamo ITA per le ricerche prioritarie
+    const langSuffix = "ITA"; // Forza ITA per le ricerche prioritarie
 
     titles.forEach(t => {
         if (!t) return;
@@ -223,7 +223,7 @@ function generateSmartQueries(meta) {
         // Ordinamento decrescente (punteggio più alto prima)
         if (scoreA !== scoreB) return scoreB - scoreA;
         
-        // A parità di punteggio, preferisci la query più corta (spesso meno rumorosa)
+        // A parità di punteggio, preferisci la query più corta 
         return a.length - b.length;
     });
 }
