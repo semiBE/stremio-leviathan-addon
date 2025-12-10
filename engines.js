@@ -249,30 +249,63 @@ async function searchCorsaro(title, year, type, reqSeason, reqEpisode) {
         if (!data || data.includes("Cloudflare")) return [];
         const $ = cheerio.load(data);
         let items = [];
-        $('a').each((i, elem) => {
-            if (items.length >= 20) return;
-            const href = $(elem).attr('href');
-            const text = $(elem).text().trim();
+
+        // Parsing basato sulla tabella (più preciso e veloce)
+        // Struttura tipica: Cat | Titolo | Seed | Leech | Size | Date | Uploader
+        $('table tr').each((i, row) => {
+            if (items.length >= 25) return;
+
+            const tds = $(row).find('td');
+            if (tds.length < 5) return; // Salta intestazioni o righe vuote
+
+            const titleLink = $(row).find('a[href*="/torrent/"], a[href*="details.php"]').first();
+            if (!titleLink.length) return;
+
+            const text = titleLink.text().trim();
+            const href = titleLink.attr('href');
+
+            // Filtri pre-parsing
             if (!isItalianResult(text) || !checkYear(text, year, type) || !isCorrectFormat(text, reqSeason, reqEpisode)) return;
+
+            // Estrazione Dati Tabella
+            // Seeders: spesso colonna 2 o 3, colore verde
+            let seeders = 0;
+            const seedText = $(row).find('font[color="#008000"], .green').text().trim() || tds.eq(2).text().trim();
+            if (/^\d+$/.test(seedText)) seeders = parseInt(seedText);
+
+            // Size: spesso colonna 4
+            let sizeStr = "??";
+            const sizeText = tds.eq(4).text().trim();
+            if (sizeText.match(/\d/)) sizeStr = sizeText;
+
             if (href && (href.includes('/torrent/') || href.includes('details.php')) && text.length > 5) {
                 let fullUrl = href.startsWith('http') ? href : `https://ilcorsaronero.link${href.startsWith('/') ? '' : '/'}${href}`;
-                if (!items.some(p => p.url === fullUrl)) items.push({ url: fullUrl, title: text });
+                if (!items.some(p => p.url === fullUrl)) {
+                    items.push({ 
+                        url: fullUrl, 
+                        title: text,
+                        seeders: seeders,
+                        size: sizeStr
+                    });
+                }
             }
         });
+
         const limit = pLimit(5);
         const promises = items.map(item => limit(async () => {
             try {
+                // Fetch dettaglio SOLO per il magnet, usiamo i dati tabella per il resto
                 const detailPage = await cfGet(item.url, { timeout: 3000 });
                 const magnetMatch = detailPage.data.match(/magnet:\?xt=urn:btih:([a-zA-Z0-9]{40})/i);
+                
                 if (!magnetMatch) return null;
-                const sizeMatch = detailPage.data.match(/(\d+(\.\d+)?)\s?(GB|MB|KB)/i);
-                const seedersMatch = detailPage.data.match(/Seeders:\s*(\d+)/i);
+                
                 return {
                     title: item.title,
                     magnet: `magnet:?xt=urn:btih:${magnetMatch[1]}&dn=${encodeURIComponent(item.title)}`,
-                    size: sizeMatch ? sizeMatch[0] : "??",
-                    sizeBytes: parseSize(sizeMatch ? sizeMatch[0] : "0"),
-                    seeders: seedersMatch ? parseInt(seedersMatch[1]) : 0,
+                    size: item.size,
+                    sizeBytes: parseSize(item.size),
+                    seeders: item.seeders,
                     source: "Corsaro"
                 };
             } catch { return null; }
