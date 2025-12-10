@@ -83,12 +83,13 @@ async function cfGet(url, config = {}) {
 function clean(title) {
     if (!title) return "";
     const htmlDecode = title
-        .replace(/&amp;/g, '&')
+        // Spostato &amp; alla fine per evitare double-unescaping
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
         .replace(/&#039;/g, "'")
-        .replace(/&apos;/g, "'");
+        .replace(/&apos;/g, "'")
+        .replace(/&amp;/g, '&'); 
 
     const cleaned = htmlDecode
         .replace(/[:"'’]/g, "")
@@ -127,7 +128,7 @@ function parseImdbId(imdbId) {
     return { season: null, episode: null };
 }
 
-// --- NUOVI HELPER DI PARSING (DAL INDEX.JS) ---
+// --- HELPER DI PARSING ---
 
 // Funzioni di utilità per Regex
 const createRegex = (pattern) => new RegExp(`(?<![^\\s\\[(_\\-.,])(${pattern})(?=[\\s\\)\\]_.\\-,]|$)`, 'i');
@@ -180,7 +181,7 @@ function parseTorrentTitle(filename) {
     const yearMatch = filename.match(/[[(. _-]?((?:19|20)\d{2})[\]).\s_-]/);
     if (yearMatch) result.year = parseInt(yearMatch[1]);
 
-    // Estrazione Stagione/Episodio (Migliorata)
+    // Estrazione Stagione/Episodio 
     const seasonEpisodePatterns = [
         /S(\d{1,2})[ .\-_]?E(\d{1,3})/i,
         /(\d{1,2})x(\d{1,3})/i,
@@ -502,7 +503,7 @@ async function searchGlo(title, year, type, reqSeason, reqEpisode) {
     } catch { return []; }
 }
 
-// --- NUOVO MOTORE: TORRENTBAY (FIXED SELECTOR) ---
+// ---  TORRENTBAY (FIXED SELECTOR) ---
 async function searchTorrentBay(title, year, type, reqSeason, reqEpisode) {
     try {
         const domain = "https://rarbg.torrentbay.st";
@@ -511,7 +512,7 @@ async function searchTorrentBay(title, year, type, reqSeason, reqEpisode) {
 
         console.log(`[TorrentBay] 🔎 Cerco: "${query}" su ${domain}`);
         
-        // Nota: uso keywords:Query come dallo screenshot
+        
         const url = `${domain}/get-posts/keywords:${encodeURIComponent(query)}/`;
         
         const { data } = await cfGet(url, { timeout: CONFIG.TIMEOUT });
@@ -529,7 +530,7 @@ async function searchTorrentBay(title, year, type, reqSeason, reqEpisode) {
 
         // Analisi della tabella
         $('table tr').each((i, row) => {
-            // Salta le righe di intestazione (quelle che contengono th o hanno classe header)
+            // Salta le righe di intestazione 
             if ($(row).find('th').length > 0) return;
 
             const tds = $(row).find('td');
@@ -539,7 +540,7 @@ async function searchTorrentBay(title, year, type, reqSeason, reqEpisode) {
             if (tds.length < 7) return; 
 
             // --- ESTRAZIONE TITOLO (COLONNA 1) ---
-            // Prendiamo il primo <a> dentro la seconda cella (indice 1)
+           
             const titleLink = tds.eq(1).find('a').first();
             const name = titleLink.text().trim();
             let relativeHref = titleLink.attr('href');
