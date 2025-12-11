@@ -684,10 +684,10 @@ CONFIG.ENGINES = [
     searchUindex,        // 3. Richiesto dall'utente
     searchBitSearch,     // 4. Ora robusto e posizionato qui
     searchTorrentBay,
-    searchLime,
+    searchTorrentGalaxy,
     searchTPB,
     searchNyaa,
-    searchTorrentGalaxy,,
+    searchLime,
     searchGlo
 ];
 
