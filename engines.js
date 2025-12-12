@@ -565,36 +565,71 @@ async function searchGlo(title, year, type, reqSeason, reqEpisode) {
 
 async function searchTorrentBay(title, year, type, reqSeason, reqEpisode) {
     try {
-        const domain = "https://rarbg.torrentbay.st";
+        const domain = "https://www2.rarbggo.to"; 
+        
         let query = clean(title);
         if (!query.toUpperCase().includes("ITA")) query += " ITA";
-        const url = `${domain}/get-posts/keywords:${encodeURIComponent(query)}/`;
         
-        // TorrentBay richiede header molto specifici e puliti
-        const { data } = await requestHtml(url, { timeout: CONFIG.TIMEOUT });
+        const url = `${domain}/search/?search=${encodeURIComponent(query)}`;
+        
+        let data;
+        try {
+            // Tentativo con requestHtml (che gestisce header avanzati)
+            if (typeof requestHtml === 'function') {
+                const res = await requestHtml(url, { 
+                    timeout: CONFIG.TIMEOUT,
+                    headers: { 'Referer': domain + '/', 'Cookie': 's=t' }
+                });
+                data = res.data;
+            } else {
+                // Fallback axios puro
+                const res = await axios.get(url, { 
+                    timeout: CONFIG.TIMEOUT,
+                    headers: { 
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36',
+                        'Referer': domain + '/'
+                    }
+                });
+                data = res.data;
+            }
+        } catch (err) {
+            return [];
+        }
 
-        if (!data || data.includes("Verify you are human") || data.includes("Cloudflare")) return [];
+        if (!data || typeof data !== 'string') return [];
 
         const $ = cheerio.load(data);
+        
+        const allRows = $('tr');
         const candidates = [];
 
-        $('table tr').each((i, row) => {
-            if ($(row).find('th').length > 0) return;
+        allRows.each((i, row) => {
             const tds = $(row).find('td');
-            if (tds.length < 7) return; 
+            
+            if (tds.length < 5) return; 
+
+            // Colonna 2 (Indice 1): Titolo
             const titleLink = tds.eq(1).find('a').first();
             const name = titleLink.text().trim();
             let relativeHref = titleLink.attr('href');
-            if (!name || !relativeHref) return;
+            
+            // Se il nome è "File" o vuoto, è l'intestazione
+            if (!name || name === "File" || !relativeHref) return;
 
+            // Costruzione URL assoluto
             if (!relativeHref.startsWith('http')) {
                 if (!relativeHref.startsWith('/')) relativeHref = '/' + relativeHref;
                 relativeHref = domain + relativeHref;
             }
 
-            const sizeStr = tds.eq(5).text().trim();
-            const seeders = parseInt(tds.eq(6).text().trim()) || 0;
+            // Colonna 5 (Indice 4): Dimensione
+            const sizeStr = tds.eq(4).text().trim();
+            
+            // Colonna 6 (Indice 5): Seeders
+            const seedersStr = tds.eq(5).text().trim();
+            const seeders = parseInt(seedersStr) || 0;
 
+            // Filtri logici
             if (isItalianResult(name) && checkYear(name, year, type) && isCorrectFormat(name, reqSeason, reqEpisode)) {
                 candidates.push({ name: name, link: relativeHref, seeders: seeders, sizeStr: sizeStr });
             }
@@ -603,20 +638,39 @@ async function searchTorrentBay(title, year, type, reqSeason, reqEpisode) {
         const limit = pLimit(5);
         const promises = candidates.slice(0, 10).map(cand => limit(async () => {
             try {
-                // Importante: Passare il Referer della ricerca nella pagina dettaglio
-                const { data: detailData } = await requestHtml(cand.link, { 
-                    timeout: 4500, 
-                    headers: { 'Referer': url } 
-                });
+                let detailData;
+                const detailHeaders = { 'Referer': url };
+                
+                if (typeof requestHtml === 'function') {
+                    const res = await requestHtml(cand.link, { timeout: 4500, headers: detailHeaders });
+                    detailData = res.data;
+                } else {
+                    const res = await axios.get(cand.link, { timeout: 4500, headers: { ...detailHeaders, 'User-Agent': 'Mozilla/5.0' } });
+                    detailData = res.data;
+                }
+
                 const $$ = cheerio.load(detailData);
                 let magnet = $$('a[href^="magnet:"]').first().attr('href');
                 if (!magnet) magnet = $$('td:contains("Magnet")').next().find('a').attr('href');
                 
-                return magnet ? { title: cand.name, magnet: magnet, size: cand.sizeStr, sizeBytes: parseSize(cand.sizeStr), seeders: cand.seeders, source: "RARBG" } : null;
+                if (magnet) {
+                    return { 
+                        title: cand.name, 
+                        magnet: magnet, 
+                        size: cand.sizeStr, 
+                        sizeBytes: parseSize(cand.sizeStr), 
+                        seeders: cand.seeders, 
+                        source: "RARBG" 
+                    };
+                }
+                return null;
             } catch (e) { return null; }
         }));
+        
         return (await Promise.all(promises)).filter(Boolean);
-    } catch (e) { return []; }
+    } catch (e) { 
+        return []; 
+    }
 }
 
 // DEFINIZIONE MOTORI ATTIVI
