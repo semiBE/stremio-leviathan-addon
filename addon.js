@@ -5,7 +5,7 @@ const path = require("path");
 const axios = require("axios");
 const Bottleneck = require("bottleneck");
 const rateLimit = require("express-rate-limit");
-const { LRUCache } = require("lru-cache"); // <--- NUOVO IMPORT
+const { LRUCache } = require("lru-cache"); 
 
 // --- IMPORTIAMO MODULI SMART ---
 const { generateSmartQueries } = require("./ai_query");
@@ -55,7 +55,6 @@ const REGEX_ITA = [
 const REGEX_CLEANER = /\b(ita|eng|sub|h264|h265|x264|x265|hevc|1080p|720p|4k|2160p|bluray|web-?dl|rip|ac3|aac|dts|multi|truehd|remux|complete|pack|amzn|nf|dsnp)\b.*/yi;
 
 // --- CACHE SYSTEM (AGGIORNATO CON LRU-CACHE) ---
-// Sostituisce la Map manuale per prevenire Memory Leaks e OOM
 const STREAM_CACHE = new LRUCache({
     max: 1000,              // Massimo 1000 stream in memoria (protezione crash)
     ttl: 15 * 60 * 1000,    // 15 minuti di vita
@@ -188,15 +187,15 @@ function extractStreamInfo(title, source) {
 function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag = "RD") {
     const { quality, qIcon, info, lang, audioInfo } = extractStreamInfo(fileTitle, source);
 
-    const sizeStr = size ? `💿 ${formatBytes(size)}` : "💿 ❓";
+    const sizeStr = size ? `🧲 ${formatBytes(size)}` : "🧲 ❓";
     const seedersStr = (seeders != null) ? `👤 ${seeders}` : "";
     
     
     let langStr = lang || "🌐 ?";
     if (/ita|it\b|italiano/i.test(langStr)) {
-        langStr = "🎙️ ITA";
+        langStr = "🗣️ ITA";
     } else if (/multi/i.test(langStr)) {
-        langStr = "🎙️ MULTI";
+        langStr = "🗣️ MULTI";
     }
 
     const name = `[${serviceTag} ${qIcon} ${quality}] ${source}`;
@@ -419,7 +418,7 @@ app.get("/:conf/stream/:type/:id.json", async (req, res) => {
     // --- LOGICA CACHE AGGIORNATA ---
     if (STREAM_CACHE.has(cacheKey)) {
         console.log(`⚡ [CACHE HIT] Servo "${id}" dalla memoria.`);
-        // LRU Cache gestisce il TTL automaticamente
+        // LRU Cache gestisce il TTL automaticamente, restituiamo solo il valore
         return res.json(STREAM_CACHE.get(cacheKey));
     }
 
