@@ -197,15 +197,23 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
         .trim();
     const epTag = getEpisodeTag(fileTitle);
     
-    const detailLines = [
-        `🎬 ${cleanName}${epTag ? ` ${epTag}` : ""} • ${quality}`,
-        `${audioInfo}${info ? ` • ${info}` : ""}`,
-        `${sizeStr}${seedersStr ? ` • ${seedersStr}` : ""} • ${lang}`
-    ];
+    // --- MODIFICA UI: RIGHE SEPARATE ---
+    const detailLines = [];
+
+    // Riga 1: Titolo, Episodio (se c'è) e Risoluzione
+    detailLines.push(`🎬 ${cleanName}${epTag ? ` ${epTag}` : ""} • ${quality}`);
+
+    // Riga 2: Audio (es. Atmos, Dolby)
+    if (audioInfo) detailLines.push(audioInfo);
+
+    // Riga 3: Video (es. HDR, DV, IMAX) - Ora ha la sua riga dedicata!
+    if (info) detailLines.push(info);
+
+    // Riga 4: Dimensione, Seeders e Lingua
+    detailLines.push(`${sizeStr}${seedersStr ? ` • ${seedersStr}` : ""} • ${lang}`);
 
     return { name, title: detailLines.join('\n') };
 }
-
 async function getMetadata(id, type) {
   try {
     const allowedTypes = ["movie", "series"];
