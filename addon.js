@@ -187,33 +187,49 @@ function extractStreamInfo(title, source) {
 
 function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag = "RD") {
     const { quality, qIcon, info, lang, audioInfo } = extractStreamInfo(fileTitle, source);
-    const sizeStr = size ? `💿 ${formatBytes(size)}` : "💿 ❓"; 
-    const seedersStr = seeders ? `👤 ${seeders}` : "";
+
+    const sizeStr = size ? `💿 ${formatBytes(size)}` : "💿 ❓";
+    const seedersStr = (seeders != null) ? `👤 ${seeders}` : "";
+    
+    
+    let langStr = lang || "🌐 ?";
+    if (/ita|it\b|italiano/i.test(langStr)) {
+        langStr = "🎙️ ITA";
+    } else if (/multi/i.test(langStr)) {
+        langStr = "🎙️ MULTI";
+    }
 
     const name = `[${serviceTag} ${qIcon} ${quality}] ${source}`;
-    let cleanName = cleanFilename(fileTitle)
-        .replace(/s\d+e\d+/i, "")
-        .replace(/s\d+/i, "")
+
+    const cleanName = cleanFilename(fileTitle)
+        .replace(/(s\d{1,2}e\d{1,2}|\d{1,2}x\d{1,2}|s\d{1,2})/ig, "")
+        .replace(/\s{2,}/g, " ")
         .trim();
+
     const epTag = getEpisodeTag(fileTitle);
-    
-    // --- MODIFICA UI: RIGHE SEPARATE ---
+
     const detailLines = [];
 
-    // Riga 1: Titolo, Episodio (se c'è) e Risoluzione
+    
     detailLines.push(`🎬 ${cleanName}${epTag ? ` ${epTag}` : ""} • ${quality}`);
 
-    // Riga 2: Audio (es. Atmos, Dolby)
-    if (audioInfo) detailLines.push(audioInfo);
 
-    // Riga 3: Video (es. HDR, DV, IMAX) - Ora ha la sua riga dedicata!
+    const audioLine = [langStr, audioInfo].filter(Boolean).join(" • ");
+    if (audioLine) detailLines.push(audioLine);
+
+    
     if (info) detailLines.push(info);
 
-    // Riga 4: Dimensione, Seeders e Lingua
-    detailLines.push(`${sizeStr}${seedersStr ? ` • ${seedersStr}` : ""} • ${lang}`);
+    
+    const bottomRow = [sizeStr, seedersStr].filter(Boolean).join(" • ");
+    if (bottomRow) detailLines.push(bottomRow);
 
-    return { name, title: detailLines.join('\n') };
+    return {
+        name,
+        title: detailLines.join("\n")
+    };
 }
+
 async function getMetadata(id, type) {
   try {
     const allowedTypes = ["movie", "series"];
@@ -403,7 +419,7 @@ app.get("/:conf/stream/:type/:id.json", async (req, res) => {
     // --- LOGICA CACHE AGGIORNATA ---
     if (STREAM_CACHE.has(cacheKey)) {
         console.log(`⚡ [CACHE HIT] Servo "${id}" dalla memoria.`);
-        // LRU Cache gestisce il TTL automaticamente, restituiamo solo il valore
+        // LRU Cache gestisce il TTL automaticamente
         return res.json(STREAM_CACHE.get(cacheKey));
     }
 
