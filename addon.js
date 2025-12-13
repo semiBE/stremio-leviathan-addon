@@ -5,6 +5,7 @@ const path = require("path");
 const axios = require("axios");
 const Bottleneck = require("bottleneck");
 const rateLimit = require("express-rate-limit");
+const { LRUCache } = require("lru-cache"); // <--- NUOVO IMPORT
 
 // --- IMPORTIAMO MODULI SMART ---
 const { generateSmartQueries } = require("./ai_query");
@@ -30,7 +31,6 @@ const CONFIG = {
 };
 
 // --- STATIC REGEX PATTERNS (Performance Boost) ---
-// Pre-compiliamo le regex per non ricrearle ad ogni ciclo
 const REGEX_YEAR = /(19|20)\d{2}/;
 const REGEX_QUALITY = {
     "4K": /2160p|4k|uhd/i,
@@ -54,16 +54,14 @@ const REGEX_ITA = [
 ];
 const REGEX_CLEANER = /\b(ita|eng|sub|h264|h265|x264|x265|hevc|1080p|720p|4k|2160p|bluray|web-?dl|rip|ac3|aac|dts|multi|truehd|remux|complete|pack|amzn|nf|dsnp)\b.*/yi;
 
-// --- CACHE SYSTEM ---
-const CACHE_TTL = 15 * 60 * 1000; 
-const STREAM_CACHE = new Map();
-
-setInterval(() => {
-    const now = Date.now();
-    for (const [key, value] of STREAM_CACHE.entries()) {
-        if (now > value.expiry) STREAM_CACHE.delete(key);
-    }
-}, 20 * 60 * 1000);
+// --- CACHE SYSTEM (AGGIORNATO CON LRU-CACHE) ---
+// Sostituisce la Map manuale per prevenire Memory Leaks e OOM
+const STREAM_CACHE = new LRUCache({
+    max: 1000,              // Massimo 1000 stream in memoria (protezione crash)
+    ttl: 15 * 60 * 1000,    // 15 minuti di vita
+    allowStale: false,
+    updateAgeOnGet: true    // Rinnova il TTL se viene richiesto di nuovo
+});
 
 // --- LIMITERS ---
 const LIMITERS = {
@@ -112,7 +110,6 @@ function parseSize(sizeStr) {
 
 function isSafeForItalian(item) {
   if (!item || !item.title) return false;
-  // Check rapido usando regex pre-compilate
   return REGEX_ITA.some(p => p.test(item.title));
 }
 
@@ -136,7 +133,6 @@ function getEpisodeTag(filename) {
     if (matchEp) return `🍿 S${matchEp[1]}E${matchEp[2]}`;
     const matchX = f.match(/(\d+)x(\d+)/i);
     if (matchX) return `🍿 S${matchX[1].padStart(2, '0')}E${matchX[2].padStart(2, '0')}`;
-    // Fallback per stagione intera
     const sMatch = f.match(/s(\d+)\b|stagione (\d+)|season (\d+)/i);
     if (sMatch) {
         const num = sMatch[1] || sMatch[2] || sMatch[3];
@@ -145,55 +141,44 @@ function getEpisodeTag(filename) {
     return "";
 }
 
-// 🔥 NUOVA FUNZIONE: Estrazione Audio Avanzata
 function extractAudioInfo(title) {
     const t = String(title).toLowerCase();
     let audioTags = [];
-    
-    // Rileva Canali
     const channelMatch = t.match(REGEX_AUDIO.channels);
     const channels = channelMatch ? channelMatch[1] : null;
 
-    // Rileva Codec
     if (REGEX_AUDIO.atmos.test(t)) audioTags.push("💣 Atmos");
     else if (REGEX_AUDIO.dts.test(t)) audioTags.push("🔊 DTS");
     else if (REGEX_AUDIO.dolby.test(t)) audioTags.push("🔊 Dolby");
     else if (REGEX_AUDIO.aac.test(t)) audioTags.push("🔈 AAC");
 
-    // Unisce info
     let finalAudio = audioTags.length > 0 ? audioTags[0] : "";
     if (channels) finalAudio += ` ${channels}`;
-    
     return finalAudio || "🔈 Stereo";
 }
 
 function extractStreamInfo(title, source) {
   const t = String(title).toLowerCase();
   
-  // Quality
   let q = "HD"; let qIcon = "📺";
   if (REGEX_QUALITY["4K"].test(t)) { q = "4K"; qIcon = "✨"; }
   else if (REGEX_QUALITY["1080p"].test(t)) { q = "1080p"; qIcon = "🌕"; }
   else if (REGEX_QUALITY["720p"].test(t)) { q = "720p"; qIcon = "🌗"; }
   else if (REGEX_QUALITY["SD"].test(t)) { q = "SD"; qIcon = "🌑"; }
 
-  // Video Tags
   const videoTags = [];
   if (/hdr/.test(t)) videoTags.push("HDR");
   if (/dolby|vision|\bdv\b/.test(t)) videoTags.push("DV");
   if (/imax/.test(t)) videoTags.push("IMAX");
   if (/x265|h265|hevc/.test(t)) videoTags.push("HEVC");
   
-  // Lang
   let lang = "🇬🇧 ENG"; 
   if (source === "Corsaro" || isSafeForItalian({ title })) {
       lang = "🇮🇹 ITA";
       if (/multi|mui/i.test(t)) lang = "🇮🇹 MULTI";
   } 
   
-  // Audio Extraction
   const audioInfo = extractAudioInfo(title);
-
   let detailsParts = [];
   if (videoTags.length) detailsParts.push(`🖥️ ${videoTags.join(" ")}`);
   
@@ -205,20 +190,13 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     const sizeStr = size ? `💿 ${formatBytes(size)}` : "💿 ❓"; 
     const seedersStr = seeders ? `👤 ${seeders}` : "";
 
-    // Nome breve per la lista laterale
     const name = `[${serviceTag} ${qIcon} ${quality}] ${source}`;
-    
-    // Pulizia titolo
     let cleanName = cleanFilename(fileTitle)
         .replace(/s\d+e\d+/i, "")
         .replace(/s\d+/i, "")
         .trim();
     const epTag = getEpisodeTag(fileTitle);
     
-    // Costruzione descrizione multiriga "God Tier"
-    // Riga 1: Titolo pulito + Episodio + Qualità
-    // Riga 2: Audio + Video tags
-    // Riga 3: Dimensione + Seeders + Lingua
     const detailLines = [
         `🎬 ${cleanName}${epTag ? ` ${epTag}` : ""} • ${quality}`,
         `${audioInfo}${info ? ` • ${info}` : ""}`,
@@ -279,7 +257,6 @@ async function resolveDebridLink(config, item, showFake) {
     }
 }
 
-// 🔥 GENERATE STREAM - FUNZIONE PRINCIPALE 🔥
 async function generateStream(type, id, config, userConfStr) {
   if (!config.key && !config.rd) return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key nel configuratore" }] };
   
@@ -309,7 +286,6 @@ async function generateStream(type, id, config, userConfStr) {
   const meta = await getMetadata(finalId, type); 
   if (!meta) return { streams: [] };
   
-  // --- 🔥 LOGICA DINAMICA TITOLI ---
   let dynamicTitles = [];
   try {
       let tmdbIdForSearch = null;
@@ -345,7 +321,6 @@ async function generateStream(type, id, config, userConfStr) {
 
   let resultsRaw = (await Promise.all(promises)).flat();
 
-  // 3. FILTERING
   resultsRaw = resultsRaw.filter(item => {
     if (!item?.magnet) return false;
     const fileYearMatch = item.title.match(REGEX_YEAR);
@@ -358,7 +333,6 @@ async function generateStream(type, id, config, userConfStr) {
     return true;
   });
 
-  // Fallback
   if (resultsRaw.length <= 5) {
     const extPromises = FALLBACK_SCRAPERS.map(fb => 
         LIMITERS.scraper.schedule(() => withTimeout(fb.searchMagnet(queries[0], meta.year, type, finalId), CONFIG.SCRAPER_TIMEOUT).catch(() => []))
@@ -375,7 +349,6 @@ async function generateStream(type, id, config, userConfStr) {
     } catch (e) {}
   }
 
-  // Deduplicazione
   const seen = new Set(); 
   let cleanResults = [];
   for (const item of resultsRaw) {
@@ -392,7 +365,6 @@ async function generateStream(type, id, config, userConfStr) {
   
   if (!cleanResults.length) return { streams: [{ name: "⛔", title: "Nessun risultato ITA trovato" }] };
 
-  // Ranking & Debrid
   const ranked = rankAndFilterResults(cleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
   const rdPromises = ranked.map(item => {
       item.season = meta.season;
@@ -420,18 +392,18 @@ app.get("/:conf/stream/:type/:id.json", async (req, res) => {
     const { conf, type, id } = req.params;
     const cacheKey = `${conf}:${type}:${id}`;
 
+    // --- LOGICA CACHE AGGIORNATA ---
     if (STREAM_CACHE.has(cacheKey)) {
-        const cachedEntry = STREAM_CACHE.get(cacheKey);
-        if (Date.now() < cachedEntry.expiry) {
-            console.log(`⚡ [CACHE HIT] Servo "${id}" dalla memoria.`);
-            return res.json(cachedEntry.data);
-        } else STREAM_CACHE.delete(cacheKey);
+        console.log(`⚡ [CACHE HIT] Servo "${id}" dalla memoria.`);
+        // LRU Cache gestisce il TTL automaticamente, restituiamo solo il valore
+        return res.json(STREAM_CACHE.get(cacheKey));
     }
 
     const result = await generateStream(type, id.replace(".json", ""), getConfig(conf), conf);
 
     if (result && result.streams && result.streams.length > 0 && result.streams[0].name !== "⛔") {
-        STREAM_CACHE.set(cacheKey, { data: result, expiry: Date.now() + CACHE_TTL });
+        // Setta in cache (LRU gestisce eviction e scadenza)
+        STREAM_CACHE.set(cacheKey, result);
     }
     res.json(result); 
 });
