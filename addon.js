@@ -30,7 +30,6 @@ const CONFIG = {
 };
 
 // --- STATIC REGEX PATTERNS (Performance Boost) ---
-// Pre-compiliamo le regex per non ricrearle ad ogni ciclo
 const REGEX_YEAR = /(19|20)\d{2}/;
 const REGEX_QUALITY = {
     "4K": /2160p|4k|uhd/i,
@@ -65,10 +64,11 @@ setInterval(() => {
     }
 }, 20 * 60 * 1000);
 
-// --- LIMITERS ---
+// --- LIMITERS (OTTIMIZZATI PER BEAMUP) ---
+// NOTA: Ho ridotto i valori per evitare crash su server con poca RAM come Beamup Free
 const LIMITERS = {
-  scraper: new Bottleneck({ maxConcurrent: 40, minTime: 10 }), 
-  rd: new Bottleneck({ maxConcurrent: 25, minTime: 40 }), 
+  scraper: new Bottleneck({ maxConcurrent: 15, minTime: 50 }), // Ridotto da 40 a 15
+  rd: new Bottleneck({ maxConcurrent: 10, minTime: 100 }),    // Ridotto da 25 a 10
 };
 
 // --- MOTORI DI RICERCA ---
@@ -76,6 +76,9 @@ const SCRAPER_MODULES = [ require("./engines") ];
 const FALLBACK_SCRAPERS = [ require("./external") ];
 
 const app = express();
+
+// --- BEAMUP CONFIG: TRUST PROXY ---
+// Necessario perché Beamup usa un load balancer
 app.set('trust proxy', 1);
 
 const limiter = rateLimit({
@@ -112,7 +115,6 @@ function parseSize(sizeStr) {
 
 function isSafeForItalian(item) {
   if (!item || !item.title) return false;
-  // Check rapido usando regex pre-compilate
   return REGEX_ITA.some(p => p.test(item.title));
 }
 
@@ -136,7 +138,6 @@ function getEpisodeTag(filename) {
     if (matchEp) return `🍿 S${matchEp[1]}E${matchEp[2]}`;
     const matchX = f.match(/(\d+)x(\d+)/i);
     if (matchX) return `🍿 S${matchX[1].padStart(2, '0')}E${matchX[2].padStart(2, '0')}`;
-    // Fallback per stagione intera
     const sMatch = f.match(/s(\d+)\b|stagione (\d+)|season (\d+)/i);
     if (sMatch) {
         const num = sMatch[1] || sMatch[2] || sMatch[3];
@@ -145,55 +146,43 @@ function getEpisodeTag(filename) {
     return "";
 }
 
-// 🔥 NUOVA FUNZIONE: Estrazione Audio Avanzata
 function extractAudioInfo(title) {
     const t = String(title).toLowerCase();
     let audioTags = [];
-    
-    // Rileva Canali
     const channelMatch = t.match(REGEX_AUDIO.channels);
     const channels = channelMatch ? channelMatch[1] : null;
 
-    // Rileva Codec
     if (REGEX_AUDIO.atmos.test(t)) audioTags.push("💣 Atmos");
     else if (REGEX_AUDIO.dts.test(t)) audioTags.push("🔊 DTS");
     else if (REGEX_AUDIO.dolby.test(t)) audioTags.push("🔊 Dolby");
     else if (REGEX_AUDIO.aac.test(t)) audioTags.push("🔈 AAC");
 
-    // Unisce info
     let finalAudio = audioTags.length > 0 ? audioTags[0] : "";
     if (channels) finalAudio += ` ${channels}`;
-    
     return finalAudio || "🔈 Stereo";
 }
 
 function extractStreamInfo(title, source) {
   const t = String(title).toLowerCase();
-  
-  // Quality
   let q = "HD"; let qIcon = "📺";
   if (REGEX_QUALITY["4K"].test(t)) { q = "4K"; qIcon = "✨"; }
   else if (REGEX_QUALITY["1080p"].test(t)) { q = "1080p"; qIcon = "🌕"; }
   else if (REGEX_QUALITY["720p"].test(t)) { q = "720p"; qIcon = "🌗"; }
   else if (REGEX_QUALITY["SD"].test(t)) { q = "SD"; qIcon = "🌑"; }
 
-  // Video Tags
   const videoTags = [];
   if (/hdr/.test(t)) videoTags.push("HDR");
   if (/dolby|vision|\bdv\b/.test(t)) videoTags.push("DV");
   if (/imax/.test(t)) videoTags.push("IMAX");
   if (/x265|h265|hevc/.test(t)) videoTags.push("HEVC");
   
-  // Lang
   let lang = "🇬🇧 ENG"; 
   if (source === "Corsaro" || isSafeForItalian({ title })) {
       lang = "🇮🇹 ITA";
       if (/multi|mui/i.test(t)) lang = "🇮🇹 MULTI";
   } 
   
-  // Audio Extraction
   const audioInfo = extractAudioInfo(title);
-
   let detailsParts = [];
   if (videoTags.length) detailsParts.push(`🖥️ ${videoTags.join(" ")}`);
   
@@ -205,20 +194,14 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     const sizeStr = size ? `💿 ${formatBytes(size)}` : "💿 ❓"; 
     const seedersStr = seeders ? `👤 ${seeders}` : "";
 
-    // Nome breve per la lista laterale
     const name = `[${serviceTag} ${qIcon} ${quality}] ${source}`;
     
-    // Pulizia titolo
     let cleanName = cleanFilename(fileTitle)
         .replace(/s\d+e\d+/i, "")
         .replace(/s\d+/i, "")
         .trim();
     const epTag = getEpisodeTag(fileTitle);
     
-    // Costruzione descrizione multiriga "God Tier"
-    // Riga 1: Titolo pulito + Episodio + Qualità
-    // Riga 2: Audio + Video tags
-    // Riga 3: Dimensione + Seeders + Lingua
     const detailLines = [
         `🎬 ${cleanName}${epTag ? ` ${epTag}` : ""} • ${quality}`,
         `${audioInfo}${info ? ` • ${info}` : ""}`,
@@ -279,7 +262,6 @@ async function resolveDebridLink(config, item, showFake) {
     }
 }
 
-// 🔥 GENERATE STREAM - FUNZIONE PRINCIPALE 🔥
 async function generateStream(type, id, config, userConfStr) {
   if (!config.key && !config.rd) return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key nel configuratore" }] };
   
@@ -309,7 +291,6 @@ async function generateStream(type, id, config, userConfStr) {
   const meta = await getMetadata(finalId, type); 
   if (!meta) return { streams: [] };
   
-  // --- 🔥 LOGICA DINAMICA TITOLI ---
   let dynamicTitles = [];
   try {
       let tmdbIdForSearch = null;
@@ -345,7 +326,6 @@ async function generateStream(type, id, config, userConfStr) {
 
   let resultsRaw = (await Promise.all(promises)).flat();
 
-  // 3. FILTERING
   resultsRaw = resultsRaw.filter(item => {
     if (!item?.magnet) return false;
     const fileYearMatch = item.title.match(REGEX_YEAR);
@@ -358,7 +338,6 @@ async function generateStream(type, id, config, userConfStr) {
     return true;
   });
 
-  // Fallback
   if (resultsRaw.length <= 5) {
     const extPromises = FALLBACK_SCRAPERS.map(fb => 
         LIMITERS.scraper.schedule(() => withTimeout(fb.searchMagnet(queries[0], meta.year, type, finalId), CONFIG.SCRAPER_TIMEOUT).catch(() => []))
@@ -375,7 +354,6 @@ async function generateStream(type, id, config, userConfStr) {
     } catch (e) {}
   }
 
-  // Deduplicazione
   const seen = new Set(); 
   let cleanResults = [];
   for (const item of resultsRaw) {
@@ -392,7 +370,6 @@ async function generateStream(type, id, config, userConfStr) {
   
   if (!cleanResults.length) return { streams: [{ name: "⛔", title: "Nessun risultato ITA trovato" }] };
 
-  // Ranking & Debrid
   const ranked = rankAndFilterResults(cleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
   const rdPromises = ranked.map(item => {
       item.season = meta.season;
@@ -407,7 +384,6 @@ async function generateStream(type, id, config, userConfStr) {
   return { streams }; 
 }
 
-// --- ROUTES ---
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/:conf/configure", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/configure", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
@@ -439,5 +415,11 @@ app.get("/:conf/stream/:type/:id.json", async (req, res) => {
 function getConfig(configStr) { try { return JSON.parse(Buffer.from(configStr, "base64").toString()); } catch { return {}; } }
 function withTimeout(promise, ms) { return Promise.race([promise, new Promise(r => setTimeout(() => r([]), ms))]); }
 
+// --- BEAMUP CONFIG: PORT LISTENER ---
+// process.env.PORT è fondamentale per Beamup.
+// Se non lo legge, l'app non parte.
 const PORT = process.env.PORT || 7000;
-app.listen(PORT, () => console.log(`🚀 Leviathan (God Tier) attivo su porta ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`🚀 Leviathan (God Tier) attivo su porta ${PORT}`);
+    console.log(`📡 Beamup Compatibility Mode: ON`);
+});
