@@ -53,18 +53,142 @@ const ULTRA_FORBIDDEN_EXPANSIONS = new Set([
 // Regex per contenuti spazzatura (Fanfic, Parodie)
 const FORBIDDEN_REGEX = [/fanfic/i, /parody/i, /spoof/i, /mock/i, /fake/i];
 
-// Grafo Spinoff Avanzato
+// Grafo Spinoff Avanzato - ULTRA EDITION
 const ULTRA_SPINOFF_GRAPH = {
-    "dexter": { spinoffs: ["new blood", "original sin"] },
-    "the walking dead": { spinoffs: ["dead city", "world beyond", "fear the walking dead", "daryl dixon", "ones who live"] },
-    "breaking bad": { spinoffs: ["better call saul", "el camino"] },
-    "game of thrones": { spinoffs: ["house of the dragon", "snow"] },
-    "csi": { spinoffs: ["miami", "ny", "cyber", "vegas"] },
-    "ncis": { spinoffs: ["los angeles", "new orleans", "hawaii", "sydney"] },
-    "star trek": { spinoffs: ["next generation", "deep space nine", "voyager", "enterprise", "discovery", "picard", "strange new worlds"] },
-    "star wars": { spinoffs: ["mandalorian", "andor", "obi-wan", "ahsoka", "book of boba fett"] },
-    "naruto": { spinoffs: ["shippuden", "boruto"] },
-    "dragon ball": { spinoffs: ["z", "super", "gt", "kai"] }
+    // === I GIGANTI (Sci-Fi / Fantasy) ===
+    "star wars": { 
+        spinoffs: ["mandalorian", "andor", "obi wan", "obi-wan", "ahsoka", "book of boba fett", "bad batch", "tales of the jedi", "visions", "resistance", "rebels", "clone wars", "acolyte", "skeleton crew"] 
+    },
+    "star trek": { 
+        spinoffs: ["next generation", "tng", "deep space nine", "ds9", "voyager", "enterprise", "discovery", "picard", "strange new worlds", "lower decks", "prodigy", "short treks"] 
+    },
+    "game of thrones": { 
+        spinoffs: ["house of the dragon", "snow", "knight of the seven kingdoms"] 
+    },
+    "the walking dead": { 
+        spinoffs: ["dead city", "world beyond", "fear the walking dead", "daryl dixon", "ones who live", "tales of the walking dead"] 
+    },
+    "doctor who": { 
+        spinoffs: ["torchwood", "sarah jane adventures", "class"] 
+    },
+    "the boys": { 
+        spinoffs: ["gen v", "diabolical"] 
+    },
+    "dune": {
+        spinoffs: ["prophecy", "sisterhood"]
+    },
+    "the witcher": { 
+        spinoffs: ["blood origin", "nightmare of the wolf", "sirens of the deep"] 
+    },
+    "vikings": { 
+        spinoffs: ["valhalla"] 
+    },
+    "money heist": { // La Casa de Papel
+        spinoffs: ["berlin", "korea"] 
+    },
+    "la casa de papel": { 
+        spinoffs: ["berlin", "corea"] 
+    },
+    "bridgerton": {
+        spinoffs: ["queen charlotte"]
+    },
+
+    // === PROCEDURAL & CRIME (Confusioni frequenti) ===
+    "csi": { 
+        spinoffs: ["miami", "ny", "cyber", "vegas"] 
+    },
+    "ncis": { 
+        spinoffs: ["los angeles", "new orleans", "hawaii", "sydney", "origins"] 
+    },
+    "criminal minds": { 
+        spinoffs: ["suspect behavior", "beyond borders", "evolution"] // Evolution spesso è s16, ma a volte separato
+    },
+    "law and order": { 
+        spinoffs: ["special victims unit", "svu", "criminal intent", "organized crime", "trial by jury", "la", "true crime"] 
+    },
+    "chicago": { 
+        spinoffs: ["pd", "fire", "med", "justice"] // Se cerco "Chicago Fire", non voglio "Chicago PD"
+    },
+    "fbi": { 
+        spinoffs: ["most wanted", "international"] 
+    },
+    "911": { 
+        spinoffs: ["lone star"] 
+    },
+    "rookies": { // The Rookie
+        spinoffs: ["feds"] 
+    },
+
+    // === DRAMA & UNIVERSI ESTESI ===
+    "yellowstone": { 
+        spinoffs: ["1883", "1923", "6666", "1944"] 
+    },
+    "breaking bad": { 
+        spinoffs: ["better call saul", "el camino"] 
+    },
+    "dexter": { 
+        spinoffs: ["new blood", "original sin"] 
+    },
+    "power": { 
+        spinoffs: ["book ii", "book 2", "ghost", "book iii", "book 3", "raising kanan", "book iv", "book 4", "force"] 
+    },
+    "suits": { 
+        spinoffs: ["pearson", "la"] 
+    },
+    "pretty little liars": { 
+        spinoffs: ["ravenswood", "perfectionists", "original sin", "summer school"] 
+    },
+    "gossip girl": {
+        spinoffs: ["2021"] // Reboot
+    },
+
+    // === ANIME (Titoli infiniti) ===
+    "dragon ball": { 
+        spinoffs: ["z", "super", "gt", "kai", "daima", "heroes"] 
+    },
+    "naruto": { 
+        spinoffs: ["shippuden", "boruto", "rock lee"] 
+    },
+    "one piece": { 
+        spinoffs: ["film red", "stampede", "gold", "strong world", "z"] 
+    },
+    "saint seiya": { 
+        spinoffs: ["lost canvas", "omega", "soul of gold", "saintia sho", "knights of the zodiac"] 
+    },
+    "jojo": { 
+        spinoffs: ["rohan"] // Thus Spoke Kishibe Rohan
+    },
+    "pokemon": {
+        spinoffs: ["horizons", "concierge", "generations", "evolutions"]
+    },
+
+    // === REALITY TV (Il caos assoluto) ===
+    "90 day fiance": { 
+        spinoffs: ["happily ever after", "before the 90 days", "the other way", "single life", "pillow talk", "uk", "love in paradise"] 
+    },
+    "rupaul": { 
+        spinoffs: ["all stars", "untucked", "uk", "canada", "down under", "italia", "espana", "philippines", "thailand", "vs the world", "global"] 
+    },
+    "below deck": { 
+        spinoffs: ["mediterranean", "sailing yacht", "down under", "adventure"] 
+    },
+    "real housewives": { 
+        spinoffs: ["beverly hills", "atlanta", "potomac", "salt lake city", "miami", "new york", "orange county", "new jersey", "dubai"] 
+    },
+    "bachelor": {
+        spinoffs: ["bachelorette", "paradise", "winter games", "golden"]
+    },
+    
+    // === HORROR / MOVIES UNIVERSES ===
+    "american horror story": {
+        spinoffs: ["american horror stories"] 
+    },
+    "the conjuring": {
+        spinoffs: ["annabelle", "nun", "curse of la llorona"]
+    },
+    "insidious": {
+        spinoffs: ["chapter 2", "chapter 3", "last key", "red door"]
+    }
 };
 
 // ==========================================
@@ -199,38 +323,31 @@ function smartMatch(metaTitle, filename, isSeries = false, metaSeason = null, me
     if (metaYear) {
         const fileYear = extractYear(filename);
         if (fileYear) {
-            // Se gli anni sono diversi e la distanza è >= 1 anno, stai attento
-            // Esempio: Cerco 2025, trovo 2024. Se il titolo non è IDENTICO, scarta.
+            
             if (Math.abs(fileYear - metaYear) >= 1) {
-                // Tolleranza zero se il titolo non è esattamente lo stesso
-                // Se cerco "Frankenstein" (2025) e trovo "Lisa Frankenstein" (2024), qui verrebbe bloccato
-                // perché "Lisa" sporca il match esatto.
+                
                 const strictFuzzy = FuzzySet([cleanMetaString]).get(cleanFileString);
-                // Se il fuzzy score è basso (< 0.95) e l'anno è diverso, è un altro film
+                
                 if (!strictFuzzy || strictFuzzy[0][0] < 0.95) return false;
             }
         }
     }
 
-    // 2. Controllo Prefisso Intruso ("Lisa" Check)
-    // Se la prima parola del file (pulito) NON è la prima parola del titolo cercato
-    // E la prima parola del file non è contenuta nel titolo cercato... è un altro film.
+    
     if (fTokens.length > 0 && mTokens.length > 0) {
         const firstMeta = mTokens[0];
         const firstFile = fTokens[0];
         
-        // Esempio: Meta="Frankenstein", File="Lisa Frankenstein"
-        // firstMeta="frankenstein", firstFile="lisa"
-        // "lisa" != "frankenstein" e "lisa" non è in mTokens -> SCARTA
+        
         if (firstFile !== firstMeta && !mTokens.includes(firstFile)) {
             
-            // Eccezione: a volte il file ha il titolo inglese prima?
-            // Controlliamo se il titolo cercato appare DOPO interamente
+            
+            
             const joinedFile = fTokens.join(" ");
             const joinedMeta = mTokens.join(" ");
             
             // Se il titolo cercato è "Frankenstein" e il file è "Lisa Frankenstein"
-            // joinedFile include joinedMeta, MA c'è robaccia prima.
+            // joinedFile include joinedMeta
             if (joinedFile.includes(joinedMeta)) {
                 // Se c'è un prefisso significativo, scarta.
                 return false;
@@ -253,9 +370,9 @@ function smartMatch(metaTitle, filename, isSeries = false, metaSeason = null, me
         if (mTokens.some(mt => mt === ft || (mt.length > 3 && ft.includes(mt)))) found++;
     });
     
-    // Richiedi che quasi tutte le parole del titolo siano presenti
+    
     const ratio = found / mTokens.length;
-    if (ratio >= 0.90) return true; // Alzato da 0.80 a 0.90 per precisione
+    if (ratio >= 0.90) return true; 
 
     return false;
 }
