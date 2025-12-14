@@ -187,19 +187,32 @@ function extractStreamInfo(title, source) {
 function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag = "RD") {
     const { quality, qIcon, info, lang, audioInfo } = extractStreamInfo(fileTitle, source);
 
-    const sizeStr = size ? `🧲 ${formatBytes(size)}` : "🧲 ❓";
-    const seedersStr = (seeders != null) ? `👤 ${seeders}` : "";
-    
-    
-    let langStr = lang || "🌐 ?";
-    if (/ita|it\b|italiano/i.test(langStr)) {
-        langStr = "🗣️ ITA";
-    } else if (/multi/i.test(langStr)) {
-        langStr = "🗣️ MULTI";
+    // --- 1. FORMATTAZIONE DATI ---
+    const sizeStr = size ? `🧲 ${formatBytes(size)}` : "🧲 ?";
+    const seedersStr = seeders != null ? `👤 ${seeders}` : "";
+
+    // --- 2. LINGUA SMART ---
+    let langStr = "🌐 ?";
+    if (/ita|it\b|italiano/i.test(lang || "")) langStr = "🗣️ ITA";
+    else if (/multi/i.test(lang || "")) langStr = "🗣️ MULTI";
+    else if (lang) langStr = `🗣️ ${lang.toUpperCase()}`;
+
+    // --- 3. GESTIONE SOURCE E SERVICE ---
+    let displaySource = source;
+    // Rinomina Corsaro
+    if (/corsaro/i.test(displaySource)) {
+        displaySource = "ilCorSaRoNeRo";
     }
+    
+    // Uniamo il Tag del servizio (RD) alla source per pulire il badge
+    // Esempio output: "⚡ [RD] ilCorSaRoNeRo"
+    const sourceLine = `⚡ [${serviceTag}] ${displaySource}`;
 
-    const name = `[${serviceTag} ${qIcon} ${quality}] ${source}`;
+    // --- 4. HEADER (BADGE "LEVIATHAN") ---
+    
+    const name = `🦑 LEVIATHAN\n${qIcon} ${quality}`; 
 
+    // --- 5. PULIZIA TITOLO ---
     const cleanName = cleanFilename(fileTitle)
         .replace(/(s\d{1,2}e\d{1,2}|\d{1,2}x\d{1,2}|s\d{1,2})/ig, "")
         .replace(/\s{2,}/g, " ")
@@ -207,25 +220,30 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
 
     const epTag = getEpisodeTag(fileTitle);
 
-    const detailLines = [];
+    // --- 6. COSTRUZIONE RIGHE ---
+    const lines = [];
 
-    
-    detailLines.push(`🎬 ${cleanName}${epTag ? ` ${epTag}` : ""} • ${quality}`);
+    // RIGA 1: Titolo
+    lines.push(`🎬 ${cleanName}${epTag ? ` ${epTag}` : ""}`);
 
-
+    // RIGA 2: Lingua e Audio
     const audioLine = [langStr, audioInfo].filter(Boolean).join(" • ");
-    if (audioLine) detailLines.push(audioLine);
+    if (audioLine) lines.push(audioLine);
 
-    
-    if (info) detailLines.push(info);
+    // RIGA 3: Info Video
+    const cleanInfo = info ? info.replace("🖥️ ", "") : "";
+    if (cleanInfo) lines.push(`🎞️ ${cleanInfo}`);
 
-    
-    const bottomRow = [sizeStr, seedersStr].filter(Boolean).join(" • ");
-    if (bottomRow) detailLines.push(bottomRow);
+    // RIGA 4: Size e Seeders
+    const techLine = [sizeStr, seedersStr].filter(Boolean).join(" • ");
+    if (techLine) lines.push(techLine);
+
+    // RIGA 5: Source + Service Tag (Ben visibile in fondo)
+    if (sourceLine) lines.push(sourceLine);
 
     return {
         name,
-        title: detailLines.join("\n")
+        title: lines.join("\n")
     };
 }
 
