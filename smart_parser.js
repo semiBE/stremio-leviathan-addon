@@ -28,15 +28,51 @@ const ULTRA_JUNK_TOKENS = new Set([
     "torrent", "magnet", "ddl"
 ]);
 
-// Parole comuni da ignorare nel confronto (Stop Words estese)
+// Parole comuni da ignorare (Stop Words Potenziate)
 const ULTRA_STOP_WORDS = new Set([
-    // Italiano
-    "il","lo","la","i","gli","le","un","uno","una","di","del","della","dei",
-    "delle","da","in","con","su","per","tra","fra",
-    // Inglese
-    "the","a","an","of","on","at","to","for","by","with","and","&","it","chapter",
-    // Francese / Tedesco (comuni in multi)
-    "les","une","des","du","au","aux","der","die","das","ein","eine","im","am","zum"
+    // --- ITALIANO (Fondamentale: Preposizioni Articolate) ---
+    // Articoli
+    "il","lo","la","i","gli","le","l", 
+    "un","uno","una",
+    // Preposizioni Semplici & Congiunzioni
+    "di","a","da","in","con","su","per","tra","fra",
+    "e","ed","o", "ma", "se", "che",
+    // Preposizioni Articolate (Cruciali per fuzzy match pulito)
+    "del","dello","della","dei","degli","delle","dell",
+    "al","allo","alla","ai","agli","alle","all",
+    "dal","dallo","dalla","dai","dagli","dalle","dall",
+    "nel","nello","nella","nei","negli","nelle","nell",
+    "sul","sullo","sulla","sui","sugli","sulle","sull",
+    "col","coi",
+
+    // --- INGLESE (Espanso) ---
+    "the","a","an",
+    "of","to","for","on","by","at","from","with","in","into","onto",
+    "and","&","or","nor","but",
+    "is","are","was","were","be","been", // Verbi ausiliari comuni
+    "that","this","these","those",
+    "my","your","his","her","its","our","their",
+    "feat","ft","vs","versus", // Comune nei titoli musicali o crossover
+
+    // --- SPAGNOLO (Essenziale per release Multi) ---
+    "el","la","los","las","lo",
+    "un","una","unos","unas",
+    "y","o","e",
+    "de","del","en","a","por","para","con","sin","sobre",
+
+    // --- FRANCESE ---
+    "le","la","les","l",
+    "un","une","des",
+    "du","de","au","aux",
+    "et","ou","en","par","pour","sur","dans",
+
+    // --- TEDESCO ---
+    "der","die","das","den","dem","des",
+    "ein","eine","einer","eines",
+    "und","oder","mit","von","im","am","zum","zur",
+    
+    // --- GENERICI STRUTTURALI (Fallback) ---
+    "vol","pt","part","chapter", "capitolo"
 ]);
 
 // Parole che indicano un contenuto diverso dall'originale (Sequel, ecc.)
@@ -101,7 +137,7 @@ const ULTRA_SPINOFF_GRAPH = {
         spinoffs: ["los angeles", "new orleans", "hawaii", "sydney", "origins"] 
     },
     "criminal minds": { 
-        spinoffs: ["suspect behavior", "beyond borders", "evolution"] // Evolution spesso è s16, ma a volte separato
+        spinoffs: ["suspect behavior", "beyond borders", "evolution"] // Evolution spesso è s16
     },
     "law and order": { 
         spinoffs: ["special victims unit", "svu", "criminal intent", "organized crime", "trial by jury", "la", "true crime"] 
@@ -150,7 +186,7 @@ const ULTRA_SPINOFF_GRAPH = {
         spinoffs: ["shippuden", "boruto", "rock lee"] 
     },
     "one piece": { 
-        spinoffs: ["film red", "stampede", "gold", "strong world", "z"] 
+        spinoffs: ["film red", "stampede", "gold", "strong world", "z"] // Evita match film se cerchi la serie
     },
     "saint seiya": { 
         spinoffs: ["lost canvas", "omega", "soul of gold", "saintia sho", "knights of the zodiac"] 
@@ -181,7 +217,7 @@ const ULTRA_SPINOFF_GRAPH = {
     
     // === HORROR / MOVIES UNIVERSES ===
     "american horror story": {
-        spinoffs: ["american horror stories"] 
+        spinoffs: ["american horror stories"] // La 's' finale frega sempre
     },
     "the conjuring": {
         spinoffs: ["annabelle", "nun", "curse of la llorona"]
@@ -323,31 +359,37 @@ function smartMatch(metaTitle, filename, isSeries = false, metaSeason = null, me
     if (metaYear) {
         const fileYear = extractYear(filename);
         if (fileYear) {
+            // Se gli anni sono diversi e la distanza è >= 1 anno, stai attento
             
             if (Math.abs(fileYear - metaYear) >= 1) {
+                // Tolleranza zero se il titolo non è esattamente lo stesso
                 
                 const strictFuzzy = FuzzySet([cleanMetaString]).get(cleanFileString);
-                
+                // Se il fuzzy score è basso (< 0.95) e l'anno è diverso, è un altro film
                 if (!strictFuzzy || strictFuzzy[0][0] < 0.95) return false;
             }
         }
     }
 
-    
+    // 2. Controllo Prefisso Intruso ("Lisa" Check)
+    // Se la prima parola del file (pulito) NON è la prima parola del titolo cercato
+    // E la prima parola del file non è contenuta nel titolo cercato... è un altro film.
     if (fTokens.length > 0 && mTokens.length > 0) {
         const firstMeta = mTokens[0];
         const firstFile = fTokens[0];
         
-        
+        // Esempio: Meta="Frankenstein", File="Lisa Frankenstein"
+        // firstMeta="frankenstein", firstFile="lisa"
+        // "lisa" != "frankenstein" e "lisa" non è in mTokens -> SCARTA
         if (firstFile !== firstMeta && !mTokens.includes(firstFile)) {
             
-            
-            
+            // Eccezione: a volte il file ha il titolo inglese prima?
+            // Controlliamo se il titolo cercato appare DOPO interamente
             const joinedFile = fTokens.join(" ");
             const joinedMeta = mTokens.join(" ");
             
             // Se il titolo cercato è "Frankenstein" e il file è "Lisa Frankenstein"
-            // joinedFile include joinedMeta
+            // joinedFile include joinedMeta, MA c'è robaccia prima.
             if (joinedFile.includes(joinedMeta)) {
                 // Se c'è un prefisso significativo, scarta.
                 return false;
@@ -370,7 +412,7 @@ function smartMatch(metaTitle, filename, isSeries = false, metaSeason = null, me
         if (mTokens.some(mt => mt === ft || (mt.length > 3 && ft.includes(mt)))) found++;
     });
     
-    
+    // Richiedi che quasi tutte le parole del titolo siano presenti
     const ratio = found / mTokens.length;
     if (ratio >= 0.90) return true; 
 
