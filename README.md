@@ -224,7 +224,10 @@ Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico
 
 <div align="center">
 
-**Sviluppato con precisione e caffeina**
+**Sviluppato con precisione e**
+<a href="https://www.paypal.me/luc4nex" target="_blank">
+  <img src="https://img.shields.io/badge/☕_Caffeina-DONATE-F5A623?style=flat-square&logoColor=black" valign="middle" />
+</a>
 <br>
 da [**LUC4N3X**](https://github.com/LUC4N3X)
 <br>
@@ -234,14 +237,4 @@ da [**LUC4N3X**](https://github.com/LUC4N3X)
 <br>
 <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00E0FF&center=true&vCenter=true&width=550&lines=Rimani+legale.;Rimani+lucido.;Lunga+vita+al+codice." alt="Typing SVG" />
 
-</div>
----
-<div align="center" style="margin-top: 20px; margin-bottom: 20px;">
-  <a href="https://www.paypal.me/luc4nex" target="_blank" style="text-decoration: none;">
-    <div style="background: linear-gradient(90deg, #00eaff, transparent, #00eaff); padding: 1px; border-radius: 6px; display: inline-block; width: auto;">
-      <div style="background: #050a10; color: #00eaff; padding: 10px 25px; border-radius: 6px; font-family: monospace; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; display: flex; align-items: center; gap: 10px;">
-        <span>⚡ INITIATE DONATION PROTOCOL</span>
-      </div>
-    </div>
-  </a>
 </div>
