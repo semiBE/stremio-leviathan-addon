@@ -224,17 +224,41 @@ Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico
 
 <div align="center">
 
-**Sviluppato con precisione e**
-<a href="https://www.paypal.me/luc4nex" target="_blank">
-  <img src="https://img.shields.io/badge/☕_Caffeina-DONATE-F5A623?style=flat-square&logoColor=black" valign="middle" />
-</a>
-<br>
-da [**LUC4N3X**](https://github.com/LUC4N3X)
-<br>
-<sub>Leviathan Project © 2025 — Tutti i diritti riservati</sub>
+<!-- Divider -->
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:00E0FF,100:6A00FF&height=90&section=footer"/>
 
 <br>
-<br>
-<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00E0FF&center=true&vCenter=true&width=550&lines=Rimani+legale.;Rimani+lucido.;Lunga+vita+al+codice." alt="Typing SVG" />
+
+<!-- Motto -->
+<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1200&color=00E0FF&center=true&vCenter=true&width=620&lines=Rimani+legale.;Rimani+lucido.;Il+codice+non+dorme+mai.;Lunga+vita+al+codice." />
+
+<br><br>
+
+<!-- Badges -->
+<img src="https://img.shields.io/badge/Status-Active-00E0FF?style=flat-square"/>
+<img src="https://img.shields.io/badge/Focus-Performance%20%26%20Precision-6A00FF?style=flat-square"/>
+<img src="https://img.shields.io/badge/Made%20With-Passione%20e%20Caffeina-F5A623?style=flat-square"/>
+
+<br><br>
+
+<!-- Donate -->
+<a href="https://www.paypal.me/luc4nex" target="_blank">
+  <img src="https://img.shields.io/badge/☕%20Offrimi%20un%20caffè-DONA-F5A623?style=for-the-badge&logo=paypal&logoColor=black"/>
+</a>
+
+<br><br>
+
+<!-- Author -->
+<strong>Sviluppato con precisione chirurgica da</strong><br>
+<a href="https://github.com/LUC4N3X">
+  <img src="https://img.shields.io/badge/LUC4N3X-Developer%20%26%20Architect-00E0FF?style=for-the-badge&logo=github"/>
+</a>
+
+<br><br>
+
+<sub>
+Leviathan Project © 2025<br>
+Potenza. Controllo. Codice.
+</sub>
 
 </div>
