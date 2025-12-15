@@ -236,12 +236,12 @@ da [**LUC4N3X**](https://github.com/LUC4N3X)
 
 </div>
 ---
-<div align="center">
-  <a href="https://www.paypal.me/luc4nex" target="_blank">
-    <img src="https://img.shields.io/badge/MAINTENANCE-CAFFEINE_INJECTION-00eaff?style=for-the-badge&logo=paypal&logoColor=black&labelColor=white" alt="Donate with PayPal" />
+<div align="center" style="margin-top: 20px; margin-bottom: 20px;">
+  <a href="https://www.paypal.me/luc4nex" target="_blank" style="text-decoration: none;">
+    <div style="background: linear-gradient(90deg, #00eaff, transparent, #00eaff); padding: 1px; border-radius: 6px; display: inline-block; width: auto;">
+      <div style="background: #050a10; color: #00eaff; padding: 10px 25px; border-radius: 6px; font-family: monospace; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; display: flex; align-items: center; gap: 10px;">
+        <span>⚡ INITIATE DONATION PROTOCOL</span>
+      </div>
+    </div>
   </a>
-  <br>
-  <span style="font-size: 0.8rem; color: #94a3b8; letter-spacing: 1px;">
-    SUPPORTS INFRASTRUCTURE & DEV TIME
-  </span>
 </div>
