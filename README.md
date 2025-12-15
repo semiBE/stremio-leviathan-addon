@@ -221,52 +221,36 @@ Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico
 <div align="center">
 
 <br>
+<br>
 
-<table style="border: 1px solid #333; border-radius: 8px; overflow: hidden; background: #0d1117;" cellspacing="0" cellpadding="0">
-  <tr style="background: #161b22; border-bottom: 1px solid #333;">
-    <td align="left" style="padding: 8px 15px;">
-      <span style="color: #ff5f56; font-size: 14px;">●</span>
-      <span style="color: #ffbd2e; font-size: 14px;">●</span>
-      <span style="color: #27c93f; font-size: 14px;">●</span>
-      <span style="font-family: monospace; color: #8b949e; margin-left: 10px; font-size: 12px;">root@leviathan-core:~</span>
-    </td>
-  </tr>
-  <tr>
-    <td align="left" style="padding: 20px; font-family: 'Courier New', monospace; color: #c9d1d9;">
-      <div style="line-height: 1.6;">
-        <span style="color: #00eaff;">➜</span> <span style="color: #79c0ff;">system_check</span> --target=infrastructure<br>
-        <span style="color: #8b949e;">[INFO]</span> Core Protocol: <span style="color: #56d364;">ONLINE</span><br>
-        <span style="color: #8b949e;">[INFO]</span> Architecture: <span style="color: #e3b341;">HYPERMODE v3.5</span><br>
-        <span style="color: #8b949e;">[WARN]</span> Dev Fuel Levels: <span style="color: #ff7b72;">REQUIRE ATTENTION</span><br>
-        <br>
-        <span style="color: #00eaff;">➜</span> <span style="color: #79c0ff;">cat</span> ./maintenance_policy.txt<br>
-        <span style="color: #c9d1d9; font-style: italic;">"Contributo per il mantenimento e l'aggiornamento del sistema."</span>
-        <br><br>
-        <span style="color: #00eaff;">➜</span> <span style="color: #79c0ff;">sudo initiate_support</span> --method=paypal<br>
-        <br>
-      </div>
-      
-      <div align="center" style="margin-top: 5px; margin-bottom: 5px;">
-        <a href="https://www.paypal.me/luc4nex">
-          <img src="https://img.shields.io/badge/>_EXECUTE-SUPPORT_PROTOCOL-F5A623?style=for-the-badge&logo=paypal&logoColor=black&labelColor=1f2428" alt="Donate" />
-        </a>
-      </div>
-    </td>
-  </tr>
-  <tr style="background: #161b22; border-top: 1px solid #333;">
-    <td align="center" style="padding: 10px;">
-      <span style="color: #8b949e; font-size: 10px; font-family: sans-serif;">
-        DESIGNED BY <a href="https://github.com/LUC4N3X" style="color: #00eaff; text-decoration: none;">LUC4N3X</a> // © 2025
-      </span>
-    </td>
-  </tr>
-</table>
+<pre align="left" style="background-color: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 10px; font-family: 'Courier New', monospace; width: 90%; max-width: 600px; margin: 0 auto;">
+<span style="color: #8b949e;"># SYSTEM MAINTENANCE LOG:</span>
+<span style="color: #ff7b72;">[ALERT]</span>  <span style="color: #c9d1d9;">DEV_FUEL_LEVELS_CRITICAL</span>
+<span style="color: #79c0ff;">[INFO]</span>   <span style="color: #c9d1d9;">Target: Infrastructure & Updates</span>
+<span style="color: #d2a8ff;">[MSG]</span>    <span style="color: #a5d6ff;">"Contributo per il mantenimento e l'aggiornamento del sistema."</span>
+<span style="color: #56d364;">[CMD]</span>    <span style="color: #c9d1d9;">Awaiting user input below...</span>
+</pre>
 
+<br>
+
+<a href="https://www.paypal.me/luc4nex">
+  <img src="https://img.shields.io/badge/>_EXECUTE-DONATION_SEQUENCE-F5A623?style=for-the-badge&logo=paypal&logoColor=black&labelColor=0d1117" alt="Donate" />
+</a>
+
+<br>
+<br>
+
+<span style="color: #8b949e; font-size: 0.8rem;">
+  Architetto del sistema: <a href="https://github.com/LUC4N3X"><b>LUC4N3X</b></a>
+</span>
+<br>
+<sub>Leviathan Project © 2025</sub>
+
+<br>
 <br>
 
 <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00E0FF&center=true&vCenter=true&width=550&lines=Rimani+legale.;Rimani+lucido.;Lunga+vita+al+codice." alt="Typing SVG" />
 
 </div>
 
-
-
+        
