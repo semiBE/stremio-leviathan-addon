@@ -221,79 +221,43 @@ Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico
 
 
 
-
-
 <div align="center">
-  <br>
 
-  <hr style="width: 60%; border: 0; height: 1px; background: linear-gradient(90deg, transparent, #00eaff, transparent); margin-bottom: 30px; opacity: 0.5;">
+<br>
 
-  <div style="
-    background: rgba(5, 10, 16, 0.8);
-    border: 1px solid rgba(0, 234, 255, 0.15);
-    border-radius: 12px;
-    padding: 25px;
-    max-width: 600px;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
-  ">
-    
-    <span style="font-family: monospace; color: #94a3b8; font-size: 0.85rem; letter-spacing: 1px;">
-      // SYSTEM STATUS: OPERATIONAL
-    </span>
-    <br>
-    <span style="font-family: 'Segoe UI', sans-serif; color: #cbd5e1; font-size: 0.95rem; display: block; margin-top: 5px;">
-      Forgiato nel codice, mantenuto vivo dalla community.
-    </span>
-
-    <br>
-
-    <div style="margin: 20px 0;">
-      <a href="https://www.paypal.me/luc4nex" target="_blank" style="text-decoration: none;">
-        <div style="
-          background: linear-gradient(90deg, rgba(245, 166, 35, 0.1), rgba(245, 166, 35, 0.05));
-          border: 1px solid rgba(245, 166, 35, 0.3);
-          border-radius: 8px;
-          padding: 15px;
-          transition: 0.3s;
-          display: inline-block;
-        ">
-          <div style="color: #F5A623; font-size: 0.7rem; font-weight: bold; letter-spacing: 2px; margin-bottom: 8px; text-align: center;">
-            ⚠️ REPLENISH ENERGY
-          </div>
-          
-          <img 
-            src="https://img.shields.io/badge/Supporta%20il%20Dev-OFFRI%20UN%20CAFFÈ-F5A623?style=for-the-badge&logo=paypal&logoColor=black&labelColor=white"
-            style="border-radius: 4px; filter: drop-shadow(0 0 8px rgba(245,166,35,0.6)); display: block;"
-            alt="Supporta il progetto con una donazione"
-          />
-        </div>
+<table>
+  <tr>
+    <td align="center" width="600px">
+      <br>
+      <img src="https://img.shields.io/badge/SYSTEM_STATUS-OPERATIONAL-success?style=flat-square&logo=githubactions&logoColor=white" />
+      <img src="https://img.shields.io/badge/MAINTENANCE-COMMUNITY_POWERED-blue?style=flat-square&logo=open-source-initiative&logoColor=white" />
+      <br><br>
+      <samp>
+        Forgiato nel codice. Mantenuto vivo dalla community.
+      </samp>
+      <br><br>
+      <a href="https://www.paypal.me/luc4nex">
+        <img src="https://img.shields.io/badge/⚠️_REFILL_ENERGY-OFFRI_UN_CAFFÈ-F5A623?style=for-the-badge&logo=paypal&logoColor=black&labelColor=222" alt="Donate" />
       </a>
-      <br>
-      <span style="font-size: 0.7rem; color: #64748b; display: block; margin-top: 8px;">
-        *Nessun obbligo. Solo puro supporto allo sviluppo.*
-      </span>
-    </div>
-
-    <div style="border-top: 1px solid rgba(255, 255, 255, 0.05); margin-top: 20px; padding-top: 15px;">
-      <span style="color: #cbd5e1; font-size: 0.85rem;">
-        Architetto del sistema:
-        <a href="https://github.com/LUC4N3X" style="color: #00eaff; text-decoration: none; font-weight: 700; text-shadow: 0 0 10px rgba(0, 234, 255, 0.3);">
-          LUC4N3X
-        </a>
-      </span>
-      <br>
-      <sub style="color:#475569; font-size: 0.7rem;">
-        Leviathan Project © 2025 — Tutti i diritti riservati
+      <br><br>
+      <sub style="color: gray">
+        Cliccando supporti server, sviluppo e notti insonni.
       </sub>
-    </div>
+      <br><br>
+      <hr>
+      <br>
+      <span>
+        Architetto del sistema: 
+        <a href="https://github.com/LUC4N3X"><b>LUC4N3X</b></a>
+      </span>
+      <br>
+      <sub>Leviathan Project © 2025</sub>
+      <br><br>
+    </td>
+  </tr>
+</table>
+<br>
 
-  </div>
-
-  <br>
-  
-  <img
-    src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00E0FF&center=true&vCenter=true&width=550&lines=Rimani+legale.;Rimani+lucido.;Lunga+vita+al+codice."
-    alt="Typing SVG"
-  />
+<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00E0FF&center=true&vCenter=true&width=550&lines=Rimani+legale.;Rimani+lucido.;Lunga+vita+al+codice." alt="Typing SVG" />
 
 </div>
