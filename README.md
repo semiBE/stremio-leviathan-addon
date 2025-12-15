@@ -235,3 +235,13 @@ da [**LUC4N3X**](https://github.com/LUC4N3X)
 <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00E0FF&center=true&vCenter=true&width=550&lines=Rimani+legale.;Rimani+lucido.;Lunga+vita+al+codice." alt="Typing SVG" />
 
 </div>
+---
+<div align="center">
+  <a href="https://www.paypal.me/luc4nex" target="_blank">
+    <img src="https://img.shields.io/badge/MAINTENANCE-CAFFEINE_INJECTION-00eaff?style=for-the-badge&logo=paypal&logoColor=black&labelColor=white" alt="Donate with PayPal" />
+  </a>
+  <br>
+  <span style="font-size: 0.8rem; color: #94a3b8; letter-spacing: 1px;">
+    SUPPORTS INFRASTRUCTURE & DEV TIME
+  </span>
+</div>
