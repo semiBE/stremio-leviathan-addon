@@ -1,24 +1,65 @@
 const axios = require("axios");
 const TB_BASE = "https://api.torbox.app/v1/api"; 
-const TB_TIMEOUT = 30000; // Timeout aumentato come nel file funzionante
+const TB_TIMEOUT = 30000;
 
 // --- UTILS ---
 function sleep(ms) {
     return new Promise(r => setTimeout(r, ms));
 }
 
+// --- WRAPPER ROBUSTO PER RICHIESTE API (Il segreto per evitare errori 429) ---
+async function tbRequest(method, endpoint, key, data = null, params = null) {
+    let attempt = 0;
+    const maxAttempts = 5; // Proviamo fino a 5 volte
+
+    while (attempt < maxAttempts) {
+        try {
+            const config = {
+                method: method,
+                url: `${TB_BASE}${endpoint}`,
+                headers: { Authorization: `Bearer ${key}` },
+                timeout: TB_TIMEOUT,
+                params: params
+            };
+
+            if (method === 'POST' && data) {
+                config.data = data;
+                config.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            }
+
+            const res = await axios(config);
+            return res; // Ritorna la risposta grezza axios
+        } catch (e) {
+            const status = e.response?.status;
+            const errMsg = e.response?.data?.detail || e.message;
+
+            // Se è un errore 429 (Rate Limit) o 5xx (Server Error), aspettiamo e riproviamo
+            if (status === 429 || (status >= 500 && status < 600)) {
+                // Calcola un'attesa crescente: 2s, 4s, 6s... + un pizzico di casualità
+                const waitTime = (2000 * (attempt + 1)) + Math.random() * 1000;
+                console.log(`⚠️ [TorBox] Errore ${status} (${errMsg}). Attendo ${Math.round(waitTime/1000)}s... (Tentativo ${attempt+1}/${maxAttempts})`);
+                await sleep(waitTime);
+                attempt++;
+                continue;
+            }
+            
+            // Per altri errori (es. 401 Unauthorized), lanciamo l'errore subito
+            throw e;
+        }
+    }
+    throw new Error(`TorBox API Failed after ${maxAttempts} attempts`);
+}
+
 // 🗑️ Funzione di Pulizia
 async function deleteTorrent(token, torrentId) {
     try {
-        await axios.post(`${TB_BASE}/torrents/controltorrent`, {
+        await tbRequest('POST', '/torrents/controltorrent', token, {
             torrent_id: torrentId,
             operation: "delete"
-        }, {
-            headers: { Authorization: `Bearer ${token}` }
         });
         console.log(`🗑️ [TorBox] Torrent ${torrentId} eliminato.`);
     } catch (e) {
-        // Ignora
+        // Ignora errori di pulizia
     }
 }
 
@@ -60,27 +101,17 @@ const TB = {
     getStreamLink: async (key, magnet, season = null, episode = null) => {
         let torrentId = null; 
         try {
-            console.log(`🚀 [TorBox] Richiesto magnet...`);
-
-            // 1. Aggiungi Magnet (CORREZIONE: Uso URLSearchParams come nel codice funzionante)
+            // 1. Aggiungi Magnet
             const params = new URLSearchParams();
             params.append('magnet', magnet);
             params.append('allow_zip', 'false');
 
-            const createRes = await axios.post(`${TB_BASE}/torrents/createtorrent`, params, { 
-                headers: { 
-                    Authorization: `Bearer ${key}`,
-                    'Content-Type': 'application/x-www-form-urlencoded' // Fondamentale!
-                },
-                timeout: TB_TIMEOUT 
-            });
+            const createRes = await tbRequest('POST', '/torrents/createtorrent', key, params);
 
             if (!createRes.data?.success || !createRes.data.data) {
-                // Check se è già in cache dal messaggio (logica Torrentio)
                 if (createRes.data?.detail && createRes.data.detail.includes("Found Cached")) {
                      console.log(`⚡ [TorBox] Cache Hit Immediato!`);
                 } else {
-                    console.log(`❌ [TorBox] Errore aggiunta magnet: ${JSON.stringify(createRes.data)}`);
                     return null;
                 }
             }
@@ -89,22 +120,13 @@ const TB = {
 
             // Fallback ID
             if (!torrentId) {
-                console.log(`⚠️ [TorBox] ID non restituito, controllo lista...`);
-                const listRes = await axios.get(`${TB_BASE}/torrents/mylist?bypass_cache=true`, {
-                     headers: { Authorization: `Bearer ${key}` }
-                });
+                const listRes = await tbRequest('GET', '/torrents/mylist', key, null, { bypass_cache: true });
                 if (listRes.data?.data && listRes.data.data.length > 0) {
-                     // Prende il primo della lista (il più recente)
                      torrentId = listRes.data.data[0].id; 
                 }
             }
 
-            if (!torrentId) {
-                console.log(`❌ [TorBox] Nessun ID trovato.`);
-                return null;
-            }
-
-            console.log(`✅ [TorBox] ID Torrent: ${torrentId}`);
+            if (!torrentId) return null;
 
             // 2. Polling Stato
             let torrentData = null;
@@ -114,39 +136,20 @@ const TB = {
             while (attempts < MAX_ATTEMPTS) {
                 await sleep(1000); 
 
-                const infoRes = await axios.get(`${TB_BASE}/torrents/mylist?bypass_cache=true&id=${torrentId}`, {
-                    headers: { Authorization: `Bearer ${key}` },
-                    timeout: TB_TIMEOUT
-                });
-
+                const infoRes = await tbRequest('GET', '/torrents/mylist', key, null, { bypass_cache: true, id: torrentId });
                 const item = infoRes.data?.data;
                 torrentData = Array.isArray(item) ? item.find(t => t.id === torrentId) : item;
 
                 if (torrentData) {
-                    // Stati presi dal codice funzionante (download_present, download_finished)
                     const isReady = torrentData.download_present || 
                                     ['cached', 'completed', 'downloaded', 'ready'].includes((torrentData.download_state || '').toLowerCase());
                     
-                    if (isReady) {
-                        console.log(`✅ [TorBox] Torrent pronto!`);
-                        break; 
-                    }
-                    // Se queued_id esiste, sta scaricando
-                    if (torrentData.queued_id) {
-                         console.log(`⏳ [TorBox] In coda...`);
-                    }
+                    if (isReady) break; 
                 }
                 attempts++;
             }
 
-            // Verifica finale
-            const isReadyFinal = torrentData && (
-                torrentData.download_present || 
-                ['cached', 'completed', 'downloaded', 'ready'].includes((torrentData.download_state || '').toLowerCase())
-            );
-
-            if (!isReadyFinal) {
-                 console.log(`⚠️ [TorBox] Timeout o non pronto.`);
+            if (!torrentData || !(torrentData.download_present || ['cached', 'completed', 'downloaded', 'ready'].includes((torrentData.download_state || '').toLowerCase()))) {
                  await deleteTorrent(key, torrentId);
                  return null; 
             }
@@ -161,27 +164,23 @@ const TB = {
             }
 
             if (!fileId) {
-                console.log(`❌ [TorBox] Nessun file video valido.`);
                 await deleteTorrent(key, torrentId);
                 return null;
             }
 
-            // 4. Request Link (Come nel codice funzionante: params in query string)
-            const linkUrl = `${TB_BASE}/torrents/requestdl`;
-            const linkRes = await axios.get(linkUrl, { 
-                params: {
-                    token: key,
-                    torrent_id: torrentId,
-                    file_id: fileId,
-                    zip_link: 'false'
-                },
-                headers: { Authorization: `Bearer ${key}` },
-                timeout: TB_TIMEOUT
+            // 4. Request Link
+            const linkRes = await tbRequest('GET', '/torrents/requestdl', key, null, {
+                token: key,
+                torrent_id: torrentId,
+                file_id: fileId,
+                zip_link: 'false'
             });
 
             if (linkRes.data?.success && linkRes.data?.data) {
-                console.log(`🎉 [TorBox] Link generato!`);
-                await deleteTorrent(key, torrentId); 
+                // Non cancelliamo subito se il link non è permanente, ma TorBox solitamente permette delete dopo generazione
+                // Per sicurezza con gli errori 429, cancelliamo in background senza await
+                deleteTorrent(key, torrentId).catch(console.error);
+
                 return {
                     type: 'ready',
                     url: linkRes.data.data, 
@@ -190,16 +189,11 @@ const TB = {
                 };
             }
             
-            console.log(`❌ [TorBox] Errore Link: ${JSON.stringify(linkRes.data)}`);
             await deleteTorrent(key, torrentId); 
             return null;
 
         } catch (e) {
-            if (e.response) {
-                 console.error(`💥 [TorBox] HTTP ${e.response.status}: ${JSON.stringify(e.response.data)}`);
-            } else {
-                 console.error(`💥 [TorBox] Errore: ${e.message}`);
-            }
+            console.error(`💥 [TorBox] Errore Fatale: ${e.message}`);
             if (torrentId) await deleteTorrent(key, torrentId);
             return null;
         }
