@@ -19,18 +19,21 @@ const RD = require("./debrid/realdebrid");
 const AD = require("./debrid/alldebrid");
 const TB = require("./debrid/torbox");
 
+// --- IMPORTIAMO NUOVI HANDLER (SOLO VIX) ---
+const { searchVix } = require("./vix_handler");
+
 const { getManifest } = require("./manifest");
 
 // --- CONFIGURAZIONE ---
 const CONFIG = {
   CINEMETA_URL: "https://v3-cinemeta.strem.io",
-  REAL_SIZE_FILTER: 80 * 1024 * 1024, // Filtra file troppo piccoli (sample)
+  REAL_SIZE_FILTER: 80 * 1024 * 1024,
   TIMEOUT_TMDB: 2000,
   SCRAPER_TIMEOUT: 6000, 
   MAX_RESULTS: 40, 
 };
 
-// --- STATIC REGEX PATTERNS (Performance Boost) ---
+// --- STATIC REGEX PATTERNS ---
 const REGEX_YEAR = /(19|20)\d{2}/;
 const REGEX_QUALITY = {
     "4K": /2160p|4k|uhd/i,
@@ -40,59 +43,42 @@ const REGEX_QUALITY = {
 };
 const REGEX_AUDIO = {
     channels: /\b(7\.1|5\.1|2\.1|2\.0)\b/,
-    atmos: /atmos/i, // Atmos puro
-    dtsx: /dts[:\s-]?x/i, // DTS:X
-    truehd: /truehd/i, // TrueHD (senza Atmos)
-    dtshd: /\bdts-?hd\b|\bma\b/i, // DTS-HD MA
+    atmos: /atmos/i, 
+    dtsx: /dts[:\s-]?x/i,
+    truehd: /truehd/i, 
+    dtshd: /\bdts-?hd\b|\bma\b/i,
     dts: /\bdts\b/i,
-    ddp: /\bddp\b|\beac-?3\b|\bdolby\s?digital\s?plus\b/i, // Dolby Digital Plus
-    dolby: /\bac-?3\b|\bdd\b|\bdolby\b/i, // Dolby Standard
+    ddp: /\bddp\b|\beac-?3\b|\bdolby\s?digital\s?plus\b/i, 
+    dolby: /\bac-?3\b|\bdd\b|\bdolby\b/i, 
     aac: /\baac\b/i,
-    flac: /\bflac\b/i // Alta fedeltà
+    flac: /\bflac\b/i 
 };
 
 const REGEX_ITA = [
-    // 1. Termini Generici e Audio Esplicito
     /\b(ITA|ITALIAN|ITALY)\b/i,
-    /\b(AUDIO|LINGUA)\s*[:\-]?\s*(ITA|IT)\b/i, // Es: "Audio: ITA"
-    
-    // 2. Formati Audio accoppiati a ITA (Più robusto)
+    /\b(AUDIO|LINGUA)\s*[:\-]?\s*(ITA|IT)\b/i,
     /\b(AC-?3|AAC|DDP?|DTS|PCM|TRUEHD|ATMOS|MP3|WMA|FLAC).*(ITA|IT)\b/i,
-    /\b(DD|DDP|AAC|DTS)\s*5\.1\s*(ITA|IT)\b/i, // Es: "DD5.1 ITA"
-    
-    // 3. Multi/Dual Audio (Spesso include ITA)
+    /\b(DD|DDP|AAC|DTS)\s*5\.1\s*(ITA|IT)\b/i,
     /\b(MULTI|DUAL|TRIPLE).*(ITA|IT)\b/i,
-    
-    // 4. Sottotitoli (Se vuoi includere chi ha solo i sub, tieni questa, altrimenti rimuovi)
     /\b(SUB|SUBS|SOTTOTITOLI).*(ITA|IT)\b/i,
-    
-    // 5. Codec Video accoppiati a ITA
     /\b(H\.?264|H\.?265|X264|X265|HEVC|AVC|DIVX|XVID).*(ITA|IT)\b/i,
-    
-    // 6. Crew e Release Group Italiani (ELENCO AGGIORNATO)
-    // Aggiunti: EAGLE, TRL, MEA, LUX, DNA, LEST, GHIZZO, USAbit, etc.
     /\b(iDN_CreW|CORSARO|MUX|WMS|TRIDIM|SPEEDVIDEO|EAGLE|TRL|MEA|LUX|DNA|LEST|GHIZZO|USAbit|Bric|Dtone|Gaiage|BlackBit|Pantry|Vics|Papeete)\b/i,
-    
-    // 7. Termini Serie TV Italiani
     /\b(STAGIONE|EPISODIO|SERIE COMPLETA|STAGIONE COMPLETA)\b/i
 ];
 const REGEX_CLEANER = /\b(ita|eng|ger|fre|spa|latino|rus|sub|h264|h265|x264|x265|hevc|avc|vc1|1080p|1080i|720p|480p|4k|2160p|uhd|sdr|hdr|hdr10|dv|dolby|vision|bluray|bd|bdrip|brrip|web-?dl|webrip|hdtv|rip|remux|mux|ac-?3|aac|dts|ddp|flac|truehd|atmos|multi|dual|complete|pack|amzn|nf|dsnp|hmax|atvp|apple|hulu|peacock|rakuten|iyp|dvd|dvdrip|unrated|extended|director|cut)\b.*/yi;
 
-// --- CACHE SYSTEM (AGGIORNATO CON LRU-CACHE) ---
 const STREAM_CACHE = new LRUCache({
-    max: 1000,              // Massimo 1000 stream in memoria (protezione crash)
-    ttl: 15 * 60 * 1000,    // 15 minuti di vita
+    max: 1000,
+    ttl: 15 * 60 * 1000,
     allowStale: false,
-    updateAgeOnGet: true    // Rinnova il TTL se viene richiesto di nuovo
+    updateAgeOnGet: true
 });
 
-// --- LIMITERS ---
 const LIMITERS = {
   scraper: new Bottleneck({ maxConcurrent: 40, minTime: 10 }), 
   rd: new Bottleneck({ maxConcurrent: 25, minTime: 40 }), 
 };
 
-// --- MOTORI DI RICERCA ---
 const SCRAPER_MODULES = [ require("./engines") ];
 const FALLBACK_SCRAPERS = [ require("./external") ];
 
@@ -112,7 +98,8 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 
-// --- UTILITIES UI (Cleaners) ---
+// --- FORMATTERS ---
+
 const UNITS = ["B", "KB", "MB", "GB", "TB"];
 function formatBytes(bytes) {
   if (!+bytes) return "0 B";
@@ -166,52 +153,24 @@ function getEpisodeTag(filename) {
 
 function extractAudioInfo(title) {
     const t = String(title).toLowerCase();
-
-    // 1. Rilevamento Canali
     const channelMatch = t.match(REGEX_AUDIO.channels);
     let channels = channelMatch ? channelMatch[1] : "";
-
-    // Trasforma "2.0" in stringa vuota 
-    
     if (channels === "2.0") channels = ""; 
 
-    // 2. Rilevamento Codec in ordine di "Potenza" (Priority Check)
     let audioTag = "";
+    if (REGEX_AUDIO.atmos.test(t)) audioTag = "💣 Atmos";
+    else if (REGEX_AUDIO.dtsx.test(t)) audioTag = "💣 DTS:X";
+    else if (REGEX_AUDIO.truehd.test(t)) audioTag = "🔊 TrueHD";
+    else if (REGEX_AUDIO.dtshd.test(t)) audioTag = "🔊 DTS-HD";
+    else if (REGEX_AUDIO.ddp.test(t)) audioTag = "🔊 Dolby+";
+    else if (REGEX_AUDIO.dts.test(t)) audioTag = "🔊 DTS";
+    else if (REGEX_AUDIO.flac.test(t)) audioTag = "🎼 FLAC";
+    else if (REGEX_AUDIO.dolby.test(t)) audioTag = "🔈 Dolby";
+    else if (REGEX_AUDIO.aac.test(t)) audioTag = "🔈 AAC";
+    else if (/\bmp3\b/i.test(t)) audioTag = "🔈 MP3";
 
-    if (REGEX_AUDIO.atmos.test(t)) {
-        audioTag = "💣 Atmos"; // Top Tier
-    } else if (REGEX_AUDIO.dtsx.test(t)) {
-        audioTag = "💣 DTS:X"; // Top Tier
-    } else if (REGEX_AUDIO.truehd.test(t)) {
-        audioTag = "🔊 TrueHD"; // Lossless
-    } else if (REGEX_AUDIO.dtshd.test(t)) {
-        audioTag = "🔊 DTS-HD"; // Lossless
-    } else if (REGEX_AUDIO.ddp.test(t)) {
-        audioTag = "🔊 Dolby+"; // Better than AC3
-    } else if (REGEX_AUDIO.dts.test(t)) {
-        audioTag = "🔊 DTS";
-    } else if (REGEX_AUDIO.flac.test(t)) {
-        audioTag = "🎼 FLAC"; // Audiophile
-    } else if (REGEX_AUDIO.dolby.test(t)) {
-        audioTag = "🔈 Dolby"; // Standard
-    } else if (REGEX_AUDIO.aac.test(t)) {
-        audioTag = "🔈 AAC";
-    } else if (/\bmp3\b/i.test(t)) {
-        audioTag = "🔈 MP3";
-    }
-
-    // 3. Composizione Finale
-    // Se non trova codec ma ci sono canali > 2, assume Surround
-    if (!audioTag && (channels === "5.1" || channels === "7.1")) {
-        audioTag = "🔊 Surround";
-    }
-
-    // Se non trova nulla o solo 2.0
-    if (!audioTag) {
-        return "🔈 Stereo";
-    }
-
-    // Unisce Codec + Canali (es: "💣 Atmos 7.1")
+    if (!audioTag && (channels === "5.1" || channels === "7.1")) audioTag = "🔊 Surround";
+    if (!audioTag) return "🔈 Stereo";
     return channels ? `${audioTag} ${channels}` : audioTag;
 }
 
@@ -243,36 +202,23 @@ function extractStreamInfo(title, source) {
   return { quality: q, qIcon, info: detailsParts.join(" | "), lang, audioInfo };
 }
 
+// 1. FORMATTER PER TORRENT (DEBRID)
 function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag = "RD") {
     const { quality, qIcon, info, lang, audioInfo } = extractStreamInfo(fileTitle, source);
 
-    // --- 1. FORMATTAZIONE DATI ---
     const sizeStr = size ? `🧲 ${formatBytes(size)}` : "🧲 ?";
     const seedersStr = seeders != null ? `👤 ${seeders}` : "";
 
-    // --- 2. LINGUA SMART ---
     let langStr = "🌐 ?";
     if (/ita|it\b|italiano/i.test(lang || "")) langStr = "🗣️ ITA";
     else if (/multi/i.test(lang || "")) langStr = "🗣️ MULTI";
     else if (lang) langStr = `🗣️ ${lang.toUpperCase()}`;
 
-    // --- 3. GESTIONE SOURCE E SERVICE ---
     let displaySource = source;
-    // Rinomina Corsaro
-    if (/corsaro/i.test(displaySource)) {
-        displaySource = "ilCorSaRoNeRo";
-    }
-    
-    // Uniamo il Tag del servizio (RD) alla source per pulire il badge
-    // Esempio output: "⚡ [RD] ilCorSaRoNeRo"
+    if (/corsaro/i.test(displaySource)) displaySource = "ilCorSaRoNeRo";
     const sourceLine = `⚡ [${serviceTag}] ${displaySource}`;
-
-    // --- 4. HEADER (BADGE "LEVIATHAN") ---
-    // Qui avviene la magia: Nome Addon + Qualità
-    // Usa 🦑 (Calamaro) o 🐲 (Drago) o 🔱 (Tridente) a tua scelta
     const name = `🦑 LEVIATHAN\n${qIcon} ${quality}`; 
 
-    // --- 5. PULIZIA TITOLO ---
     const cleanName = cleanFilename(fileTitle)
         .replace(/(s\d{1,2}e\d{1,2}|\d{1,2}x\d{1,2}|s\d{1,2})/ig, "")
         .replace(/\s{2,}/g, " ")
@@ -280,30 +226,46 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
 
     const epTag = getEpisodeTag(fileTitle);
 
-    // --- 6. COSTRUZIONE RIGHE ---
     const lines = [];
-
-    // RIGA 1: Titolo
     lines.push(`🎬 ${cleanName}${epTag ? ` ${epTag}` : ""}`);
-
-    // RIGA 2: Lingua e Audio
     const audioLine = [langStr, audioInfo].filter(Boolean).join(" • ");
     if (audioLine) lines.push(audioLine);
-
-    // RIGA 3: Info Video
     const cleanInfo = info ? info.replace("🖥️ ", "") : "";
     if (cleanInfo) lines.push(`🎞️ ${cleanInfo}`);
-
-    // RIGA 4: Size e Seeders
     const techLine = [sizeStr, seedersStr].filter(Boolean).join(" • ");
     if (techLine) lines.push(techLine);
-
-    // RIGA 5: Source + Service Tag (Ben visibile in fondo)
     if (sourceLine) lines.push(sourceLine);
 
+    return { name, title: lines.join("\n") };
+}
+
+// 2. NUOVO FORMATTER PER WEB (VIX/SC)
+// Usa lo stesso stile ma con icone appropriate per il web
+function formatVixStream(meta, vixData) {
+    const isFHD = vixData.isFHD;
+    const quality = isFHD ? "1080p" : "720p";
+    const qIcon = isFHD ? "🌕" : "🌗";
+
+    const lines = [];
+    // RIGA 1: Titolo
+    lines.push(`🎬 ${meta.title}`);
+    // RIGA 2: Lingua e Audio (Default SC)
+    lines.push(`🇮🇹 ITA • 🔊 AAC`);
+    // RIGA 3: Info Video (HLS)
+    lines.push(`🎞️ HLS • Bitrate Variabile`);
+    // RIGA 4: Info Tecnica Web
+    lines.push(`☁️ Web Stream • ⚡ Instant`);
+    // RIGA 5: Source
+    lines.push(`🍝 ${vixData.source}`);
+
     return {
-        name,
-        title: lines.join("\n")
+        name: `🌪️ VIX\n${qIcon} ${quality}`,
+        title: lines.join("\n"),
+        url: vixData.url,
+        behaviorHints: {
+            notWebReady: false,
+            bingieGroup: "vix-stream"
+        }
     };
 }
 
@@ -332,6 +294,27 @@ async function getMetadata(id, type) {
   } catch (err) { return null; }
 }
 
+// --- HELPER MEDIAFLOW ---
+function wrapMediaFlow(targetUrl, config) {
+    if (!config || !config.mediaflow || !config.mediaflow.url) return targetUrl;
+    
+    try {
+        const proxyUrl = new URL(`${config.mediaflow.url}/proxy/stream`);
+        proxyUrl.searchParams.append("d", targetUrl); 
+        
+        if (config.mediaflow.pass) {
+            proxyUrl.searchParams.append("api_password", config.mediaflow.pass);
+        }
+        
+        // Header specifici per sembrare un browser legittimo agli occhi di RD/AD
+        proxyUrl.searchParams.append("h_user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
+        
+        return proxyUrl.toString();
+    } catch(e) {
+        return targetUrl;
+    }
+}
+
 async function resolveDebridLink(config, item, showFake) {
     try {
         const service = config.service || 'rd';
@@ -348,8 +331,20 @@ async function resolveDebridLink(config, item, showFake) {
         const serviceTag = service.toUpperCase();
         const { name, title } = formatStreamTitleCinePro(streamData.filename || item.title, item.source, streamData.size || item.size, item.seeders, serviceTag);
         
+        // --- LOGICA MEDIAFLOW OPZIONALE ---
+        let finalUrl = streamData.url;
+        let isProxied = false;
+
+        // Verifica se l'utente ha attivato il proxy per Debrid
+        if (config.mediaflow && config.mediaflow.url && config.mediaflow.proxyDebrid) {
+            finalUrl = wrapMediaFlow(streamData.url, config);
+            isProxied = true;
+        }
+
         return { 
-            name, title, url: streamData.url, 
+            name, 
+            title: title + (isProxied ? "\n🛡️ Proxied via MediaFlow" : ""), 
+            url: finalUrl, 
             behaviorHints: { notWebReady: false, bingieGroup: `corsaro-${service}` } 
         };
     } catch (e) {
@@ -358,6 +353,7 @@ async function resolveDebridLink(config, item, showFake) {
     }
 }
 
+// === MAIN GENERATOR FUNCTION ===
 async function generateStream(type, id, config, userConfStr) {
   if (!config.key && !config.rd) return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key nel configuratore" }] };
   
@@ -407,6 +403,10 @@ async function generateStream(type, id, config, userConfStr) {
   const onlyIta = config.filters?.onlyIta !== false; 
   console.log(`\n🧠 [AI-CORE] Cerco "${meta.title}" (${meta.year}): ${queries.length} varianti.`);
 
+  // --- 1. AVVIA VIX SCRAPER (PARALLELO) ---
+  const vixPromise = searchVix(meta, config);
+
+  // --- 2. TORRENT SCRAPERS (DEBRID) ---
   let promises = [];
   queries.forEach(q => {
     SCRAPER_MODULES.forEach(scraper => {
@@ -422,6 +422,7 @@ async function generateStream(type, id, config, userConfStr) {
 
   let resultsRaw = (await Promise.all(promises)).flat();
 
+  // Filtri Torrent Base
   resultsRaw = resultsRaw.filter(item => {
     if (!item?.magnet) return false;
     const fileYearMatch = item.title.match(REGEX_YEAR);
@@ -434,6 +435,7 @@ async function generateStream(type, id, config, userConfStr) {
     return true;
   });
 
+  // Fallback
   if (resultsRaw.length <= 5) {
     const extPromises = FALLBACK_SCRAPERS.map(fb => 
         LIMITERS.scraper.schedule(() => withTimeout(fb.searchMagnet(queries[0], meta.year, type, finalId), CONFIG.SCRAPER_TIMEOUT).catch(() => []))
@@ -464,20 +466,30 @@ async function generateStream(type, id, config, userConfStr) {
     } catch (err) { continue; }
   }
   
-  if (!cleanResults.length) return { streams: [{ name: "⛔", title: "Nessun risultato ITA trovato" }] };
+  // Risoluzione Debrid (Torrents)
+  let debridStreams = [];
+  if (cleanResults.length > 0) {
+      const ranked = rankAndFilterResults(cleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
+      const rdPromises = ranked.map(item => {
+          item.season = meta.season;
+          item.episode = meta.episode;
+          return LIMITERS.rd.schedule(() => resolveDebridLink(config, item, config.filters?.showFake));
+      });
+      debridStreams = (await Promise.all(rdPromises)).filter(Boolean);
+  }
 
-  const ranked = rankAndFilterResults(cleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
-  const rdPromises = ranked.map(item => {
-      item.season = meta.season;
-      item.episode = meta.episode;
-      return LIMITERS.rd.schedule(() => resolveDebridLink(config, item, config.filters?.showFake));
-  });
+  // --- 3. ATTENDI E FORMATTA RISULTATI WEB ---
+  const rawVix = await vixPromise; // Dati grezzi da vix_handler
   
-  let streams = (await Promise.all(rdPromises)).filter(Boolean);
+  // Applica il formatter definito in questo file
+  const formattedVix = rawVix.map(v => formatVixStream(meta, v));
 
-  if (streams.length === 0) return { streams: [{ name: "⛔", title: "Nessun link cached trovato" }] };
+  // UNIONE: VIX (Primo) + DEBRID
+  const finalStreams = [...formattedVix, ...debridStreams];
 
-  return { streams }; 
+  if (finalStreams.length === 0) return { streams: [{ name: "⛔", title: "Nessun risultato trovato" }] };
+
+  return { streams: finalStreams }; 
 }
 
 // --- ROUTES ---
@@ -493,17 +505,14 @@ app.get("/:conf/stream/:type/:id.json", async (req, res) => {
     const { conf, type, id } = req.params;
     const cacheKey = `${conf}:${type}:${id}`;
 
-    // --- LOGICA CACHE AGGIORNATA ---
     if (STREAM_CACHE.has(cacheKey)) {
         console.log(`⚡ [CACHE HIT] Servo "${id}" dalla memoria.`);
-        // LRU Cache gestisce il TTL automaticamente, restituiamo solo il valore
         return res.json(STREAM_CACHE.get(cacheKey));
     }
 
     const result = await generateStream(type, id.replace(".json", ""), getConfig(conf), conf);
 
     if (result && result.streams && result.streams.length > 0 && result.streams[0].name !== "⛔") {
-        // Setta in cache (LRU gestisce eviction e scadenza)
         STREAM_CACHE.set(cacheKey, result);
     }
     res.json(result); 
