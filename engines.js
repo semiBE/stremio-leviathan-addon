@@ -722,4 +722,4 @@ async function searchMagnet(title, year, type, imdbId) {
     });
 }
 
-module.exports = { searchMagnet, CONFIG, updateTrackers };
+module.exports = { searchMagnet, CONFIG, updateTrackers, requestHtml };
