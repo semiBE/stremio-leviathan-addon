@@ -19,6 +19,7 @@ const kitsuHandler = require("./kitsu_handler");
 const RD = require("./debrid/realdebrid");
 const AD = require("./debrid/alldebrid");
 const TB = require("./debrid/torbox");
+const dbHelper = require("./db-helper"); // <--- NUOVO: DB HELPER
 
 // --- IMPORTIAMO NUOVI HANDLER (SOLO VIX) ---
 const { searchVix } = require("./vix_handler");
@@ -82,6 +83,9 @@ const LIMITERS = {
 
 const SCRAPER_MODULES = [ require("./engines") ];
 const FALLBACK_SCRAPERS = [ require("./external") ];
+
+// Inizializza DB (legge DATABASE_URL dal file .env o environment del server)
+dbHelper.initDatabase();
 
 const app = express();
 app.set('trust proxy', 1);
@@ -357,6 +361,20 @@ async function generateStream(type, id, config, userConfStr) {
 
   const meta = await getMetadata(finalId, type); 
   if (!meta) return { streams: [] };
+
+  // --- 0. RICERCA DATABASE (GOD TIER) ---
+  console.log(`\n🔍 [DB] Cerco nel database di IlCorsaroViola: ${meta.imdb_id}`);
+  let dbResults = [];
+  try {
+      if (type === 'movie') {
+          dbResults = await dbHelper.searchMovie(meta.imdb_id);
+      } else if (type === 'series') {
+          dbResults = await dbHelper.searchSeries(meta.imdb_id, meta.season, meta.episode);
+      }
+      console.log(`✅ [DB] Trovati ${dbResults.length} risultati.`);
+  } catch (err) {
+      console.error("❌ Errore ricerca DB:", err.message);
+  }
   
   let dynamicTitles = [];
   try {
@@ -398,6 +416,9 @@ async function generateStream(type, id, config, userConfStr) {
   });
 
   let resultsRaw = (await Promise.all(promises)).flat();
+  
+  // UNIAMO I RISULTATI DB A QUELLI DEGLI SCRAPER
+  resultsRaw = [...dbResults, ...resultsRaw]; 
 
   // Filtri Torrent Base
   resultsRaw = resultsRaw.filter(item => {
