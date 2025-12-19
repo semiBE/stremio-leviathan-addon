@@ -219,7 +219,6 @@
         }
         .input-action:hover { background: var(--primary); color: #000; box-shadow: 0 0 20px var(--primary); }
         
-        /* Modifica per posizionamento errore */
         .error-msg { position: absolute; bottom: -20px; left: 10px; color: var(--error); font-size: 0.8rem; opacity: 0; font-family: 'Rajdhani', sans-serif; text-transform: uppercase; font-weight: 700;}
         .custom-input.input-error + .error-msg, .custom-input.input-error + .input-action + .error-msg { opacity: 1; }
 
@@ -238,7 +237,7 @@
         .control-title { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.1rem; color: #fff; display: flex; align-items: center; gap: 10px; }
         .control-desc { display: block; font-size: 0.9rem; color: var(--text-dim); margin-top: 6px; font-weight: 300; line-height: 1.4; max-width: 90%; }
         
-        .control-info { flex: 1; padding-right: 15px; } /* Added padding for mobile safety */
+        .control-info { flex: 1; padding-right: 15px; }
 
         /* --- SWITCHES --- */
         .switch { position: relative; width: 50px; height: 26px; flex-shrink: 0; margin-left: 5px;}
@@ -358,39 +357,16 @@
         .m-go { background: var(--primary); color: #000; box-shadow: 0 0 20px rgba(0, 242, 255, 0.3); }
         .m-go:hover { box-shadow: 0 0 40px rgba(0, 242, 255, 0.6); }
 
-        /* --- MEDIA QUERIES AGGIUSTATE (SMARTPHONE FIX) --- */
         @media (max-width: 600px) {
-            .brand-title { font-size: 3rem; } /* Titolo più piccolo */
-            .main-wrapper { margin: 10px 0; padding: 15px; } /* Meno margini esterni */
-            .glass-panel { padding: 20px 15px; } /* Meno padding interno nel box */
-            
+            .brand-title { font-size: 3rem; }
+            .main-wrapper { margin: 10px 0; padding: 15px; }
+            .glass-panel { padding: 20px 15px; }
             .options-grid { grid-template-columns: 1fr; }
             .info-grid { grid-template-columns: 1fr; }
-
-            /* --- FIX CRUCIALE PER INPUT E TASTI SU MOBILE --- */
-            .input-group {
-                display: flex;
-                flex-direction: column; /* Impila verticalmente */
-                gap: 10px;
-                margin-bottom: 35px; /* Più spazio sotto per evitare conflitti */
-            }
-
-            .custom-input {
-                padding-right: 20px !important; /* Rimuove lo spazio laterale vuoto */
-            }
-
-            .input-action {
-                position: static; /* Rimuove il posizionamento assoluto "fluttuante" */
-                width: 100%; /* Larghezza piena */
-                justify-content: center; /* Centra testo/icona */
-                padding: 12px;
-                margin-top: 5px;
-            }
-
-            .error-msg {
-                /* Riposiziona il messaggio di errore dato che il tasto è sceso */
-                bottom: -25px; 
-            }
+            .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 35px; }
+            .custom-input { padding-right: 20px !important; }
+            .input-action { position: static; width: 100%; justify-content: center; padding: 12px; margin-top: 5px; }
+            .error-msg { bottom: -25px; }
         }
     </style>
 </head>
@@ -497,11 +473,10 @@
                         </div>
                         <span class="control-desc">
                             Modulo extra opzionale. Attivalo solo se desideri i contenuti di SC oltre ai Torrent.
-                            <br><strong style="color:var(--secondary); font-size:0.85em; letter-spacing:0.5px;">⚠️ RICHIEDE MEDIAFLOW PROXY</strong>
                         </span>
                     </div>
                     <label class="switch mf-switch">
-                        <input type="checkbox" id="enableVix" onchange="toggleMediaFlowGroup()">
+                        <input type="checkbox" id="enableVix">
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -606,24 +581,12 @@
                     <div class="faq-a">È il motore turbo. Scarica i file per te sui suoi server veloci per permetterti lo streaming istantaneo senza buffering.</div>
                 </div>
                 <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="faq-q">È sicuro? <i class="fas fa-chevron-down"></i></div>
-                    <div class="faq-a">Assolutamente. Utilizzando Debrid, il tuo IP reale non tocca mai la rete Torrent. Il traffico è criptato e gestito dai server Debrid (Ghost Shell).</div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="faq-q">Posso usarlo su TV? <i class="fas fa-chevron-down"></i></div>
-                    <div class="faq-a">Sì. Configura l'addon qui dal telefono o PC, clicca "Installa" e se usi lo stesso account Stremio, le impostazioni si sincronizzeranno automaticamente sulla TV.</div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="faq-q">Cosa fa "Solo Audio ITA"? <i class="fas fa-chevron-down"></i></div>
-                    <div class="faq-a">Filtra drasticamente i risultati nascondendo tutti i file che non riportano esplicitamente "ITA" o "Italian" nei metadati. Disattivalo se trovi pochi risultati.</div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="faq-q">Errore "Invalid Key"? <i class="fas fa-chevron-down"></i></div>
-                    <div class="faq-a">La tua chiave API non è corretta o il tuo abbonamento Debrid è scaduto. Ricarica le scorte sul sito ufficiale del provider.</div>
-                </div>
-                <div class="faq-item" onclick="toggleFaq(this)">
                     <div class="faq-q">Serve il Proxy? <i class="fas fa-chevron-down"></i></div>
-                    <div class="faq-a">Solo se vuoi i contenuti di StreamingCommunity o se vuoi nascondere il tuo IP reale a Debrid. Per i Torrent normali non è obbligatorio.</div>
+                    <div class="faq-a">Non è obbligatorio per l'uso base. Puoi abilitarlo se vuoi usare Debrid Proxy Ghost (per nascondere l'IP a Debrid) o se il tuo ISP blocca specifici servizi.</div>
+                </div>
+                <div class="faq-item" onclick="toggleFaq(this)">
+                    <div class="faq-q">StreamingCommunity è incluso? <i class="fas fa-chevron-down"></i></div>
+                    <div class="faq-a">Sì, puoi attivarlo dal modulo opzionale. Non richiede più obbligatoriamente il Proxy, ma se hai problemi di blocco geografico potrebbe servirti.</div>
                 </div>
             </div>
             <div class="modal-btns" style="margin-top:20px;">
@@ -652,10 +615,12 @@
         let currentService = 'rd';
 
         function toggleMediaFlowGroup() {
-            const vix = document.getElementById('enableVix').checked;
+            // SC (vix) rimosso dalla logica di attivazione visuale
             const ghost = document.getElementById('proxyDebrid').checked;
             const unit = document.getElementById('advUnit');
-            if (vix || ghost) unit.classList.add('mf-active');
+            
+            // Si attiva se c'è Ghost (che lo richiede)
+            if (ghost) unit.classList.add('mf-active');
             else unit.classList.remove('mf-active');
         }
 
