@@ -8,7 +8,7 @@ const crypto = require("crypto");
 const Bottleneck = require("bottleneck");
 const rateLimit = require("express-rate-limit");
 const { LRUCache } = require("lru-cache"); 
-
+const { handleVixSynthetic } = require("./vix_proxy");
 // --- IMPORTIAMO MODULI SMART ---
 const { generateSmartQueries } = require("./ai_query");
 const { smartMatch } = require("./smart_parser");
@@ -458,7 +458,7 @@ app.get("/configure", (req, res) => res.sendFile(path.join(__dirname, "public", 
 app.get("/manifest.json", (req, res) => { res.setHeader("Access-Control-Allow-Origin", "*"); res.json(getManifest()); });
 app.get("/:conf/manifest.json", (req, res) => { res.setHeader("Access-Control-Allow-Origin", "*"); res.json(getManifest()); });
 app.get("/:conf/catalog/:type/:id/:extra?.json", async (req, res) => { res.setHeader("Access-Control-Allow-Origin", "*"); res.json({metas:[]}); });
-
+app.get("/vixsynthetic.m3u8", handleVixSynthetic); // Registra la rotta
 app.get("/:conf/stream/:type/:id.json", async (req, res) => { 
     res.setHeader("Access-Control-Allow-Origin", "*");
     const { conf, type, id } = req.params;
