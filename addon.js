@@ -8,7 +8,7 @@ const crypto = require("crypto");
 const Bottleneck = require("bottleneck");
 const rateLimit = require("express-rate-limit");
 const { LRUCache } = require("lru-cache"); 
-const { handleVixSynthetic } = require("./vix_proxy");
+const { handleVixSynthetic } = require("./vix/vix_proxy");
 // --- IMPORTIAMO MODULI SMART ---
 const { generateSmartQueries } = require("./ai_query");
 const { smartMatch } = require("./smart_parser");
@@ -21,7 +21,7 @@ const RD = require("./debrid/realdebrid");
 const AD = require("./debrid/alldebrid");
 const TB = require("./debrid/torbox");
 const dbHelper = require("./db-helper"); 
-const { searchVix } = require("./vix_handler");
+const { searchVix } = require("./vix/vix_handler");
 const { getManifest } = require("./manifest");
 
 // Inizializza DB
