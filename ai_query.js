@@ -85,120 +85,114 @@ function commonWordsOnly(text) {
 // 3. GENERATORE QUERY ULTRA (LOGICA IBRIDA)
 // ==========================================
 
-function generateSmartQueries(meta, dynamicAliases = []) {
+function generateSmartQueries(meta, dynamicAliases = [], allowEng = false) {
     const { title, originalTitle, year, season, episode, isSeries } = meta;
     
     // Normalizzazione
     const cleanTitle = ultraNormalizeTitle(title);
     const cleanOriginal = originalTitle ? ultraNormalizeTitle(originalTitle) : "";
     
-    let baseTitles = new Set();
+    // Set separati per garantire priorità
+    let itaTitles = new Set();
+    let engTitles = new Set();
     
-    // Aggiunta Titoli Base
-    if (cleanTitle) baseTitles.add(cleanTitle);
-    if (cleanOriginal) baseTitles.add(cleanOriginal);
-
-    // Varianti (Senza articoli, Numeriche, Split)
-    [cleanTitle, cleanOriginal].forEach(t => {
-        const stripped = stripArticles(t);
-        if (stripped && stripped.length > 2) baseTitles.add(stripped);
-        getNumericVariants(t).forEach(v => baseTitles.add(v));
+    // Funzione helper per aggiungere ai set corretti
+    const addVariants = (t) => {
+        if (!t || t.length < 2) return;
         
+        // Varianti base
+        itaTitles.add(t);
+        if (allowEng) engTitles.add(t);
+
+        const stripped = stripArticles(t);
+        if (stripped && stripped.length > 2) {
+            itaTitles.add(stripped);
+            if (allowEng) engTitles.add(stripped);
+        }
+
+        getNumericVariants(t).forEach(v => {
+            itaTitles.add(v);
+            if (allowEng) engTitles.add(v);
+        });
+
         if (title && (title.includes(":") || title.includes("-"))) {
             const parts = title.split(/[:\-]/);
             const firstPart = ultraNormalizeTitle(parts[0]);
-            if (firstPart.length > 3 && !commonWordsOnly(firstPart)) baseTitles.add(firstPart);
+            if (firstPart.length > 3 && !commonWordsOnly(firstPart)) {
+                itaTitles.add(firstPart);
+                if (allowEng) engTitles.add(firstPart);
+            }
         }
-    });
+    };
+
+    addVariants(cleanTitle);
+    addVariants(cleanOriginal);
 
     // Dynamic Aliases
     if (dynamicAliases && dynamicAliases.length > 0) {
         dynamicAliases.forEach(alias => {
             const ca = ultraNormalizeTitle(alias);
-            if (ca && ca.length > 2) baseTitles.add(ca);
+            if (ca && ca.length > 2) addVariants(ca);
         });
     }
 
     // Static Aliases
-    [...baseTitles].forEach(t => {
-        autoExpandAliases(t).forEach(a => baseTitles.add(a));
+    [...itaTitles].forEach(t => {
+        autoExpandAliases(t).forEach(a => addVariants(a));
     });
 
     // --- GENERAZIONE QUERY ---
-    let queries = new Set();
+    let finalQueries = [];
     const sStr = season ? String(season).padStart(2, "0") : "";
     const eStr = episode ? String(episode).padStart(2, "0") : "";
     const langSuffix = "ITA"; 
 
-    baseTitles.forEach(t => {
-        if (!t || t.length < 2) return;
-
+    // 1. GENERIAMO PRIMA TUTTE LE QUERY ITA (PRIORITÀ ASSOLUTA)
+    let itaQueries = new Set();
+    itaTitles.forEach(t => {
         if (isSeries) {
-            // === LOGICA SERIE (STRICT) ===
-            // Qui NON aggiungiamo MAI il titolo da solo. Solo combinato con Stagione/Episodio.
-            // Questo impedisce di trovare "Stranger Things Capitolo Nove" (senza S04) che è il risultato errato.
-            
             if (episode) {
-                // S01E01 Patterns
-                queries.add(`${t} S${sStr}E${eStr} ${langSuffix}`); 
-                queries.add(`${t} S${sStr}E${eStr}`); 
-                queries.add(`${t} ${season}x${eStr}`); 
-                
-                // Anime / Absolute Numbering
-                queries.add(`${t} ${episode}`); 
+                itaQueries.add(`${t} S${sStr}E${eStr} ${langSuffix}`); 
+                itaQueries.add(`${t} S${sStr}E${eStr}`); 
+                itaQueries.add(`${t} ${season}x${eStr}`); 
+                itaQueries.add(`${t} ${episode}`); 
             }
-
-            // Season Packs
-            queries.add(`${t} Stagione ${season} ${langSuffix}`);
-            queries.add(`${t} Season ${season}`);
-            queries.add(`${t} S${sStr}`);
-        
+            itaQueries.add(`${t} Stagione ${season} ${langSuffix}`);
+            itaQueries.add(`${t} S${sStr} ${langSuffix}`);
         } else {
-            // === LOGICA FILM (BROAD / AGGRESSIVE) ===
-            // Qui SI che aggiungiamo il titolo da solo, per trovare "Black Phone 2" senza anno.
-            
-            // 1. Titolo + Anno (Preciso)
-            queries.add(`${t} ${year} ${langSuffix}`);
-            queries.add(`${t} ${year}`);
-
-            // 2. Tolleranza Anno
+            itaQueries.add(`${t} ${year} ${langSuffix}`);
+            itaQueries.add(`${t} ${langSuffix}`); // Black Phone ITA
             if (year) {
                 const yNum = parseInt(year);
-                queries.add(`${t} ${yNum - 1}`);
-                queries.add(`${t} ${yNum + 1}`);
-            }
-
-            // 3. Titolo Secco (SALVA-VITA per Black Phone 2)
-            // Abilitato SOLO per i film.
-            if (t.length >= 3 && !commonWordsOnly(t)) {
-                queries.add(t); 
-                queries.add(`${t} ${langSuffix}`);
-            }
-            
-            // 4. Se contiene numeri (Black Phone 2), forziamo la ricerca secca
-            if (/\d/.test(t)) {
-                queries.add(t);
+                itaQueries.add(`${t} ${yNum - 1} ${langSuffix}`);
+                itaQueries.add(`${t} ${yNum + 1} ${langSuffix}`);
             }
         }
     });
+    // Converti e ordina ITA
+    finalQueries.push(...Array.from(itaQueries).sort((a, b) => b.length - a.length));
 
-    // Ordinamento
-    return Array.from(queries).sort((a, b) => {
-        let scoreA = 0, scoreB = 0;
-        
-        if (a.includes("ITA")) scoreA += 20;
-        if (b.includes("ITA")) scoreB += 20;
-        
-        if (isSeries && /S\d+E\d+/i.test(a)) scoreA += 15;
-        if (isSeries && /S\d+E\d+/i.test(b)) scoreB += 15;
+    // 2. SE L'UTENTE VUOLE INGLESE
+    if (allowEng) {
+        let engQueries = new Set();
+        engTitles.forEach(t => {
+            if (isSeries) {
+                if (episode) {
+                    engQueries.add(`${t} S${sStr}E${eStr}`);
+                    engQueries.add(`${t} ${season}x${eStr}`);
+                }
+                engQueries.add(`${t} Season ${season}`);
+                engQueries.add(`${t} S${sStr}`);
+            } else {
+                engQueries.add(`${t} ${year}`);
+                if (t.length >= 3 && !commonWordsOnly(t)) engQueries.add(t);
+            }
+        });
+        // Aggiungiamo le query ENG alla fine della lista
+        finalQueries.push(...Array.from(engQueries).sort((a, b) => b.length - a.length));
+    }
 
-        // Anno importante solo per i film
-        if (!isSeries && year && a.includes(year)) scoreA += 10;
-        if (!isSeries && year && b.includes(year)) scoreB += 10;
-
-        if (scoreA !== scoreB) return scoreB - scoreA;
-        return a.length - b.length;
-    });
+    return finalQueries;
 }
 
 module.exports = { generateSmartQueries, ultraNormalizeTitle, ULTRA_SEMANTIC_ALIASES, ULTRA_JUNK_TOKENS };
