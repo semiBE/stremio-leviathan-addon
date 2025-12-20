@@ -341,15 +341,12 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
           if (type === 'movie') dbResults = await dbHelper.searchMovie(meta.imdb_id);
           else if (type === 'series') dbResults = await dbHelper.searchSeries(meta.imdb_id, meta.season, meta.episode);
           
-          // --- LIMITER DB: RIMOSSO (Tutti i risultati) ---
+          // --- LIMITER DB: REINSERITO (Max 6 risultati) ---
           if (dbResults && dbResults.length > 0) {
-              // Ordiniamo per seeders (i migliori in alto)
               dbResults.sort((a, b) => (b.seeders || 0) - (a.seeders || 0));
-              
-              // CODICE RIMOSSO:
-              // if (dbResults.length > 6) {
-              //    dbResults = dbResults.slice(0, 6);
-              // }
+              if (dbResults.length > 6) {
+                 dbResults = dbResults.slice(0, 6);
+              }
           }
           // ----------------------------------------------
 
