@@ -253,13 +253,9 @@ function parseTorrentTitle(filename) {
 }
 
 // --- MOTORI DI RICERCA ---
-// IMPORTANTE: Le query arrivano già formate da ai_query (es. "Titolo ITA" oppure "Titolo").
-// I motori devono cercare ESATTAMENTE ciò che ricevono, senza aggiungere ITA arbitrariamente, 
-// a meno che non siamo in modalità strictly ITA e la query sia vuota (caso limite).
 
 async function searchCorsaro(title, year, type, reqSeason, reqEpisode, options = {}) {
     try {
-        // Corsaro è solo ITA, quindi cerchiamo sempre. La validazione farà il resto.
         const url = `https://ilcorsaronero.link/search?q=${encodeURIComponent(clean(title))}`;
         const { data } = await requestHtml(url, { timeout: CONFIG.TIMEOUT });
         if (!data || data.includes("Cloudflare")) return [];
@@ -275,7 +271,6 @@ async function searchCorsaro(title, year, type, reqSeason, reqEpisode, options =
             const text = titleLink.text().trim();
             const href = titleLink.attr('href');
 
-            // Usa isValidResult
             if (!isValidResult(text, options.allowEng) || !checkYear(text, year, type) || !isCorrectFormat(text, reqSeason, reqEpisode)) return;
 
             let seeders = 0;
@@ -314,7 +309,6 @@ async function searchCorsaro(title, year, type, reqSeason, reqEpisode, options =
 async function searchKnaben(title, year, type, reqSeason, reqEpisode, options = {}) {
     try {
         let query = clean(title);
-        // Fallback di sicurezza: se per qualche motivo non c'è ITA e l'inglese è spento, lo forziamo.
         if (!options.allowEng && !query.toUpperCase().includes("ITA")) query += " ITA";
 
         const payload = { "search_field": "title", "query": query, "order_by": "seeders", "order_direction": "desc", "hide_unsafe": false, "hide_xxx": true, "size": 300 };
@@ -340,6 +334,120 @@ async function searchKnaben(title, year, type, reqSeason, reqEpisode, options = 
         });
         return results;
     } catch (error) { return []; }
+}
+
+async function searchTorrentz2(title, year, type, reqSeason, reqEpisode, options = {}) {
+    try {
+        let query = clean(title);
+        if (!options.allowEng && !query.toUpperCase().includes("ITA")) query += " ITA";
+
+        const url = `https://torrentz2.nz/search?q=${encodeURIComponent(query)}`;
+        console.log(`[Torrentz2] Avvio ricerca: ${query} -> ${url}`); 
+
+        const { data } = await requestHtml(url, { timeout: CONFIG.TIMEOUT });
+        
+        if (!data) {
+            console.log(`[Torrentz2] ❌ Nessun dato ricevuto`);
+            return [];
+        }
+
+        // Check Anti-Bot
+        if (data.includes("Cloudflare") || data.includes("Verify you are human") || data.includes("Access denied")) {
+            console.log(`[Torrentz2] 🛡️ Blocco Cloudflare rilevato!`);
+            return [];
+        }
+
+        const $ = cheerio.load(data);
+        const results = [];
+
+        // STRATEGIA BASATA SULLO SCREENSHOT (CARD LAYOUT)
+        // 1. Cerchiamo tutti i pulsanti con link "magnet:" (quello verde nell'immagine)
+        $('a[href^="magnet:"]').each((i, magnetLink) => {
+            try {
+                const magnet = $(magnetLink).attr('href');
+                if (!magnet) return;
+
+                // 2. Risaliamo al contenitore della "Card" (solitamente un div genitore)
+                // Cerchiamo il div che racchiude il risultato. 
+                // Di solito risalendo di 2-4 livelli si trova il container con bordo.
+                const card = $(magnetLink).closest('div.border, div.shadow, div.card, div.row, div.p-4, div.mb-4').first();
+                
+                // Fallback: se non trova classi specifiche, risale di 3 livelli (struttura tipica: Card -> Footer/Buttons -> Button)
+                const container = card.length ? card : $(magnetLink).parent().parent().parent();
+
+                // 3. Estrazione Titolo: è il link principale che NON è il magnet
+                let name = "";
+                container.find('a').each((j, link) => {
+                    const href = $(link).attr('href') || "";
+                    const text = $(link).text().trim();
+                    if (!href.startsWith("magnet:") && !href.startsWith("/u/") && text.length > 5) {
+                        name = text;
+                        return false; // Break
+                    }
+                });
+
+                // Fallback titolo: cerca tag H3, H4, H5 se non trova link
+                if (!name) name = container.find('h3, h4, h5').text().trim();
+
+                // 4. Estrazione Dati (Size e Seeders) dal testo del contenitore
+                const cardText = container.text().replace(/\s+/g, ' '); // Pulisce spazi
+
+                // Size: cerca pattern "4.7 GB" o "4,7 GB"
+                const sizeMatch = cardText.match(/(\d+([.,]\d+)?\s*(GB|MB))/i);
+                const sizeStr = sizeMatch ? sizeMatch[0] : "??";
+
+                // Seeders: Dallo screenshot, è il numero verde con la freccia su, o il primo numero.
+                // Spesso nel raw HTML è un numero semplice. Cerchiamo un numero seguito da "seeds" o "seminatrici"
+                // Oppure il primo numero intero isolato se la struttura è pulita.
+                let seeders = 0;
+                
+                // Tentativo 1: Cerca un elemento colorato (spesso text-success o style="color:green")
+                const greenText = container.find('.text-success, font[color="green"], span[class*="green"]').text().trim();
+                if (greenText && /^\d+$/.test(greenText)) {
+                    seeders = parseInt(greenText);
+                } else {
+                    // Tentativo 2: Regex generica nel testo (es. "408 seminatrici")
+                    const seedMatch = cardText.match(/(\d+)\s*(seminatrici|seeds|seeders|up)/i);
+                    if (seedMatch) {
+                        seeders = parseInt(seedMatch[1]);
+                    } else {
+                        // Tentativo 3: Primo numero intero trovato vicino alla size (rischioso ma utile in blind mode)
+                        // Spesso l'ordine è: Size | Date | Seeders | Leechers
+                        // Ignoriamo la data (che ha / o -)
+                        const numbers = cardText.match(/\b\d+\b/g);
+                        if (numbers) {
+                            // Filtra numeri che sembrano anni (2024, 2025) o date
+                            const candidates = numbers.filter(n => parseInt(n) < 2020 || parseInt(n) > 2030);
+                            if (candidates.length > 0) seeders = parseInt(candidates[0]);
+                        }
+                    }
+                }
+
+                if (name && isValidResult(name, options.allowEng) && checkYear(name, year, type) && isCorrectFormat(name, reqSeason, reqEpisode)) {
+                    // Evita duplicati
+                    if (!results.some(r => r.magnet === magnet)) {
+                        results.push({ 
+                            title: name, 
+                            magnet, 
+                            size: sizeStr, 
+                            sizeBytes: parseSize(sizeStr), 
+                            seeders, 
+                            source: "Torrentz2" 
+                        });
+                    }
+                }
+
+            } catch (e) {
+                // Skip error item
+            }
+        });
+
+        console.log(`[Torrentz2] Trovati ${results.length} risultati per ${query}`);
+        return results;
+    } catch (error) { 
+        console.log(`[Torrentz2] Errore: ${error.message}`);
+        return []; 
+    }
 }
 
 async function searchUindex(title, year, type, reqSeason, reqEpisode, options = {}) {
@@ -662,7 +770,8 @@ async function searchTorrentBay(title, year, type, reqSeason, reqEpisode, option
 // DEFINIZIONE MOTORI ATTIVI
 CONFIG.ENGINES = [
     searchCorsaro,
-    searchKnaben,
+    searchKnaben, // REINTEGRATO
+    searchTorrentz2, // NUOVO PARSER "CARD" LAYOUT
     searchUindex,
     searchBitSearch,
     searchTorrentBay,
@@ -682,6 +791,7 @@ async function searchMagnet(title, year, type, imdbId, options = {}) {
 
     const engineTimeouts = new Map([
         [searchKnaben, CONFIG.TIMEOUT_API],
+        [searchTorrentz2, CONFIG.TIMEOUT],
         [searchTPB, CONFIG.TIMEOUT_API],
         [searchUindex, 4000] 
     ]);
