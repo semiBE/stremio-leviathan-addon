@@ -8,16 +8,21 @@ const crypto = require("crypto");
 const Bottleneck = require("bottleneck");
 const rateLimit = require("express-rate-limit");
 
-// --- MODULO CACHE REDIS (GOD TIER) ---
-const Cache = require("./cache"); 
+// --- CACHE DISABILITATA (MOCK) ---
+const Cache = {
+    getCachedMagnets: async () => null, 
+    cacheMagnets: async () => {},       
+    getCachedStream: async () => null,  
+    cacheStream: async () => {},        
+    listKeys: async () => [],
+    deleteKey: async () => {},
+    flushAll: async () => {}
+};
 
 const { handleVixSynthetic } = require("./vix/vix_proxy");
-// --- IMPORTIAMO MODULI SMART ---
 const { generateSmartQueries } = require("./ai_query");
 const { smartMatch } = require("./smart_parser");
 const { rankAndFilterResults } = require("./ranking");
-
-// --- IMPORTIAMO CONVERTER E DEBRID ---
 const { tmdbToImdb, imdbToTmdb, getTmdbAltTitles } = require("./id_converter");
 const kitsuHandler = require("./kitsu_handler");
 const RD = require("./debrid/realdebrid");
@@ -27,18 +32,19 @@ const dbHelper = require("./db-helper");
 const { searchVix } = require("./vix/vix_handler");
 const { getManifest } = require("./manifest");
 
-// Inizializza DB Locale (Se presente)
+// Inizializza DB Locale
 dbHelper.initDatabase();
 
+// --- CONFIGURAZIONE CENTRALE (GOD TIER) ---
 const CONFIG = {
+  INDEXER_URL: process.env.INDEXER_URL || "http://185.229.239.195:8080", 
   CINEMETA_URL: "https://v3-cinemeta.strem.io",
   REAL_SIZE_FILTER: 80 * 1024 * 1024,
   TIMEOUT_TMDB: 2000,
   SCRAPER_TIMEOUT: 6000, 
-  MAX_RESULTS: 40, 
+  MAX_RESULTS: 100, 
 };
 
-// --- STATIC REGEX PATTERNS ---
 const REGEX_YEAR = /(19|20)\d{2}/;
 const REGEX_QUALITY = {
     "4K": /2160p|4k|uhd/i,
@@ -84,20 +90,20 @@ const app = express();
 app.set('trust proxy', 1);
 
 const limiter = rateLimit({
-	windowMs: 15 * 60 * 1000, 
-	max: 300, 
-	standardHeaders: true, 
-	legacyHeaders: false,
+    windowMs: 15 * 60 * 1000, 
+    max: 300, 
+    standardHeaders: true, 
+    legacyHeaders: false,
     message: "Troppe richieste da questo IP, riprova più tardi."
 });
 
 app.use(limiter);
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
-app.use(express.json()); // Necessario per Admin API
+app.use(express.json()); 
 app.use(express.static(path.join(__dirname, "public")));
 
-// --- FORMATTERS ---
+// --- UTILS & HELPERS ---
 
 const UNITS = ["B", "KB", "MB", "GB", "TB"];
 function formatBytes(bytes) {
@@ -202,8 +208,12 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     if (/ita|it\b|italiano/i.test(lang || "")) langStr = "🗣️ ITA";
     else if (/multi/i.test(lang || "")) langStr = "🗣️ MULTI";
     else if (lang) langStr = `🗣️ ${lang.toUpperCase()}`;
+    
+    // --- PULIZIA NOME PROVIDER ---
     let displaySource = source;
+    // Se c'è Corsaro lo sistema, altrimenti mostra la source pulita da queryRemoteIndexer
     if (/corsaro/i.test(displaySource)) displaySource = "ilCorSaRoNeRo";
+    
     const sourceLine = `⚡ [${serviceTag}] ${displaySource}`;
     const name = `🦑 LEVIATHAN\n${qIcon} ${quality}`; 
     const cleanName = cleanFilename(fileTitle)
@@ -295,6 +305,47 @@ async function resolveDebridLink(config, item, showFake, reqHost) {
     }
 }
 
+// --- INTERFACCIA CON LEVIATHAN INDEXER (VPS A) ---
+// Chiede al database remoto se ci sono già torrent per questo film
+async function queryRemoteIndexer(tmdbId, type, season = null, episode = null) {
+    if (!CONFIG.INDEXER_URL) return [];
+    try {
+        console.log(`🌐 [REMOTE] Chiedo al Database God Tier (VPS A): ${tmdbId} S:${season} E:${episode}`);
+        
+        let url = `${CONFIG.INDEXER_URL}/api/get/${tmdbId}`;
+        if (season) url += `?season=${season}`;
+        if (episode) url += `&episode=${episode}`;
+
+        const { data } = await axios.get(url, { timeout: 2500 });
+        
+        if (!data || !data.torrents || !Array.isArray(data.torrents)) return [];
+
+        return data.torrents.map(t => {
+            let magnet = t.magnet || `magnet:?xt=urn:btih:${t.info_hash}&dn=${encodeURIComponent(t.title)}`;
+            if(!magnet.includes("tr=")) {
+               magnet += "&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fopen.demonii.com%3A1337%2Fannounce";
+            }
+
+            // --- FIX NOME SORGENTE ---
+            // Rimuoviamo "LeviathanDB" e parentesi se presenti nel provider
+            let providerName = t.provider || 'P2P';
+            providerName = providerName.replace(/LeviathanDB/i, '').replace(/[()]/g, '').trim();
+            if(!providerName) providerName = 'P2P';
+
+            return {
+                title: t.title,
+                magnet: magnet,
+                size: "💾 DB", 
+                sizeBytes: parseInt(t.size),
+                seeders: t.seeders,
+                source: providerName 
+            };
+        });
+    } catch (e) {
+        return [];
+    }
+}
+
 const hashConfig = (conf) => crypto.createHash("md5").update(conf).digest("hex");
 
 async function generateStream(type, id, config, userConfStr, reqHost) {
@@ -326,32 +377,35 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   const meta = await getMetadata(finalId, type); 
   if (!meta) return { streams: [] };
 
-  // --- LOGICA REDIS (GOD TIER) ---
-  let cleanResults = await Cache.getCachedMagnets(type, finalId);
-  
-  if (cleanResults) {
-      console.log(`⚡ [REDIS HIT] Cache Globale: ${meta.title} (${cleanResults.length} magnets)`);
-  } else {
-      console.log(`🐢 [REDIS MISS] Avvio Scraping per: ${meta.title}`);
+  console.log(`🐢 [NO CACHE] Avvio Ricerca Diretta per: ${meta.title}`);
 
-      // --- START SCRAPING LOGIC ---
-      console.log(`\n🔍 [DB] Cerco nel database: ${meta.imdb_id}`);
-      let dbResults = [];
-      try {
-          if (type === 'movie') dbResults = await dbHelper.searchMovie(meta.imdb_id);
-          else if (type === 'series') dbResults = await dbHelper.searchSeries(meta.imdb_id, meta.season, meta.episode);
-          
-          // --- LIMITER DB: REINSERITO (Max 6 risultati) ---
-          if (dbResults && dbResults.length > 0) {
-              dbResults.sort((a, b) => (b.seeders || 0) - (a.seeders || 0));
-              if (dbResults.length > 6) {
-                 dbResults = dbResults.slice(0, 6);
-              }
-          }
-          // ----------------------------------------------
+  // 1. CHIAMATA AL VPS A (REMOTE INDEXER)
+  let remoteResults = [];
+  try {
+      const tmdbIdLookup = meta.tmdb_id || (await imdbToTmdb(meta.imdb_id, userTmdbKey))?.tmdbId;
+      if (tmdbIdLookup) {
+          remoteResults = await queryRemoteIndexer(tmdbIdLookup, type, meta.season, meta.episode);
+      }
+  } catch (err) { console.error("Errore Remote Indexer:", err.message); }
 
-      } catch (err) { console.error("❌ Errore ricerca DB:", err.message); }
-      
+  if (remoteResults.length > 0) {
+      console.log(`✅ [REMOTE HIT] Trovati ${remoteResults.length} torrent dal VPS A!`);
+  }
+
+  // 2. RECUPERO DB LOCALE
+  let dbResults = [];
+  try {
+      if (type === 'movie') dbResults = await dbHelper.searchMovie(meta.imdb_id);
+      else if (type === 'series') dbResults = await dbHelper.searchSeries(meta.imdb_id, meta.season, meta.episode);
+      if (dbResults && dbResults.length > 6) dbResults = dbResults.slice(0, 6);
+  } catch (err) { console.error("❌ Errore ricerca DB Locale:", err.message); }
+
+  let currentResults = [...remoteResults, ...dbResults];
+
+  // 3. LIVE SCRAPING (SOLO SE MENO DI 6 RISULTATI DAL DB)
+  let scrapedResults = [];
+  if (currentResults.length < 6) { 
+      console.log(`⚠️ Pochi risultati nel DB (${currentResults.length}), attivo SCRAPING VELOCE...`);
       let dynamicTitles = [];
       try {
           let tmdbIdForSearch = meta.imdb_id.startsWith("tt") ? (await imdbToTmdb(meta.imdb_id, userTmdbKey)).tmdbId : meta.imdb_id;
@@ -361,7 +415,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       const allowEng = config.filters?.allowEng === true; 
       const queries = generateSmartQueries(meta, dynamicTitles, allowEng);
       
-      console.log(`\n🧠 [AI-CORE] Cerco "${meta.title}": ${queries.length} varianti.`);
+      console.log(`\n🧠 [AI-CORE] Scraping Live "${meta.title}": ${queries.length} varianti.`);
 
       let promises = [];
       queries.forEach(q => { 
@@ -373,50 +427,43 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
           }); 
       });
 
-      let resultsRaw = (await Promise.all(promises)).flat();
-      resultsRaw = [...dbResults, ...resultsRaw]; 
+      scrapedResults = (await Promise.all(promises)).flat();
+  } else {
+      console.log(`✅ Trovati ${currentResults.length} risultati nel DB (>=6). Scraper DISABILITATO.`);
+  }
 
-      resultsRaw = resultsRaw.filter(item => {
-        if (!item?.magnet) return false;
-        const fileYearMatch = item.title.match(REGEX_YEAR);
-        if (fileYearMatch && Math.abs(parseInt(fileYearMatch[0]) - parseInt(meta.year)) > 1) return false;
-        const isSemanticallySafe = smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode);
-        if (!isSemanticallySafe) return false;
-        if (!allowEng && !isSafeForItalian(item)) return false;
-        return true;
-      });
+  // 4. UNIONE E FILTRAGGIO (FIX FRANKENSTEIN)
+  let resultsRaw = [...currentResults, ...scrapedResults];
 
-      if (resultsRaw.length <= 5) {
-          const extPromises = FALLBACK_SCRAPERS.map(fb => LIMITERS.scraper.schedule(() => withTimeout(fb.searchMagnet(queries[0], meta.year, type, finalId), CONFIG.SCRAPER_TIMEOUT).catch(() => [])));
-          try {
-            const extResultsRaw = (await Promise.all(extPromises)).flat();
-            if (Array.isArray(extResultsRaw)) {
-                const filteredExt = extResultsRaw.filter(item => smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode) && (!allowEng ? isSafeForItalian(item) : true));
-                resultsRaw = [...resultsRaw, ...filteredExt];
-            }
-          } catch (e) {}
-      }
+  resultsRaw = resultsRaw.filter(item => {
+    if (!item?.magnet) return false;
+    
+    // 1. Controllo Anno (Tolleranza 1 anno)
+    const fileYearMatch = item.title.match(REGEX_YEAR);
+    if (fileYearMatch && Math.abs(parseInt(fileYearMatch[0]) - parseInt(meta.year)) > 1) return false;
 
-      const seen = new Set(); 
-      cleanResults = [];
-      for (const item of resultsRaw) {
-        if (!item || !item.magnet) continue;
-        try {
-            const hashMatch = item.magnet.match(/btih:([a-f0-9]{40})/i);
-            const hash = hashMatch ? hashMatch[1].toUpperCase() : item.magnet;
-            if (seen.has(hash)) continue;
-            seen.add(hash);
-            item._size = parseSize(item.size || item.sizeBytes);
-            item.hash = hash; 
-            cleanResults.push(item);
-        } catch (err) { continue; }
-      }
-      // --- END SCRAPING LOGIC ---
+    // 2. SMART MATCH (Essenziale per distinguere "Lisa Frankenstein" da "Frankenstein")
+    if (!smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) {
+        return false;
+    }
+    
+    // 3. NESSUN FILTRO LINGUA (Passa tutto)
+    return true;
+  });
 
-      // SALVA IN REDIS
-      if (cleanResults && cleanResults.length > 0) {
-          Cache.cacheMagnets(type, finalId, cleanResults);
-      }
+  const seen = new Set(); 
+  let cleanResults = [];
+  for (const item of resultsRaw) {
+    if (!item || !item.magnet) continue;
+    try {
+        const hashMatch = item.magnet.match(/btih:([a-f0-9]{40})/i);
+        const hash = hashMatch ? hashMatch[1].toUpperCase() : item.magnet;
+        if (seen.has(hash)) continue;
+        seen.add(hash);
+        item._size = parseSize(item.size || item.sizeBytes);
+        item.hash = hash; 
+        cleanResults.push(item);
+    } catch (err) { continue; }
   }
 
   const ranked = rankAndFilterResults(cleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
@@ -424,7 +471,6 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   // TORBOX CHECK
   if (config.service === 'tb' && ranked.length > 0) {
       const hashes = ranked.map(r => r.hash);
-      console.log(`🔎 [TorBox] Controllo cache per ${hashes.length} elementi...`);
       const cachedHashes = await TB.checkCached(config.key || config.rd, hashes);
       const cachedSet = new Set(cachedHashes.map(h => h.toUpperCase()));
       ranked.forEach(item => { if (cachedSet.has(item.hash.toUpperCase())) item._tbCached = true; });
@@ -441,7 +487,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       debridStreams = (await Promise.all(rdPromises)).filter(Boolean);
   }
 
-  // VIX (StreamingCommunity) - Non cachato in Redis Magnet ma in Stream Cache
+  // VIX
   const vixPromise = searchVix(meta, config);
   const rawVix = await vixPromise; 
   const formattedVix = rawVix.map(v => formatVixStream(meta, v));
@@ -480,16 +526,13 @@ const authMiddleware = (req, res, next) => {
 };
 
 app.get("/admin/keys", authMiddleware, async (req, res) => {
-    try { res.json(await Cache.listKeys()); } 
-    catch (e) { res.status(500).json({ error: e.message }); }
+    res.json({ error: "Cache Redis Disabilitata" });
 });
 app.delete("/admin/key", authMiddleware, async (req, res) => {
-    try { await Cache.deleteKey(req.body.key); res.json({ success: true }); } 
-    catch (e) { res.status(500).json({ error: e.message }); }
+    res.json({ error: "Cache Redis Disabilitata" });
 });
 app.post("/admin/flush", authMiddleware, async (req, res) => {
-    try { await Cache.flushAll(); res.json({ success: true }); } 
-    catch (e) { res.status(500).json({ error: e.message }); }
+    res.json({ error: "Cache Redis Disabilitata" });
 });
 
 // --- MAIN ROUTES ---
@@ -505,30 +548,32 @@ app.get("/:conf/stream/:type/:id.json", async (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     const { conf, type, id } = req.params;
     const cleanId = id.replace(".json", "");
-    const confHash = crypto.createHash("md5").update(conf).digest("hex");
-
-    // 1. CHECK CACHE UTENTE (REDIS)
-    const cachedStream = await Cache.getCachedStream(confHash, type, cleanId);
-    if (cachedStream) {
-        console.log(`🚀 [REDIS HIT] Stream Istantaneo per ${cleanId}`);
-        return res.json(cachedStream);
-    }
 
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = `${protocol}://${req.get('host')}`;
     
-    // 2. GENERAZIONE STREAM
+    // GENERAZIONE STREAM DIRETTA (Niente Cache Redis)
     const result = await generateStream(type, cleanId, getConfig(conf), conf, host);
     
-    // 3. SALVATAGGIO CACHE
-    if (result && result.streams && result.streams.length > 0) {
-        Cache.cacheStream(confHash, type, cleanId, result);
-    }
     res.json(result); 
 });
 
 function getConfig(configStr) { try { return JSON.parse(Buffer.from(configStr, "base64").toString()); } catch { return {}; } }
 function withTimeout(promise, ms) { return Promise.race([promise, new Promise(r => setTimeout(() => r([]), ms))]); }
 
+// --- AVVIO SERVER ---
 const PORT = process.env.PORT || 7000;
-app.listen(PORT, () => console.log(`🚀 Leviathan (God Tier) attivo su porta ${PORT}`));
+const PUBLIC_IP = process.env.PUBLIC_IP || "127.0.0.1";
+const PUBLIC_PORT = process.env.PUBLIC_PORT || PORT;
+
+app.listen(PORT, () => {
+    console.log(`🚀 Leviathan (God Tier) attivo su porta interna ${PORT}`);
+    console.log(`-----------------------------------------------------`);
+    console.log(`⚠️  MODALITÀ NO-REDIS: La cache globale è disattivata.`);
+    console.log(`⚡ SPEED LOGIC: Scraper si attiva se i risultati sono < 6.`);
+    console.log(`🧠 SMART FILTER: Attivo (Protezione Frankenstein).`);
+    console.log(`🌍 Addon accessibile su: http://${PUBLIC_IP}:${PUBLIC_PORT}/manifest.json`);
+    console.log(`🖥️  GUI/Log disponibili su: http://${PUBLIC_IP}:${PUBLIC_PORT}`);
+    console.log(`📡 Connesso a Indexer DB: ${CONFIG.INDEXER_URL}`);
+    console.log(`-----------------------------------------------------`);
+});
