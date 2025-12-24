@@ -348,11 +348,14 @@ async function queryRemoteIndexer(tmdbId, type, season = null, episode = null) {
 
 const hashConfig = (conf) => crypto.createHash("md5").update(conf).digest("hex");
 
+// 🔥 FUNZIONE GENERAZIONE FLUSSI OTTIMIZZATA (PARALLELA) 🔥
 async function generateStream(type, id, config, userConfStr, reqHost) {
   if (!config.key && !config.rd) return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key nel configuratore" }] };
   
   const userTmdbKey = config.tmdb; 
   let finalId = id; 
+  
+  // 1. Risoluzione ID (Veloce)
   if (id.startsWith("tmdb:")) {
       try {
           const parts = id.split(":");
@@ -374,49 +377,59 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       } catch (err) {}
   }
 
+  // 2. Metadata (Bloccante ma necessario)
   const meta = await getMetadata(finalId, type); 
   if (!meta) return { streams: [] };
 
-  console.log(`🐢 [NO CACHE] Avvio Ricerca Diretta per: ${meta.title}`);
+  console.log(`🚀 [SPEED] Avvio Ricerca PARALLELA per: ${meta.title}`);
 
-  // 1. CHIAMATA AL VPS A (REMOTE INDEXER)
-  let remoteResults = [];
-  try {
-      const tmdbIdLookup = meta.tmdb_id || (await imdbToTmdb(meta.imdb_id, userTmdbKey))?.tmdbId;
-      if (tmdbIdLookup) {
-          remoteResults = await queryRemoteIndexer(tmdbIdLookup, type, meta.season, meta.episode);
-      }
-  } catch (err) { console.error("Errore Remote Indexer:", err.message); }
+  // PREPARAZIONE PROMISE
+  const tmdbIdLookup = meta.tmdb_id || (await imdbToTmdb(meta.imdb_id, userTmdbKey))?.tmdbId;
 
-  if (remoteResults.length > 0) {
-      console.log(`✅ [REMOTE HIT] Trovati ${remoteResults.length} torrent dal VPS A!`);
-  }
+  // Promise A: Remote Indexer (VPS A)
+  const remotePromise = (async () => {
+      try {
+          if (tmdbIdLookup) return await queryRemoteIndexer(tmdbIdLookup, type, meta.season, meta.episode);
+      } catch (e) { console.error("Err Remote:", e.message); }
+      return [];
+  })();
 
-  // 2. RECUPERO DB LOCALE
-  let dbResults = [];
-  try {
-      if (type === 'movie') dbResults = await dbHelper.searchMovie(meta.imdb_id);
-      else if (type === 'series') dbResults = await dbHelper.searchSeries(meta.imdb_id, meta.season, meta.episode);
-      if (dbResults && dbResults.length > 6) dbResults = dbResults.slice(0, 6);
-  } catch (err) { console.error("❌ Errore ricerca DB Locale:", err.message); }
+  // Promise B: DB Locale (Postgres)
+  const dbPromise = (async () => {
+      try {
+          if (type === 'movie') return await dbHelper.searchMovie(meta.imdb_id);
+          else if (type === 'series') return await dbHelper.searchSeries(meta.imdb_id, meta.season, meta.episode);
+      } catch (e) { console.error("Err Local DB:", e.message); }
+      return [];
+  })();
+
+  // 3. ESECUZIONE PARALLELA (Il tempo totale è pari al più lento dei due, non alla somma)
+  const [remoteResult, dbResult] = await Promise.allSettled([remotePromise, dbPromise]);
+
+  const remoteResults = remoteResult.status === 'fulfilled' ? remoteResult.value : [];
+  let dbResults = dbResult.status === 'fulfilled' ? dbResult.value : [];
+
+  if (remoteResults.length > 0) console.log(`✅ [REMOTE] ${remoteResults.length} items`);
+  if (dbResults.length > 0) console.log(`✅ [LOCAL DB] ${dbResults.length} items`);
+
+  // Merge intelligente: se abbiamo risultati remoti, limitiamo quelli locali per evitare caos
+  if (dbResults.length > 6) dbResults = dbResults.slice(0, 10);
 
   let currentResults = [...remoteResults, ...dbResults];
 
-  // 3. LIVE SCRAPING (SOLO SE MENO DI 6 RISULTATI DAL DB)
+  // 4. SCRAPING (Solo se serve davvero)
+  // Se abbiamo trovato risultati rapidi (DB o Remote), evitiamo di aspettare lo scraper se possibile
   let scrapedResults = [];
   if (currentResults.length < 6) { 
-      console.log(`⚠️ Pochi risultati nel DB (${currentResults.length}), attivo SCRAPING VELOCE...`);
+      console.log(`⚠️ Pochi risultati (${currentResults.length}), attivo SCRAPING VELOCE...`);
       let dynamicTitles = [];
       try {
-          let tmdbIdForSearch = meta.imdb_id.startsWith("tt") ? (await imdbToTmdb(meta.imdb_id, userTmdbKey)).tmdbId : meta.imdb_id;
-          if (tmdbIdForSearch) dynamicTitles = await getTmdbAltTitles(tmdbIdForSearch, type, userTmdbKey);
+          if (tmdbIdLookup) dynamicTitles = await getTmdbAltTitles(tmdbIdLookup, type, userTmdbKey);
       } catch (e) {}
 
       const allowEng = config.filters?.allowEng === true; 
       const queries = generateSmartQueries(meta, dynamicTitles, allowEng);
       
-      console.log(`\n🧠 [AI-CORE] Scraping Live "${meta.title}": ${queries.length} varianti.`);
-
       let promises = [];
       queries.forEach(q => { 
           SCRAPER_MODULES.forEach(scraper => { 
@@ -429,25 +442,17 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
 
       scrapedResults = (await Promise.all(promises)).flat();
   } else {
-      console.log(`✅ Trovati ${currentResults.length} risultati nel DB (>=6). Scraper DISABILITATO.`);
+      console.log(`⚡ SKIP SCRAPER: Abbiamo già ${currentResults.length} risultati validi.`);
   }
 
-  // 4. UNIONE E FILTRAGGIO (FIX FRANKENSTEIN)
+  // 5. UNIONE E FILTRAGGIO
   let resultsRaw = [...currentResults, ...scrapedResults];
 
   resultsRaw = resultsRaw.filter(item => {
     if (!item?.magnet) return false;
-    
-    // 1. Controllo Anno (Tolleranza 1 anno)
     const fileYearMatch = item.title.match(REGEX_YEAR);
     if (fileYearMatch && Math.abs(parseInt(fileYearMatch[0]) - parseInt(meta.year)) > 1) return false;
-
-    // 2. SMART MATCH (Essenziale per distinguere "Lisa Frankenstein" da "Frankenstein")
-    if (!smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) {
-        return false;
-    }
-    
-    // 3. NESSUN FILTRO LINGUA (Passa tutto)
+    if (!smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return false;
     return true;
   });
 
@@ -466,9 +471,10 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
     } catch (err) { continue; }
   }
 
+  // 6. RANKING (QUALITY FIRST)
   const ranked = rankAndFilterResults(cleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
 
-  // TORBOX CHECK
+  // 7. DEBRID RESOLUTION
   if (config.service === 'tb' && ranked.length > 0) {
       const hashes = ranked.map(r => r.hash);
       const cachedHashes = await TB.checkCached(config.key || config.rd, hashes);
@@ -487,7 +493,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       debridStreams = (await Promise.all(rdPromises)).filter(Boolean);
   }
 
-  // VIX
+  // 8. VIX & FINALIZZAZIONE
   const vixPromise = searchVix(meta, config);
   const rawVix = await vixPromise; 
   const formattedVix = rawVix.map(v => formatVixStream(meta, v));
@@ -570,7 +576,7 @@ app.listen(PORT, () => {
     console.log(`🚀 Leviathan (God Tier) attivo su porta interna ${PORT}`);
     console.log(`-----------------------------------------------------`);
     console.log(`⚠️  MODALITÀ NO-REDIS: La cache globale è disattivata.`);
-    console.log(`⚡ SPEED LOGIC: Scraper si attiva se i risultati sono < 6.`);
+    console.log(`⚡ SPEED LOGIC: Parallelismo attivo (DB + Remote + FailFast).`);
     console.log(`🧠 SMART FILTER: Attivo (Protezione Frankenstein).`);
     console.log(`🌍 Addon accessibile su: http://${PUBLIC_IP}:${PUBLIC_PORT}/manifest.json`);
     console.log(`🖥️  GUI/Log disponibili su: http://${PUBLIC_IP}:${PUBLIC_PORT}`);
