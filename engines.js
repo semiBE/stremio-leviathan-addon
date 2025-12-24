@@ -40,17 +40,6 @@ const BROWSER_PROFILES = [
             'sec-fetch-mode': 'navigate',
             'sec-fetch-site': 'same-origin'
         }
-    },
-    {
-        name: "Chrome Mac",
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        headers: {
-            'sec-ch-ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"macOS"',
-            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'accept-language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7'
-        }
     }
 ];
 
@@ -163,26 +152,15 @@ function clean(title) {
         .replace(/\s+/g, " ").trim();
 }
 
-// Funzione di validazione intelligente
 function isValidResult(name, allowEng = false) {
     if (!name) return false;
     const nameUpper = name.toUpperCase();
-    
-    // Regex per ITA
     const ITA_REGEX = /\b(ITA(LIANO)?|MULTI|DUAL|MD|SUB\.?ITA|SUB-?ITA|ITALUB|FORCED|AC3\.?ITA|DTS\.?ITA|AUDIO\.?ITA|ITA\.?AC3|ITA\.?HD|BDMUX|DVDRIP\.?ITA|CiNEFiLE|NovaRip|MeM|robbyrs|iDN_CreW|SPEEDVIDEO|WMS|TRIDIM)\b/i;
-
-    // Se è ITA, è sempre valido (indipendentemente da allowEng)
     if (ITA_REGEX.test(nameUpper)) return true;
-
-    // Se l'utente NON vuole ENG, e non è ITA, scartiamo.
     if (!allowEng) return false;
-
-    // Se l'utente VUOLE ENG, accettiamo tutto tranne lingue specifiche indesiderate
     const FOREIGN_REGEX = /\b(FRENCH|GERMAN|SPANISH|LATINO|RUSSIAN|DUBBED|HINDI|TAMIL|TELUGU|KOREAN)\b/i;
-    // Se è straniero MA non è MULTI, scarta. (Se è MULTI potrebbe avere ITA o ENG)
     if (FOREIGN_REGEX.test(nameUpper) && !/MULTI/i.test(nameUpper)) return false;
-
-    return true; // Accetta English/Clean releases
+    return true; 
 }
 
 function checkYear(name, year, type) {
@@ -234,8 +212,6 @@ function isCorrectFormat(name, reqSeason, reqEpisode) {
     return true;
 }
 
-const createRegex = (pattern) => new RegExp(`(?<![^\\s\\[(_\\-.,])(${pattern})(?=[\\s\\)\\]_.\\-,]|$)`, 'i');
-
 function parseTorrentTitle(filename) {
     if (!filename) return { title: '', year: null, season: null, episode: null };
     const result = { seasons: [], episodes: [] };
@@ -252,14 +228,88 @@ function parseTorrentTitle(filename) {
     return result;
 }
 
-// --- MOTORI DI RICERCA ---
-// IMPORTANTE: Le query arrivano già formate da ai_query (es. "Titolo ITA" oppure "Titolo").
-// I motori devono cercare ESATTAMENTE ciò che ricevono, senza aggiungere ITA arbitrariamente, 
-// a meno che non siamo in modalità strictly ITA e la query sia vuota (caso limite).
+// --- NUOVO MOTORE: TORRENTIO (API) ---
+// Questo motore viene chiamato solo se gli altri falliscono (vedi searchMagnet)
+async function searchTorrentio(title, year, type, reqSeason, reqEpisode, options = {}) {
+    try {
+        const imdbIdRaw = options.imdbId;
+        if (!imdbIdRaw) return [];
+
+        // Torrentio richiede l'ID base (es. tt1234567)
+        const imdbIdBase = imdbIdRaw.split(':')[0]; 
+        
+        // Configurazione: Providers Standard + Lingua Italiana forzata
+        const config = "providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnet4you|language=italian";
+
+        let url;
+        if (type === 'movie') {
+            url = `https://torrentio.strem.fun/${config}/stream/movie/${imdbIdBase}.json`;
+        } else if (type === 'series' || type === 'tv') {
+            // Per le serie Torrentio vuole ID:STAGIONE:EPISODIO
+            // Se cerchiamo un pacchetto (senza episodio), Torrentio API standard potrebbe non essere l'ideale,
+            // ma proviamo a chiedere il primo episodio sperando trovi qualcosa, oppure saltiamo.
+            if (!reqSeason) return []; 
+            const s = reqSeason;
+            const e = reqEpisode || 1; // Default a 1 se cerchiamo stagione intera, spesso nei risultati escono anche i pack
+            url = `https://torrentio.strem.fun/${config}/stream/series/${imdbIdBase}:${s}:${e}.json`;
+        }
+
+        console.log(`[Torrentio] 🇮🇹 Richiedo: ${url}`);
+        
+        const { data } = await axios.get(url, { timeout: CONFIG.TIMEOUT_API });
+        
+        if (!data || !data.streams || data.streams.length === 0) return [];
+
+        const results = [];
+
+        data.streams.forEach(stream => {
+            const lines = stream.title.split('\n');
+            const fileTitle = lines[0] || title; // Nome file reale
+            const details = lines[1] || ""; // Dettagli (Seeders, Size, Source)
+
+            // Parsing Seeders
+            let seeders = 0;
+            const seedMatch = details.match(/👤\s*(\d+)/);
+            if (seedMatch) seeders = parseInt(seedMatch[1]);
+
+            // Parsing Dimensione
+            let sizeStr = "??";
+            let sizeBytes = 0;
+            const sizeMatch = details.match(/💾\s*([\d\.]+\s*[GMK]B)/i);
+            if (sizeMatch) {
+                sizeStr = sizeMatch[1];
+                sizeBytes = parseSize(sizeStr);
+            }
+
+            // Torrentio restituisce infoHash, lo convertiamo in magnet
+            const hashMatch = stream.infoHash; 
+            const magnet = hashMatch ? `magnet:?xt=urn:btih:${hashMatch}&dn=${encodeURIComponent(fileTitle)}` : "";
+
+            if (magnet) {
+                results.push({
+                    title: fileTitle,
+                    magnet: magnet,
+                    size: sizeStr,
+                    sizeBytes: sizeBytes,
+                    seeders: seeders,
+                    source: "Torrentio"
+                });
+            }
+        });
+
+        console.log(`[Torrentio] Trovati ${results.length} risultati.`);
+        return results;
+
+    } catch (e) {
+        console.log(`[Torrentio] Errore: ${e.message}`);
+        return [];
+    }
+}
+
+// --- MOTORI DI RICERCA STANDARD ---
 
 async function searchCorsaro(title, year, type, reqSeason, reqEpisode, options = {}) {
     try {
-        // Corsaro è solo ITA, quindi cerchiamo sempre. La validazione farà il resto.
         const url = `https://ilcorsaronero.link/search?q=${encodeURIComponent(clean(title))}`;
         const { data } = await requestHtml(url, { timeout: CONFIG.TIMEOUT });
         if (!data || data.includes("Cloudflare")) return [];
@@ -275,7 +325,6 @@ async function searchCorsaro(title, year, type, reqSeason, reqEpisode, options =
             const text = titleLink.text().trim();
             const href = titleLink.attr('href');
 
-            // Usa isValidResult
             if (!isValidResult(text, options.allowEng) || !checkYear(text, year, type) || !isCorrectFormat(text, reqSeason, reqEpisode)) return;
 
             let seeders = 0;
@@ -314,7 +363,6 @@ async function searchCorsaro(title, year, type, reqSeason, reqEpisode, options =
 async function searchKnaben(title, year, type, reqSeason, reqEpisode, options = {}) {
     try {
         let query = clean(title);
-        // Fallback di sicurezza: se per qualche motivo non c'è ITA e l'inglese è spento, lo forziamo.
         if (!options.allowEng && !query.toUpperCase().includes("ITA")) query += " ITA";
 
         const payload = { "search_field": "title", "query": query, "order_by": "seeders", "order_direction": "desc", "hide_unsafe": false, "hide_xxx": true, "size": 300 };
@@ -444,8 +492,6 @@ async function searchBitSearch(title, year, type, reqSeason, reqEpisode, options
         if (!options.allowEng && !query.toUpperCase().includes("ITA")) query += " ITA";
         
         const url = `https://bitsearch.to/search?q=${encodeURIComponent(query)}`;
-        console.log(`[BitSearch] 🔎 Cerco: "${query}" su ${url}`);
-
         const { data } = await requestHtml(url, { timeout: CONFIG.TIMEOUT });
         if (!data || data.includes("No results found")) return [];
 
@@ -659,7 +705,7 @@ async function searchTorrentBay(title, year, type, reqSeason, reqEpisode, option
     } catch (e) { return []; }
 }
 
-// DEFINIZIONE MOTORI ATTIVI
+// DEFINIZIONE MOTORI ATTIVI STANDARD
 CONFIG.ENGINES = [
     searchCorsaro,
     searchKnaben,
@@ -677,8 +723,8 @@ CONFIG.ENGINES = [
 async function searchMagnet(title, year, type, imdbId, options = {}) {
     const { season: reqSeason, episode: reqEpisode } = parseImdbId(imdbId);
     
-    // Default options
-    const searchOpts = { allowEng: false, ...options };
+    // Opzioni con imdbId raw aggiunto per Torrentio
+    const searchOpts = { allowEng: false, imdbId: imdbId, ...options };
 
     const engineTimeouts = new Map([
         [searchKnaben, CONFIG.TIMEOUT_API],
@@ -686,15 +732,54 @@ async function searchMagnet(title, year, type, imdbId, options = {}) {
         [searchUindex, 4000] 
     ]);
 
+    // 1. Eseguiamo i motori standard
     const promises = CONFIG.ENGINES.map(engine => {
         const specificTimeout = engineTimeouts.get(engine) || CONFIG.TIMEOUT;
-        // Passiamo searchOpts a ogni motore
         return withTimeout(engine(title, year, type, reqSeason, reqEpisode, searchOpts), specificTimeout).catch(e => []); 
     });
 
     const resultsArrays = await Promise.allSettled(promises);
     let allResults = resultsArrays.filter(r => r.status === 'fulfilled').map(r => r.value).flat();
-    const topResults = allResults.sort((a, b) => (b.seeders || 0) - (a.seeders || 0)).slice(0, 50);
+
+    // 2. Filtriamo e deduplichiamo i risultati standard
+    const seenHashes = new Set();
+    let uniqueResults = allResults.filter(r => {
+        const hashMatch = r.magnet.match(/btih:([a-f0-9]{40})/i);
+        const hash = hashMatch ? hashMatch[1].toLowerCase() : null;
+        if (hash && seenHashes.has(hash)) return false;
+        if (hash) seenHashes.add(hash);
+        return true;
+    });
+
+    // 3. LOGICA CONDIZIONALE: Se abbiamo 3 risultati o meno, attiviamo Torrentio
+    if (uniqueResults.length <= 3) {
+        console.log(`[Aggregator] Trovati solo ${uniqueResults.length} risultati. Attivo Torrentio (salvagente)...`);
+        
+        try {
+            // Chiamata esplicita a Torrentio
+            const torrentioResults = await withTimeout(searchTorrentio(title, year, type, reqSeason, reqEpisode, searchOpts), CONFIG.TIMEOUT_API).catch(e => []);
+            
+            if (torrentioResults.length > 0) {
+                // Aggiungiamo i risultati di Torrentio e deduplichiamo di nuovo
+                torrentioResults.forEach(r => {
+                    const hashMatch = r.magnet.match(/btih:([a-f0-9]{40})/i);
+                    const hash = hashMatch ? hashMatch[1].toLowerCase() : null;
+                    if (hash && !seenHashes.has(hash)) {
+                        seenHashes.add(hash);
+                        uniqueResults.push(r); // Aggiungi alla lista finale
+                    } else if (!hash) {
+                        // Se non riusciamo ad estrarre l'hash, lo aggiungiamo comunque (fallback)
+                        uniqueResults.push(r);
+                    }
+                });
+            }
+        } catch (e) {
+            console.log("[Aggregator] Errore esecuzione Torrentio:", e.message);
+        }
+    }
+
+    // 4. Ordinamento finale e Trackers
+    const topResults = uniqueResults.sort((a, b) => (b.seeders || 0) - (a.seeders || 0)).slice(0, 50);
 
     topResults.forEach(r => {
         if (r.magnet && !r.magnet.includes("&tr=")) {
@@ -702,14 +787,7 @@ async function searchMagnet(title, year, type, imdbId, options = {}) {
         }
     });
 
-    const seenHashes = new Set();
-    return topResults.filter(r => {
-        const hashMatch = r.magnet.match(/btih:([a-f0-9]{40})/i);
-        const hash = hashMatch ? hashMatch[1].toLowerCase() : null;
-        if (hash && seenHashes.has(hash)) return false;
-        if (hash) seenHashes.add(hash);
-        return true;
-    });
+    return topResults;
 }
 
 module.exports = { searchMagnet, CONFIG, updateTrackers, requestHtml };
