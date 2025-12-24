@@ -1,7 +1,7 @@
 const FuzzySet = require("fuzzyset");
 
 // ==========================================
-// 1. LISTE  DI FILTRAGGIO
+// 1. LISTE DI FILTRAGGIO (PROTEZIONI)
 // ==========================================
 
 // Token tecnici da rimuovere PRIMA del confronto
@@ -28,11 +28,9 @@ const ULTRA_JUNK_TOKENS = new Set([
     "torrent", "magnet", "ddl", "rarbg", "knaben"
 ]);
 
-// Parole comuni da ignorare (Stop Words Potenziate)
+// Parole comuni da ignorare
 const ULTRA_STOP_WORDS = new Set([
-    // --- ITALIANO ---
-    "il","lo","la","i","gli","le","l", 
-    "un","uno","una",
+    "il","lo","la","i","gli","le","l", "un","uno","una",
     "di","a","da","in","con","su","per","tra","fra",
     "e","ed","o", "ma", "se", "che",
     "del","dello","della","dei","degli","delle","dell",
@@ -41,21 +39,14 @@ const ULTRA_STOP_WORDS = new Set([
     "nel","nello","nella","nei","negli","nelle","nell",
     "sul","sullo","sulla","sui","sugli","sulle","sull",
     "col","coi",
-
-    // --- INGLESE ---
-    "the","a","an",
-    "of","to","for","on","by","at","from","with","in","into","onto",
-    "and","&","or","nor","but",
-    "is","are","was","were","be","been", 
-    "that","this","these","those",
-    "my","your","his","her","its","our","their",
+    "the","a","an", "of","to","for","on","by","at","from","with","in","into","onto",
+    "and","&","or","nor","but", "is","are","was","were","be","been", 
+    "that","this","these","those", "my","your","his","her","its","our","their",
     "feat","ft","vs","versus", 
-
-    // --- GENERICI ---
     "vol","pt","part","chapter", "capitolo"
 ]);
 
-// Parole che indicano un contenuto diverso dall'originale
+// Parole che indicano un contenuto diverso
 const ULTRA_FORBIDDEN_EXPANSIONS = new Set([
     "new","blood","resurrection","returns","reborn",
     "origins","legacy","revival","sequel",
@@ -112,7 +103,7 @@ const ULTRA_SPINOFF_GRAPH = {
 };
 
 // ==========================================
-// 2. FUNZIONI DI SUPPORTO
+// 2. FUNZIONI DI SUPPORTO & PARSING
 // ==========================================
 
 function romanToArabic(str) {
@@ -143,12 +134,24 @@ function tokenize(str) {
 
 function extractEpisodeInfo(filename) {
     const upper = filename.toUpperCase();
+    
+    // 1. Formato Standard: S01E01, S01x01, S01 E01
     const sxeMatch = upper.match(/S(\d{1,2})(?:[._\s-]*E|x)(\d{1,3})/i);
     if (sxeMatch) return { season: parseInt(sxeMatch[1]), episode: parseInt(sxeMatch[2]) };
     
+    // 2. Formato X: 1x01, 2x5
     const xMatch = upper.match(/(\d{1,2})X(\d{1,3})/i);
     if (xMatch) return { season: parseInt(xMatch[1]), episode: parseInt(xMatch[2]) };
     
+    // 3. Formato Esteso: "Episode 5", "Ep. 5"
+    const epMatch = upper.match(/(?:EPISODE|EP|EPISODIO|E)\s*\.?\s*(\d{1,3})/i);
+    const seasonMatch = upper.match(/(?:S|SEASON|STAGIONE|STG)[._\s-]*(\d{1,2})/i);
+    
+    if (seasonMatch && epMatch) {
+        return { season: parseInt(seasonMatch[1]), episode: parseInt(epMatch[1]) };
+    }
+    
+    // 4. Formato Italiano Esplicito
     const itaMatch = upper.match(/STAGIONE\s*(\d{1,2}).*EPISODIO\s*(\d{1,3})/i);
     if (itaMatch) return { season: parseInt(itaMatch[1]), episode: parseInt(itaMatch[2]) };
 
@@ -174,14 +177,71 @@ function isUnwantedSpinoff(cleanMeta, cleanFile) {
     return false;
 }
 
+function checkTitleMatch(mTokens, fTokens, cleanMetaString, cleanFileString) {
+    if (cleanMetaString.length > 4) {
+        const fuz = FuzzySet([cleanMetaString]).get(cleanFileString);
+        if (fuz && fuz[0][0] > 0.85) return true;
+
+        let found = 0;
+        fTokens.forEach(ft => {
+            if (mTokens.some(mt => mt === ft || (mt.length > 3 && ft.includes(mt)))) found++;
+        });
+        return (found / mTokens.length) >= 0.90;
+    }
+    return true; 
+}
+
+// 🔥 AUDIT NUMERI (NUOVA FUNZIONE) 🔥
+// Controlla ogni singolo numero nel nome del file.
+// Se un numero non è la stagione, non è l'episodio e non è un dato tecnico (1080p),
+// allora è un "numero sospetto" (es. ep sbagliato) e blocca tutto.
+function auditNumbers(filename, metaSeason, metaEpisode) {
+    // Normalizza: spazi attorno ai numeri per tokenizzarli meglio
+    const clean = filename.replace(/[^0-9]/g, " ").replace(/\s+/g, " ").trim();
+    if (!clean) return true; // Nessun numero, passa (gestito altrove)
+
+    const numbers = clean.split(" ").map(n => parseInt(n));
+    const safeTechnicalValues = new Set([
+        1080, 720, 2160, 480, // Risoluzioni
+        264, 265, // Codec (x264, h265)
+        10, 8, 12, // Bit depth
+        51, 71, 20, 21, 5, 7, 2, // Audio channels (5.1 diventa 5 e 1)
+        metaSeason, // La stagione richiesta è ovviamente sicura
+        metaEpisode, // L'episodio richiesto è sicuro
+    ]);
+    
+    // Aggiungiamo tolleranza per l'anno (es. 2022)
+    const currentYear = new Date().getFullYear();
+
+    for (const num of numbers) {
+        // Ignora anni recenti
+        if (num >= 1900 && num <= currentYear + 2) continue;
+        
+        // Se il numero è "sicuro" (risoluzione, stagione, etc), continua
+        if (safeTechnicalValues.has(num)) continue;
+
+        // Se siamo qui, il numero è "sospetto".
+        // Esempio: Cerco S01 E02. File ha "05".
+        // 05 non è stagione (1), non è episodio (2), non è tech.
+        // => BLOCCA.
+        
+        // Piccola tolleranza: numeri molto alti (es. bitrate 4000) o molto bassi (Part 1 di un film)
+        // Ma per le serie TV, un numero < 100 diverso da S ed E è quasi sempre l'episodio sbagliato.
+        if (num < 100) return false; 
+    }
+
+    return true;
+}
+
 // ==========================================
-// 3. FUNZIONE PRINCIPALE: SMART MATCH (ANCHOR LOGIC)
+// 3. FUNZIONE PRINCIPALE: SMART MATCH (STRICT PARANOID)
 // ==========================================
 
 function smartMatch(metaTitle, filename, isSeries = false, metaSeason = null, metaEpisode = null, metaYear = null) {
     if (!filename) return false;
     const fLower = filename.toLowerCase();
     
+    // Filtri preliminari
     if (FORBIDDEN_REGEX.some(r => r.test(fLower))) return false;
     if (fLower.includes("sample") || fLower.includes("trailer") || fLower.includes("bonus")) return false;
 
@@ -195,128 +255,65 @@ function smartMatch(metaTitle, filename, isSeries = false, metaSeason = null, me
 
     if (mTokens.length === 0) return false;
 
-    // === FIX DEFINITIVO: TITOLI CORTI (Logica Anchor) ===
-    // Se il titolo è "YOU", deve:
-    // 1. Essere all'INIZIO dei token del file (Index 0).
-    // 2. Non essere seguito da altre parole del titolo (evita "You Me Her").
+    // --- ANCHOR LOGIC ---
     if (cleanMetaString.length <= 4) {
-        
-        // Controllo 1: I token del titolo devono corrispondere ESATTAMENTE ai primi token del file
         for (let i = 0; i < mTokens.length; i++) {
-            if (fTokens[i] !== mTokens[i]) {
-                // Se il primo token del file non è "you", ma "justified" o "i", SCARTA.
-                return false; 
-            }
+            if (fTokens[i] !== mTokens[i]) return false; 
         }
-
-        // Controllo 2: Cosa c'è DOPO il titolo?
-        // Se il file è "You Me Her S01...", fTokens sarà ["you", "me", "her", "s01"...]
-        // Se il file è "You S01...", fTokens sarà ["you", "s01"...]
         if (fTokens.length > mTokens.length) {
-            const nextToken = fTokens[mTokens.length]; // Il token subito dopo il titolo
-            
-            // Regex per capire se il prossimo token è "sicuro" (anno, stagione, formato)
+            const nextToken = fTokens[mTokens.length];
             const isSeason = /^(s\d+|e\d+|\d+x\d+|stagione)$/i.test(nextToken);
             const isYear = /^(19|20)\d{2}$/.test(nextToken);
-            const isTech = ULTRA_JUNK_TOKENS.has(nextToken); // (anche se li abbiamo filtrati, controllo sicurezza)
-
-            // Se il token successivo è una parola generica (es. "me", "people", "don't"), ALLORA non è la serie "YOU".
-            if (!isSeason && !isYear && !isTech) {
-                // C'è un'alta probabilità che sia un titolo composto (es. "You Don't Mess with the Zohan")
-                return false;
-            }
+            const isTech = ULTRA_JUNK_TOKENS.has(nextToken);
+            if (!isSeason && !isYear && !isTech) return false;
         }
-        
-        // Se siamo arrivati qui, è "You" all'inizio, seguito da numeri o nulla. È buono.
     }
-    // ====================================================
 
     const isCleanSearch = !mTokens.some(mt => ULTRA_FORBIDDEN_EXPANSIONS.has(mt));
     if (isCleanSearch) {
         if (fTokens.some(ft => ULTRA_FORBIDDEN_EXPANSIONS.has(ft))) return false;
     }
 
-    // === LOGICA SERIE TV ===
+    // 🔥 LOGICA SERIE TV (PARANOID MODE) 🔥
     if (isSeries && metaSeason !== null) {
-        const epInfo = extractEpisodeInfo(filename);
-        if (epInfo) {
-            if (epInfo.season !== metaSeason || epInfo.episode !== metaEpisode) return false;
-            
-            // Se è un titolo lungo (>4), usiamo ancora il fuzzy per tolleranza
-            if (cleanMetaString.length > 4) {
-                const fuz = FuzzySet([mTokens.join(" ")]).get(fTokens.join(" "));
-                if (fuz && fuz[0][0] > 0.75) return true;
-                
-                let matchCount = 0;
-                mTokens.forEach(mt => { if (fTokens.some(ft => ft.includes(mt))) matchCount++; });
-                if (matchCount / mTokens.length >= 0.6) return true;
-            } else {
-                // Per titoli corti, se siamo qui, abbiamo già superato il check "Anchor" sopra.
-                return true; 
-            }
+        
+        // Check 1: Audit Numeri (Blocca "Mercoledì 05" se cerchi Ep 2)
+        if (!auditNumbers(filename, metaSeason, metaEpisode)) {
             return false;
         }
 
+        // Check 2: Match Esatto SxxExx
+        const epInfo = extractEpisodeInfo(filename);
+        if (epInfo) {
+            if (epInfo.season !== metaSeason) return false;
+            if (epInfo.episode !== metaEpisode) return false;
+            return checkTitleMatch(mTokens, fTokens, cleanMetaString, cleanFileString);
+        }
+
+        // Check 3: Fallback Pack (Season X)
         const seasonMatch = filename.match(/(?:S|Season|Stagione|Stg)[._\s-]*(\d{1,2})(?!\d|E|x)/i);
         if (seasonMatch) {
              const foundSeason = parseInt(seasonMatch[1]);
              if (foundSeason !== metaSeason) return false;
              
-             if (cleanMetaString.length > 4) {
-                 const fuz = FuzzySet([mTokens.join(" ")]).get(fTokens.join(" "));
-                 if (fuz && fuz[0][0] > 0.70) return true; 
-                 let matchCount = 0;
-                 mTokens.forEach(mt => { if (fTokens.includes(mt)) matchCount++; });
-                 if (matchCount / mTokens.length >= 0.7) return true;
-             } else {
-                 return true; 
-             }
+             // Se passa l'audit numeri sopra, allora qui siamo sicuri che non ci sono numeri "intrusi"
+             return checkTitleMatch(mTokens, fTokens, cleanMetaString, cleanFileString);
         }
+
+        // Se non ha numeri di stagione/episodio, è spazzatura per noi.
         return false;
     }
 
-    // === LOGICA FILM ===
+    // --- LOGICA FILM ---
     if (metaYear) {
         const fileYear = extractYear(filename);
-        if (fileYear) {
-            if (Math.abs(fileYear - metaYear) >= 1) {
-                const strictFuzzy = FuzzySet([cleanMetaString]).get(cleanFileString);
-                if (!strictFuzzy || strictFuzzy[0][0] < 0.95) return false;
-            }
+        if (fileYear && Math.abs(fileYear - metaYear) >= 1) {
+            const strictFuzzy = FuzzySet([cleanMetaString]).get(cleanFileString);
+            if (!strictFuzzy || strictFuzzy[0][0] < 0.95) return false;
         }
     }
 
-    // Check Generale (Fuzzy/Partial) solo per titoli lunghi
-    if (cleanMetaString.length > 4) {
-        if (fTokens.length > 0 && mTokens.length > 0) {
-            const firstMeta = mTokens[0];
-            const firstFile = fTokens[0];
-            if (firstFile !== firstMeta && !mTokens.includes(firstFile)) {
-                const joinedFile = fTokens.join(" ");
-                const joinedMeta = mTokens.join(" ");
-                if (joinedFile.includes(joinedMeta)) return false;
-            }
-        }
-
-        const cleanF = fTokens.join(" ");
-        const cleanM = mTokens.join(" ");
-        
-        const fuzzyScore = FuzzySet([cleanM]).get(cleanF)?.[0]?.[0] || 0;
-        if (fuzzyScore > 0.85) return true;
-
-        let found = 0;
-        fTokens.forEach(ft => {
-            if (mTokens.some(mt => mt === ft || (mt.length > 3 && ft.includes(mt)))) found++;
-        });
-        
-        const ratio = found / mTokens.length;
-        if (ratio >= 0.90) return true; 
-        
-        return false;
-    }
-
-    // Se è corto e siamo arrivati qui, è true (ha passato il check Anchor iniziale)
-    return true;
+    return checkTitleMatch(mTokens, fTokens, cleanMetaString, cleanFileString);
 }
 
 module.exports = { smartMatch };
