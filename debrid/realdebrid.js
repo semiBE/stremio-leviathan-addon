@@ -1,4 +1,4 @@
-// rd.js - VERSIONE CHIRURGICA & REGEX AVANZATA (Anime/101 Support)
+// rd.js - VERSIONE CHIRURGICA & AUTO-DELETE (Dashboard Pulita)
 const axios = require("axios");
 const RD_TIMEOUT = 120000;
 
@@ -161,6 +161,7 @@ const RD = {
 
             // ⚠️ CONTROLLO CRUCIALE: Se non è 'downloaded', non è pronto per lo streaming.
             if (info.status !== 'downloaded') {
+                // Se non è pronto, puliamo e usciamo
                 await RD.deleteTorrent(token, torrentId);
                 return null;
             }
@@ -173,7 +174,7 @@ const RD = {
             // 4. Trova il link giusto
             const linkToUnrestrict = info.links[0]; 
 
-            // 5. Unrestrict
+            // 5. Unrestrict (Genera link visibile)
             const unrestrictUrl = "https://api.real-debrid.com/rest/1.0/unrestrict/link";
             const unResBody = new URLSearchParams();
             unResBody.append("link", linkToUnrestrict);
@@ -185,14 +186,26 @@ const RD = {
                 return null;
             }
 
+            // 🧹 PULIZIA FINALE AUTOMATICA 🧹
+            
+            try {
+                await RD.deleteTorrent(token, torrentId);
+                console.log(`🧹 Torrent ${torrentId} eliminato dalla dashboard RD dopo l'unrestrict.`);
+            } catch (cleanupError) {
+                console.error("⚠️ Errore durante la pulizia del torrent:", cleanupError.message);
+            }
+
+            // Restituiamo il link per lo streaming
             return {
                 type: 'ready',
                 url: unrestrictRes.download,
                 filename: unrestrictRes.filename,
                 size: unrestrictRes.filesize
             };
+
         } catch (e) { 
             console.error("RD Error:", e.message);
+            // In caso di errore grave, proviamo comunque a pulire
             if (torrentId) await RD.deleteTorrent(token, torrentId);
             return null; 
         }
