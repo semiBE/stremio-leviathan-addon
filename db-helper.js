@@ -1,16 +1,24 @@
-// db-helper.js - GOD TIER EDITION
+// db-helper.js - GOD TIER EDITION (CLEAN & OPTIMIZED)
 const { Pool } = require('pg');
-// Importiamo CONFIG per avere la lista dei tracker aggiornata (Logica del vecchio file)
-let CONFIG = {}; 
-try { CONFIG = require("./engines").CONFIG; } catch (e) { console.warn("⚠️ Engines config non trovato, tracker non saranno iniettati."); }
 
-// --- 1. CONFIGURAZIONE POOL (Migliorata dal nuovo codice) ---
+// Tracker List Statica (Più sicura che importarla da file esterni che potrebbero fallire)
+const DEFAULT_TRACKERS = [
+     "udp://tracker.opentrackr.org:1337/announce",
+        "udp://open.demonoid.ch:6969/announce",
+        "udp://open.demonii.com:1337/announce",
+        "udp://open.stealth.si:80/announce",
+        "udp://tracker.torrent.eu.org:451/announce",
+        "udp://tracker.therarbg.to:6969/announce",
+        "udp://tracker.doko.moe:6969/announce",
+        "udp://opentracker.i2p.rocks:6969/announce"
+];
+
+// --- 1. CONFIGURAZIONE POOL ---
 let pool = null;
 
 function initDatabase(config = {}) {
   if (pool) return pool;
 
-  // Supporta sia stringa di connessione che parametri singoli
   const poolConfig = process.env.DATABASE_URL 
     ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
     : {
@@ -34,27 +42,31 @@ function initDatabase(config = {}) {
   return pool;
 }
 
-// --- 2. UTILITY PER FORMATTAZIONE (Ponte tra vecchio e nuovo) ---
+// --- 2. UTILITY PER FORMATTAZIONE ---
 function injectTrackers(magnet) {
-    if (!magnet) return magnet;
-    if (CONFIG && CONFIG.TRACKERS && Array.isArray(CONFIG.TRACKERS)) {
-        // Aggiunge i tracker se non presenti
-        const currentTrackers = magnet.split("&tr=");
-        CONFIG.TRACKERS.forEach(tr => {
-            if (!magnet.includes(encodeURIComponent(tr))) {
-                magnet += `&tr=${encodeURIComponent(tr)}`;
-            }
-        });
-    }
-    return magnet;
+    if (!magnet) return "";
+    let cleanMagnet = magnet.trim();
+    const trackersToAdd = DEFAULT_TRACKERS;
+    
+    trackersToAdd.forEach(tr => {
+        if (!cleanMagnet.includes(encodeURIComponent(tr))) {
+            cleanMagnet += `&tr=${encodeURIComponent(tr)}`;
+        }
+    });
+    return cleanMagnet;
 }
 
-function formatRow(row, sourceTag = "ilCorSaRoNeRo") {
-    const baseMagnet = `magnet:?xt=urn:btih:${row.info_hash}`;
+function formatRow(row, sourceTag = "LeviathanDB") {
+    // IMPORTANTE: Se è un file singolo mappato, usiamo "file_title". 
+    // Se è un torrent generico (pack), usiamo "title".
+    const displayTitle = row.file_title || row.title;
+    
+    // Iniettiamo i tracker per velocizzare il download dei metadati
+    const baseMagnet = row.info_hash ? `magnet:?xt=urn:btih:${row.info_hash}` : row.magnet;
     const fullMagnet = injectTrackers(baseMagnet);
     
     return {
-        title: row.file_title || row.title, // Preferisci il nome del file se è un episodio specifico
+        title: displayTitle, 
         magnet: fullMagnet,
         info_hash: row.info_hash,
         size: parseInt(row.file_size || row.size) || 0,
@@ -64,7 +76,7 @@ function formatRow(row, sourceTag = "ilCorSaRoNeRo") {
     };
 }
 
-// --- 3. CORE FUNCTIONS (Presi dal codice NUOVO) ---
+// --- 3. CORE FUNCTIONS ---
 
 async function searchByImdbId(imdbId, type = null) {
   if (!pool) return [];
@@ -91,9 +103,11 @@ async function searchByImdbId(imdbId, type = null) {
 async function searchEpisodeFiles(imdbId, season, episode) {
   if (!pool) return [];
   try {
-    // Cerca file specifici mappati (table files)
+    // Questa query recupera i file mappati esattamente per quell'episodio
+    // Se il mapping nel DB è errato (es. file ep 5 mappato su ep 2), lo restituisce.
+    // Il "Smart Parser" in addon.js dovrà filtrarlo dopo.
     const query = `
-      SELECT f.title as file_title, f.size as file_size, t.info_hash, t.title, t.seeders, t.cached_rd
+      SELECT f.title as file_title, f.size as file_size, t.info_hash, t.title as torrent_title, t.seeders, t.cached_rd
       FROM files f
       JOIN torrents t ON f.info_hash = t.info_hash
       WHERE f.imdb_id = $1 AND f.imdb_season = $2 AND f.imdb_episode = $3
@@ -108,10 +122,12 @@ async function searchEpisodeFiles(imdbId, season, episode) {
   }
 }
 
-async function searchPacksByImdbId(imdbId) {
+async function searchPacksByImdbId(imdbId, season) {
     if (!pool) return [];
     try {
-        // Cerca Torrent segnati come Pack che contengono questo ID
+        // OPTIMIZATION: Se cerchiamo la stagione 1, cerchiamo di evitare i risultati 
+        // che nel titolo hanno ESPLICITAMENTE "Season 2", "S02" etc, se possibile.
+        // Ma per sicurezza scarichiamo i pack e lasciamo filtrare al parser JS.
         const query = `
             SELECT t.info_hash, t.title, t.size, t.seeders, t.cached_rd
             FROM torrents t
@@ -123,7 +139,7 @@ async function searchPacksByImdbId(imdbId) {
     } catch (e) { return []; }
 }
 
-// --- 4. FUNZIONI DI SCRITTURA (Potenziamento) ---
+// --- 4. FUNZIONI DI SCRITTURA ---
 
 async function insertTorrent(torrent) {
   if (!pool) return false;
@@ -163,36 +179,35 @@ async function updateRdCacheStatus(cacheResults) {
     } catch (e) { return 0; }
 }
 
-// --- 5. ADATTATORE PER ADDON.JS (Il ponte magico) ---
+// --- 5. ADATTATORE PER ADDON.JS ---
 
 const dbHelper = {
     initDatabase,
     
-    // API per addon.js (compatibilità retroattiva)
     searchMovie: async (imdbId) => {
         const rows = await searchByImdbId(imdbId, 'movie');
         return rows.map(r => formatRow(r, "LeviathanDB"));
     },
 
     searchSeries: async (imdbId, season, episode) => {
-        // 1. Cerca file episodi specifici (SxxExx)
+        // 1. Cerca file episodi specifici (Priorità alta)
         const files = await searchEpisodeFiles(imdbId, season, episode);
         const formattedFiles = files.map(r => formatRow(r, "LeviathanDB"));
 
         // 2. Cerca Pack completi (Season Pack)
-        const packs = await searchPacksByImdbId(imdbId);
+        const packs = await searchPacksByImdbId(imdbId, season);
         const formattedPacks = packs.map(r => formatRow(r, "LeviathanDB [Pack]"));
+
+        // Debug Log: Cosa abbiamo trovato nel DB?
+        if (formattedFiles.length > 0 || formattedPacks.length > 0) {
+            console.log(`🗄️ [DB HIT] ID:${imdbId} S:${season} E:${episode} -> Found ${formattedFiles.length} files, ${formattedPacks.length} packs.`);
+        }
 
         return [...formattedFiles, ...formattedPacks];
     },
 
-    // Esposizione funzioni avanzate per uso futuro o admin
     insertTorrent,
-    updateRdCacheStatus,
-    searchByTitleFTS: async (title) => {
-        // Implementazione dummy wrapper se vuoi usarla in futuro
-        return []; 
-    }
+    updateRdCacheStatus
 };
 
 module.exports = dbHelper;
