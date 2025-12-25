@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
-const helmet = require("helmet");
+// const helmet = require("helmet"); // DISABILITATO
 const compression = require('compression');
 const path = require("path");
 const axios = require("axios");
@@ -139,18 +139,9 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// CSP Parziale
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "*.strem.io"], 
-      connectSrc: ["'self'", CONFIG.INDEXER_URL, CONFIG.CINEMETA_URL]
-    }
-  }
-}));
+// --- HELMET COMPLETAMENTE DISATTIVATO ---
+// app.use(helmet({ ... })); 
+// Rimosso per evitare errori CSP/Blocchi script esterni e inline.
 
 app.use(cors());
 app.use(express.json()); 
@@ -705,7 +696,7 @@ app.listen(PORT, () => {
     console.log(`⚡ MODALITÀ CACHE: Integrata (Read/Write attivi). TTL 30min.`);
     console.log(`⚡ SPEED LOGIC: Parallelismo attivo (DB + Remote + FailFast).`);
     console.log(`🧠 SMART FILTER: Attivo (Protezione Frankenstein).`);
-    console.log(`🛡️  SECURITY: Helmet CSP Bilanciata.`);
+    console.log(`🛡️  SECURITY: Helmet CSP DISATTIVATO (Nessun blocco).`);
     console.log(`🌍 Addon accessibile su: http://${PUBLIC_IP}:${PUBLIC_PORT}/manifest.json`);
     console.log(`📡 Connesso a Indexer DB: ${CONFIG.INDEXER_URL}`);
     console.log(`-----------------------------------------------------`);
