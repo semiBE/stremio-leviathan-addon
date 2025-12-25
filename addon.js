@@ -2,11 +2,27 @@ require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const compression = require('compression');
 const path = require("path");
 const axios = require("axios");
 const crypto = require("crypto"); 
 const Bottleneck = require("bottleneck");
 const rateLimit = require("express-rate-limit");
+const winston = require('winston');
+
+// --- 1. CONFIGURAZIONE LOGGER (Winston) ---
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' }),
+    new winston.transports.Console({ format: winston.format.simple() }) 
+  ]
+});
 
 // --- CACHE DISABILITATA (MOCK) ---
 const Cache = {
@@ -35,14 +51,19 @@ const { getManifest } = require("./manifest");
 // Inizializza DB Locale
 dbHelper.initDatabase();
 
-// --- CONFIGURAZIONE CENTRALE (GOD TIER) ---
+// --- CONFIGURAZIONE CENTRALE ---
 const CONFIG = {
   INDEXER_URL: process.env.INDEXER_URL || "http://185.229.239.195:8080", 
   CINEMETA_URL: "https://v3-cinemeta.strem.io",
   REAL_SIZE_FILTER: 80 * 1024 * 1024,
-  TIMEOUT_TMDB: 2000,
-  SCRAPER_TIMEOUT: 6000, 
   MAX_RESULTS: 100, 
+  TIMEOUTS: {
+    TMDB: 2000,
+    SCRAPER: 6000, 
+    REMOTE_INDEXER: 2500,
+    DB_QUERY: 5000,
+    DEBRID: 5000
+  }
 };
 
 const REGEX_YEAR = /(19|20)\d{2}/;
@@ -89,6 +110,16 @@ const FALLBACK_SCRAPERS = [ require("./external") ];
 const app = express();
 app.set('trust proxy', 1);
 
+// --- COMPRESSIONE ---
+app.use(compression({
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) return false;
+    return compression.filter(req, res);
+  },
+  level: 6
+}));
+
+// --- RATE LIMIT ---
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
     max: 300, 
@@ -96,15 +127,17 @@ const limiter = rateLimit({
     legacyHeaders: false,
     message: "Troppe richieste da questo IP, riprova più tardi."
 });
-
 app.use(limiter);
+
+// --- ⚠️ HELMET ORIGINALE (NO CSP) ⚠️ ---
+// Disabilita completamente la Content Security Policy per evitare blocchi
 app.use(helmet({ contentSecurityPolicy: false }));
+
 app.use(cors());
 app.use(express.json()); 
 app.use(express.static(path.join(__dirname, "public")));
 
 // --- UTILS & HELPERS ---
-
 const UNITS = ["B", "KB", "MB", "GB", "TB"];
 function formatBytes(bytes) {
   if (!+bytes) return "0 B";
@@ -121,6 +154,22 @@ function parseSize(sizeStr) {
   const unit = m[2].toUpperCase();
   const mult = { TB: 1099511627776, GB: 1073741824, MB: 1048576, KB: 1024, B: 1 };
   return val * (mult[unit] || 1);
+}
+
+function deduplicateResults(results) {
+  const hashMap = new Map();
+  for (const item of results) {
+    if (!item?.magnet) continue;
+    const hashMatch = item.magnet.match(/btih:([a-f0-9]{40})/i);
+    if (!hashMatch) continue;
+    const hash = hashMatch[1].toUpperCase();
+    if (!hashMap.has(hash) || (item.seeders || 0) > (hashMap.get(hash).seeders || 0)) {
+      item.hash = hash;
+      item._size = parseSize(item.size || item.sizeBytes);
+      hashMap.set(hash, item);
+    }
+  }
+  return Array.from(hashMap.values());
 }
 
 function isSafeForItalian(item) {
@@ -209,9 +258,7 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     else if (/multi/i.test(lang || "")) langStr = "🗣️ MULTI";
     else if (lang) langStr = `🗣️ ${lang.toUpperCase()}`;
     
-    // --- PULIZIA NOME PROVIDER ---
     let displaySource = source;
-    // Se c'è Corsaro lo sistema, altrimenti mostra la source pulita da queryRemoteIndexer
     if (/corsaro/i.test(displaySource)) displaySource = "ilCorSaRoNeRo";
     
     const sourceLine = `⚡ [${serviceTag}] ${displaySource}`;
@@ -242,7 +289,6 @@ function formatVixStream(meta, vixData) {
     lines.push(`🇮🇹 ITA • 🔊 AAC`);
     lines.push(`🎞️ HLS • Bitrate Variabile`);
     lines.push(`☁️ Web Stream • ⚡ Instant`);
-    
     lines.push(`🍝 StreamingCommunity`); 
     
     return {
@@ -251,6 +297,30 @@ function formatVixStream(meta, vixData) {
         url: vixData.url,
         behaviorHints: { notWebReady: false, bingieGroup: "vix-stream" }
     };
+}
+
+// --- VALIDAZIONE & WRAPPERS ---
+function validateStreamRequest(type, id) {
+  const validTypes = ['movie', 'series'];
+  if (!validTypes.includes(type)) throw new Error(`Tipo non valido: ${type}`);
+  const idPattern = /^(tt\d+|\d+|tmdb:\d+|kitsu:\d+)(:\d+)?(:\d+)?$/;
+  if (!idPattern.test(id)) throw new Error(`Formato ID non valido: ${id}`);
+  return true;
+}
+
+async function withTimeout(promise, ms, operation = 'Operation') {
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => { reject(new Error(`TIMEOUT: ${operation} exceeded ${ms}ms`)); }, ms);
+  });
+  try {
+      const result = await Promise.race([promise, timeoutPromise]);
+      clearTimeout(timer);
+      return result;
+  } catch (error) {
+      clearTimeout(timer);
+      throw error; 
+  }
 }
 
 async function getMetadata(id, type) {
@@ -262,7 +332,7 @@ async function getMetadata(id, type) {
     const rawId = tmdbId.split(":")[0];
     const cleanId = rawId.match(/^(tt\d+|\d+)$/i)?.[0] || "";
     if (!cleanId) return null;
-    const { data: cData } = await axios.get(`${CONFIG.CINEMETA_URL}/meta/${type}/${cleanId}.json`, { timeout: CONFIG.TIMEOUT_TMDB }).catch(() => ({ data: {} }));
+    const { data: cData } = await axios.get(`${CONFIG.CINEMETA_URL}/meta/${type}/${cleanId}.json`, { timeout: CONFIG.TIMEOUTS.TMDB }).catch(() => ({ data: {} }));
     return cData?.meta ? {
       title: cData.meta.name,
       originalTitle: cData.meta.name, 
@@ -305,33 +375,23 @@ async function resolveDebridLink(config, item, showFake, reqHost) {
     }
 }
 
-// --- INTERFACCIA CON LEVIATHAN INDEXER (VPS A) ---
-// Chiede al database remoto se ci sono già torrent per questo film
 async function queryRemoteIndexer(tmdbId, type, season = null, episode = null) {
     if (!CONFIG.INDEXER_URL) return [];
     try {
-        console.log(`🌐 [REMOTE] Chiedo al Database God Tier (VPS A): ${tmdbId} S:${season} E:${episode}`);
-        
+        logger.info(`🌐 [REMOTE] Query VPS A: ${tmdbId} S:${season} E:${episode}`);
         let url = `${CONFIG.INDEXER_URL}/api/get/${tmdbId}`;
         if (season) url += `?season=${season}`;
         if (episode) url += `&episode=${episode}`;
-
-        const { data } = await axios.get(url, { timeout: 2500 });
-        
+        const { data } = await axios.get(url, { timeout: CONFIG.TIMEOUTS.REMOTE_INDEXER });
         if (!data || !data.torrents || !Array.isArray(data.torrents)) return [];
-
         return data.torrents.map(t => {
             let magnet = t.magnet || `magnet:?xt=urn:btih:${t.info_hash}&dn=${encodeURIComponent(t.title)}`;
             if(!magnet.includes("tr=")) {
                magnet += "&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fopen.demonii.com%3A1337%2Fannounce";
             }
-
-            // --- FIX NOME SORGENTE ---
-            // Rimuoviamo "LeviathanDB" e parentesi se presenti nel provider
             let providerName = t.provider || 'P2P';
             providerName = providerName.replace(/LeviathanDB/i, '').replace(/[()]/g, '').trim();
             if(!providerName) providerName = 'P2P';
-
             return {
                 title: t.title,
                 magnet: magnet,
@@ -342,20 +402,17 @@ async function queryRemoteIndexer(tmdbId, type, season = null, episode = null) {
             };
         });
     } catch (e) {
+        logger.error("Err Remote Indexer:", { error: e.message });
         return [];
     }
 }
 
-const hashConfig = (conf) => crypto.createHash("md5").update(conf).digest("hex");
-
-// 🔥 FUNZIONE GENERAZIONE FLUSSI OTTIMIZZATA (PARALLELA) 🔥
 async function generateStream(type, id, config, userConfStr, reqHost) {
   if (!config.key && !config.rd) return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key nel configuratore" }] };
   
   const userTmdbKey = config.tmdb; 
   let finalId = id; 
   
-  // 1. Risoluzione ID (Veloce)
   if (id.startsWith("tmdb:")) {
       try {
           const parts = id.split(":");
@@ -377,56 +434,48 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       } catch (err) {}
   }
 
-  // 2. Metadata (Bloccante ma necessario)
   const meta = await getMetadata(finalId, type); 
   if (!meta) return { streams: [] };
 
-  console.log(`🚀 [SPEED] Avvio Ricerca PARALLELA per: ${meta.title}`);
-
-  // PREPARAZIONE PROMISE
+  logger.info(`🚀 [SPEED] Start PARALLEL search: ${meta.title}`);
   const tmdbIdLookup = meta.tmdb_id || (await imdbToTmdb(meta.imdb_id, userTmdbKey))?.tmdbId;
 
-  // Promise A: Remote Indexer (VPS A)
-  const remotePromise = (async () => {
-      try {
-          if (tmdbIdLookup) return await queryRemoteIndexer(tmdbIdLookup, type, meta.season, meta.episode);
-      } catch (e) { console.error("Err Remote:", e.message); }
+  const remotePromise = withTimeout(
+      queryRemoteIndexer(tmdbIdLookup, type, meta.season, meta.episode),
+      CONFIG.TIMEOUTS.REMOTE_INDEXER,
+      'Remote Indexer'
+  ).catch(err => {
+      logger.warn('Remote indexer fallito/timeout', { error: err.message });
       return [];
-  })();
+  });
 
-  // Promise B: DB Locale (Postgres)
-  const dbPromise = (async () => {
-      try {
-          if (type === 'movie') return await dbHelper.searchMovie(meta.imdb_id);
-          else if (type === 'series') return await dbHelper.searchSeries(meta.imdb_id, meta.season, meta.episode);
-      } catch (e) { console.error("Err Local DB:", e.message); }
+  const dbPromise = withTimeout(
+      type === 'movie' 
+          ? dbHelper.searchMovie(meta.imdb_id)
+          : dbHelper.searchSeries(meta.imdb_id, meta.season, meta.episode),
+      CONFIG.TIMEOUTS.DB_QUERY,
+      'DB Locale'
+  ).catch(err => {
+      logger.warn('DB locale fallito/timeout', { error: err.message });
       return [];
-  })();
+  });
 
-  // 3. ESECUZIONE PARALLELA (Il tempo totale è pari al più lento dei due, non alla somma)
-  const [remoteResult, dbResult] = await Promise.allSettled([remotePromise, dbPromise]);
+  const [remoteResults, dbResultsRaw] = await Promise.all([remotePromise, dbPromise]);
+  let dbResults = dbResultsRaw || [];
+  
+  if (remoteResults.length > 0) logger.info(`✅ [REMOTE] ${remoteResults.length} items`);
+  if (dbResults.length > 0) logger.info(`✅ [LOCAL DB] ${dbResults.length} items`);
 
-  const remoteResults = remoteResult.status === 'fulfilled' ? remoteResult.value : [];
-  let dbResults = dbResult.status === 'fulfilled' ? dbResult.value : [];
-
-  if (remoteResults.length > 0) console.log(`✅ [REMOTE] ${remoteResults.length} items`);
-  if (dbResults.length > 0) console.log(`✅ [LOCAL DB] ${dbResults.length} items`);
-
-  // Merge intelligente: se abbiamo risultati remoti, limitiamo quelli locali per evitare caos
   if (dbResults.length > 6) dbResults = dbResults.slice(0, 10);
-
   let currentResults = [...remoteResults, ...dbResults];
 
-  // 4. SCRAPING (Solo se serve davvero)
-  // Se abbiamo trovato risultati rapidi (DB o Remote), evitiamo di aspettare lo scraper se possibile
   let scrapedResults = [];
   if (currentResults.length < 6) { 
-      console.log(`⚠️ Pochi risultati (${currentResults.length}), attivo SCRAPING VELOCE...`);
+      logger.info(`⚠️ Low results (${currentResults.length}), triggering SCRAPING...`);
       let dynamicTitles = [];
       try {
           if (tmdbIdLookup) dynamicTitles = await getTmdbAltTitles(tmdbIdLookup, type, userTmdbKey);
       } catch (e) {}
-
       const allowEng = config.filters?.allowEng === true; 
       const queries = generateSmartQueries(meta, dynamicTitles, allowEng);
       
@@ -435,19 +484,27 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
           SCRAPER_MODULES.forEach(scraper => { 
               if (scraper.searchMagnet) { 
                   const searchOptions = { allowEng };
-                  promises.push(LIMITERS.scraper.schedule(() => withTimeout(scraper.searchMagnet(q, meta.year, type, finalId, searchOptions), CONFIG.SCRAPER_TIMEOUT).catch(err => []))); 
+                  promises.push(
+                      LIMITERS.scraper.schedule(() => 
+                          withTimeout(
+                              scraper.searchMagnet(q, meta.year, type, finalId, searchOptions), 
+                              CONFIG.TIMEOUTS.SCRAPER,
+                              `Scraper ${scraper.name || 'Module'}`
+                          ).catch(err => {
+                              logger.warn(`Scraper Timeout/Error: ${err.message}`);
+                              return [];
+                          })
+                      )
+                  ); 
               } 
           }); 
       });
-
       scrapedResults = (await Promise.all(promises)).flat();
   } else {
-      console.log(`⚡ SKIP SCRAPER: Abbiamo già ${currentResults.length} risultati validi.`);
+      logger.info(`⚡ SKIP SCRAPER: Have ${currentResults.length} valid results.`);
   }
 
-  // 5. UNIONE E FILTRAGGIO
   let resultsRaw = [...currentResults, ...scrapedResults];
-
   resultsRaw = resultsRaw.filter(item => {
     if (!item?.magnet) return false;
     const fileYearMatch = item.title.match(REGEX_YEAR);
@@ -456,25 +513,9 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
     return true;
   });
 
-  const seen = new Set(); 
-  let cleanResults = [];
-  for (const item of resultsRaw) {
-    if (!item || !item.magnet) continue;
-    try {
-        const hashMatch = item.magnet.match(/btih:([a-f0-9]{40})/i);
-        const hash = hashMatch ? hashMatch[1].toUpperCase() : item.magnet;
-        if (seen.has(hash)) continue;
-        seen.add(hash);
-        item._size = parseSize(item.size || item.sizeBytes);
-        item.hash = hash; 
-        cleanResults.push(item);
-    } catch (err) { continue; }
-  }
-
-  // 6. RANKING (QUALITY FIRST)
+  let cleanResults = deduplicateResults(resultsRaw);
   const ranked = rankAndFilterResults(cleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
 
-  // 7. DEBRID RESOLUTION
   if (config.service === 'tb' && ranked.length > 0) {
       const hashes = ranked.map(r => r.hash);
       const cachedHashes = await TB.checkCached(config.key || config.rd, hashes);
@@ -493,7 +534,6 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       debridStreams = (await Promise.all(rdPromises)).filter(Boolean);
   }
 
-  // 8. VIX & FINALIZZAZIONE
   const vixPromise = searchVix(meta, config);
   const rawVix = await vixPromise; 
   const formattedVix = rawVix.map(v => formatVixStream(meta, v));
@@ -503,10 +543,14 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   return { streams: finalStreams }; 
 }
 
+// --- ROTTE DI CORTESIA (FIX 404) ---
+app.get("/api/stats", (req, res) => res.json({ status: "ok" }));
+app.get("/favicon.ico", (req, res) => res.status(204).end());
+
 app.get("/:conf/play_tb/:hash", async (req, res) => {
     const { conf, hash } = req.params;
     const { s, e } = req.query;
-    console.log(`\n▶️ [TorBox Play] Hash: ${hash} S${s}E${e}`);
+    logger.info(`▶️ [TorBox Play] Hash: ${hash} S${s}E${e}`);
     try {
         const config = getConfig(conf);
         if (!config.key && !config.rd) throw new Error("API Key Mancante");
@@ -519,6 +563,7 @@ app.get("/:conf/play_tb/:hash", async (req, res) => {
              res.status(404).send("Errore TorBox: Limite raggiunto o File non trovato.");
         }
     } catch (err) {
+        logger.error(`Error Torbox Play: ${err.message}`);
         res.status(500).send("Errore Server: " + err.message);
     }
 });
@@ -530,15 +575,28 @@ const authMiddleware = (req, res, next) => {
     if (authHeader === validPass) next();
     else res.status(403).json({ error: "Password errata" });
 };
+app.get("/admin/keys", authMiddleware, async (req, res) => { res.json({ error: "Cache Redis Disabilitata" }); });
+app.delete("/admin/key", authMiddleware, async (req, res) => { res.json({ error: "Cache Redis Disabilitata" }); });
+app.post("/admin/flush", authMiddleware, async (req, res) => { res.json({ error: "Cache Redis Disabilitata" }); });
 
-app.get("/admin/keys", authMiddleware, async (req, res) => {
-    res.json({ error: "Cache Redis Disabilitata" });
-});
-app.delete("/admin/key", authMiddleware, async (req, res) => {
-    res.json({ error: "Cache Redis Disabilitata" });
-});
-app.post("/admin/flush", authMiddleware, async (req, res) => {
-    res.json({ error: "Cache Redis Disabilitata" });
+// --- HEALTHCHECK ---
+app.get("/health", async (req, res) => {
+  const checks = { status: "ok", timestamp: new Date().toISOString(), services: {} };
+  try {
+    if (dbHelper.healthCheck) await withTimeout(dbHelper.healthCheck(), 1000, "DB Health");
+    checks.services.database = "ok";
+  } catch (err) {
+    checks.services.database = "down";
+    checks.status = "degraded";
+    logger.error("Health Check DB Fail", { error: err.message });
+  }
+  try {
+    await withTimeout(axios.get(`${CONFIG.INDEXER_URL}/health`), 1000, "Indexer Health");
+    checks.services.indexer = "ok";
+  } catch (err) {
+    checks.services.indexer = "down";
+  }
+  res.status(checks.status === "ok" ? 200 : 503).json(checks);
 });
 
 // --- MAIN ROUTES ---
@@ -552,22 +610,22 @@ app.get("/vixsynthetic.m3u8", handleVixSynthetic);
 
 app.get("/:conf/stream/:type/:id.json", async (req, res) => { 
     res.setHeader("Access-Control-Allow-Origin", "*");
-    const { conf, type, id } = req.params;
-    const cleanId = id.replace(".json", "");
-
-    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const host = `${protocol}://${req.get('host')}`;
-    
-    // GENERAZIONE STREAM DIRETTA (Niente Cache Redis)
-    const result = await generateStream(type, cleanId, getConfig(conf), conf, host);
-    
-    res.json(result); 
+    try {
+        validateStreamRequest(req.params.type, req.params.id.replace('.json', ''));
+        const { conf, type, id } = req.params;
+        const cleanId = id.replace(".json", "");
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+        const host = `${protocol}://${req.get('host')}`;
+        const result = await generateStream(type, cleanId, getConfig(conf), conf, host);
+        res.json(result); 
+    } catch (err) {
+        logger.error('Validazione/Stream Fallito', { error: err.message, params: req.params });
+        return res.status(400).json({ streams: [] });
+    }
 });
 
 function getConfig(configStr) { try { return JSON.parse(Buffer.from(configStr, "base64").toString()); } catch { return {}; } }
-function withTimeout(promise, ms) { return Promise.race([promise, new Promise(r => setTimeout(() => r([]), ms))]); }
 
-// --- AVVIO SERVER ---
 const PORT = process.env.PORT || 7000;
 const PUBLIC_IP = process.env.PUBLIC_IP || "127.0.0.1";
 const PUBLIC_PORT = process.env.PUBLIC_PORT || PORT;
@@ -578,8 +636,8 @@ app.listen(PORT, () => {
     console.log(`⚠️  MODALITÀ NO-REDIS: La cache globale è disattivata.`);
     console.log(`⚡ SPEED LOGIC: Parallelismo attivo (DB + Remote + FailFast).`);
     console.log(`🧠 SMART FILTER: Attivo (Protezione Frankenstein).`);
+    console.log(`🛡️  SECURITY: Helmet CSP DISABILITATO (Come richiesto).`);
     console.log(`🌍 Addon accessibile su: http://${PUBLIC_IP}:${PUBLIC_PORT}/manifest.json`);
-    console.log(`🖥️  GUI/Log disponibili su: http://${PUBLIC_IP}:${PUBLIC_PORT}`);
     console.log(`📡 Connesso a Indexer DB: ${CONFIG.INDEXER_URL}`);
     console.log(`-----------------------------------------------------`);
 });
