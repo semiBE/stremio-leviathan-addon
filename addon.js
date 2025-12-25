@@ -12,7 +12,7 @@ const winston = require('winston');
 
 // --- 1. CONFIGURAZIONE LOGGER (Winston) ---
 const logger = winston.createLogger({
-  level: 'debug', // Modificato a 'debug' per log più dettagliati senza danni.
+  level: 'debug', 
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.json()
@@ -24,8 +24,7 @@ const logger = winston.createLogger({
   ]
 });
 
-// --- CACHE SEMPLICE IN-MEMORIA (SOSTITUITO IL MOCK) ---
-
+// --- CACHE IN-MEMORY (INTEGRATA) ---
 const cacheData = new Map();
 const Cache = {
     getCachedMagnets: async (key) => cacheData.get(`magnets:${key}`) || null,
@@ -33,8 +32,13 @@ const Cache = {
         cacheData.set(`magnets:${key}`, value);
         setTimeout(() => cacheData.delete(`magnets:${key}`), ttl * 1000);
     },
-    getCachedStream: async (key) => cacheData.get(`stream:${key}`) || null,
-    cacheStream: async (key, value, ttl = 3600) => {
+    // Cache specifica per i risultati finali dello stream
+    getCachedStream: async (key) => {
+        const data = cacheData.get(`stream:${key}`);
+        if (data) logger.info(`⚡ CACHE HIT: ${key}`);
+        return data || null;
+    },
+    cacheStream: async (key, value, ttl = 1800) => { // 30 minuti di default
         cacheData.set(`stream:${key}`, value);
         setTimeout(() => cacheData.delete(`stream:${key}`), ttl * 1000);
     },
@@ -118,7 +122,6 @@ const FALLBACK_SCRAPERS = [ require("./external") ];
 const app = express();
 app.set('trust proxy', 1);
 
-// --- COMPRESSIONE ---
 app.use(compression({
   filter: (req, res) => {
     if (req.headers['x-no-compression']) return false;
@@ -127,25 +130,23 @@ app.use(compression({
   level: 6
 }));
 
-// --- RATE LIMIT ---
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, 
-    max: 350, // Leggero aumento senza rischi.
+    max: 350, 
     standardHeaders: true, 
     legacyHeaders: false,
     message: "Troppe richieste da questo IP, riprova più tardi."
 });
 app.use(limiter);
 
-// --- HELMET CON CSP PARZIALE ---
-
+// CSP Parziale
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"], // Permessi per script inline se necessari.
+      scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "*.strem.io"], // Esempi
+      imgSrc: ["'self'", "data:", "*.strem.io"], 
       connectSrc: ["'self'", CONFIG.INDEXER_URL, CONFIG.CINEMETA_URL]
     }
   }
@@ -317,7 +318,6 @@ function formatVixStream(meta, vixData) {
     };
 }
 
-// --- VALIDAZIONE & WRAPPERS ---
 function validateStreamRequest(type, id) {
   const validTypes = ['movie', 'series'];
   if (!validTypes.includes(type)) {
@@ -435,9 +435,21 @@ async function queryRemoteIndexer(tmdbId, type, season = null, episode = null) {
     }
 }
 
+// --- GENERATE STREAM CON CACHE INTEGRATA ---
 async function generateStream(type, id, config, userConfStr, reqHost) {
   if (!config.key && !config.rd) return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key nel configuratore" }] };
   
+  // 1. GENERA CHIAVE DI CACHE UNICA (ID + HASH CONFIGURAZIONE UTENTE)
+  // Usiamo l'hash della config perché utenti diversi hanno API key diverse, quindi link Debrid diversi.
+  const configHash = crypto.createHash('md5').update(userConfStr || 'no-conf').digest('hex');
+  const cacheKey = `${type}:${id}:${configHash}`;
+  
+  // 2. CONTROLLA SE ESISTE IN CACHE
+  const cachedResult = await Cache.getCachedStream(cacheKey);
+  if (cachedResult) {
+      return cachedResult; // RITORNA SUBITO, NESSUN CALCOLO!
+  }
+
   const userTmdbKey = config.tmdb; 
   let finalId = id; 
   
@@ -567,8 +579,17 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   const formattedVix = rawVix.map(v => formatVixStream(meta, v));
   
   const finalStreams = [...formattedVix, ...debridStreams];
-  if (finalStreams.length === 0) return { streams: [{ name: "⛔", title: "Nessun risultato trovato" }] };
-  return { streams: finalStreams }; 
+  
+  const resultObj = { streams: finalStreams.length > 0 ? finalStreams : [{ name: "⛔", title: "Nessun risultato trovato" }] };
+
+  // 3. SALVA IN CACHE SE ABBIAMO RISULTATI
+  if (finalStreams.length > 0) {
+      // Salviamo per 30 minuti (1800s). Evitiamo cache eterna per link Debrid che potrebbero scadere.
+      await Cache.cacheStream(cacheKey, resultObj, 1800);
+      logger.info(`💾 SAVED TO CACHE: ${cacheKey}`);
+  }
+
+  return resultObj; 
 }
 
 // --- ROTTE DI CORTESIA (FIX 404) ---
@@ -606,7 +627,7 @@ const authMiddleware = (req, res, next) => {
       res.status(403).json({ error: "Password errata" });
     }
 };
-app.get("/admin/keys", authMiddleware, async (req, res) => { res.json(await Cache.listKeys()); }); // Aggiornato per usare la nuova cache.
+app.get("/admin/keys", authMiddleware, async (req, res) => { res.json(await Cache.listKeys()); }); 
 app.delete("/admin/key", authMiddleware, async (req, res) => { 
   const { key } = req.query;
   if (key) {
@@ -636,7 +657,7 @@ app.get("/health", async (req, res) => {
   } catch (err) {
     checks.services.indexer = "down";
   }
-  checks.services.cache = cacheData.size > 0 ? "active" : "empty"; // Nuovo check.
+  checks.services.cache = cacheData.size > 0 ? "active" : "empty"; 
   res.status(checks.status === "ok" ? 200 : 503).json(checks);
 });
 
@@ -681,10 +702,10 @@ const PUBLIC_PORT = process.env.PUBLIC_PORT || PORT;
 app.listen(PORT, () => {
     console.log(`🚀 Leviathan (God Tier) attivo su porta interna ${PORT}`);
     console.log(`-----------------------------------------------------`);
-    console.log(`⚡ MODALITÀ CACHE IN-MEMORIA: Attivata per performance migliori.`);
+    console.log(`⚡ MODALITÀ CACHE: Integrata (Read/Write attivi). TTL 30min.`);
     console.log(`⚡ SPEED LOGIC: Parallelismo attivo (DB + Remote + FailFast).`);
     console.log(`🧠 SMART FILTER: Attivo (Protezione Frankenstein).`);
-    console.log(`🛡️  SECURITY: Helmet con CSP parziale per bilanciare sicurezza e funzionalità.`);
+    console.log(`🛡️  SECURITY: Helmet CSP Bilanciata.`);
     console.log(`🌍 Addon accessibile su: http://${PUBLIC_IP}:${PUBLIC_PORT}/manifest.json`);
     console.log(`📡 Connesso a Indexer DB: ${CONFIG.INDEXER_URL}`);
     console.log(`-----------------------------------------------------`);
