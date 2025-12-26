@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
-// const helmet = require("helmet"); // DISABILITATO
+// const helmet = require("helmet"); // DISABILITATO TEMPORANEAMENTE
 const compression = require('compression');
 const path = require("path");
 const axios = require("axios");
@@ -9,6 +9,7 @@ const crypto = require("crypto");
 const Bottleneck = require("bottleneck");
 const rateLimit = require("express-rate-limit");
 const winston = require('winston');
+const NodeCache = require("node-cache"); // NUOVA LIBRERIA
 
 // --- 1. CONFIGURAZIONE LOGGER (Winston) ---
 const logger = winston.createLogger({
@@ -24,27 +25,35 @@ const logger = winston.createLogger({
   ]
 });
 
-// --- CACHE IN-MEMORY (INTEGRATA) ---
-const cacheData = new Map();
+// --- CACHE OTTIMIZZATA (NODE-CACHE) ---
+// stdTTL: Default 30 minuti (1800s)
+// checkperiod: Controlla chiavi scadute ogni 120s
+// maxKeys: Limite di sicurezza per evitare crash della RAM
+const myCache = new NodeCache({ stdTTL: 1800, checkperiod: 120, maxKeys: 5000 });
+
 const Cache = {
-    getCachedMagnets: async (key) => cacheData.get(`magnets:${key}`) || null,
-    cacheMagnets: async (key, value, ttl = 3600) => {
-        cacheData.set(`magnets:${key}`, value);
-        setTimeout(() => cacheData.delete(`magnets:${key}`), ttl * 1000);
+    // Wrapper per magneti
+    getCachedMagnets: async (key) => {
+        return myCache.get(`magnets:${key}`) || null;
     },
-    // Cache specifica per i risultati finali dello stream
+    cacheMagnets: async (key, value, ttl = 3600) => {
+        myCache.set(`magnets:${key}`, value, ttl);
+    },
+
+    // Wrapper per risultati stream finali
     getCachedStream: async (key) => {
-        const data = cacheData.get(`stream:${key}`);
+        const data = myCache.get(`stream:${key}`);
         if (data) logger.info(`⚡ CACHE HIT: ${key}`);
         return data || null;
     },
-    cacheStream: async (key, value, ttl = 1800) => { // 30 minuti di default
-        cacheData.set(`stream:${key}`, value);
-        setTimeout(() => cacheData.delete(`stream:${key}`), ttl * 1000);
+    cacheStream: async (key, value, ttl = 1800) => { 
+        // node-cache gestisce il TTL automaticamente, niente più setTimeout manuali
+        myCache.set(`stream:${key}`, value, ttl);
     },
-    listKeys: async () => Array.from(cacheData.keys()),
-    deleteKey: async (key) => cacheData.delete(key),
-    flushAll: async () => cacheData.clear()
+
+    listKeys: async () => myCache.keys(),
+    deleteKey: async (key) => myCache.del(key),
+    flushAll: async () => myCache.flushAll()
 };
 
 const { handleVixSynthetic } = require("./vix/vix_proxy");
@@ -139,9 +148,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// --- HELMET COMPLETAMENTE DISATTIVATO ---
-// app.use(helmet({ ... })); 
-// Rimosso per evitare errori CSP/Blocchi script esterni e inline.
+// app.use(helmet({ ... })); // Rimosso per evitare errori CSP/Blocchi script esterni
 
 app.use(cors());
 app.use(express.json()); 
@@ -648,7 +655,8 @@ app.get("/health", async (req, res) => {
   } catch (err) {
     checks.services.indexer = "down";
   }
-  checks.services.cache = cacheData.size > 0 ? "active" : "empty"; 
+  // Controllo cache aggiornato per node-cache
+  checks.services.cache = myCache.keys().length > 0 ? "active" : "empty"; 
   res.status(checks.status === "ok" ? 200 : 503).json(checks);
 });
 
@@ -693,7 +701,7 @@ const PUBLIC_PORT = process.env.PUBLIC_PORT || PORT;
 app.listen(PORT, () => {
     console.log(`🚀 Leviathan (God Tier) attivo su porta interna ${PORT}`);
     console.log(`-----------------------------------------------------`);
-    console.log(`⚡ MODALITÀ CACHE: Integrata (Read/Write attivi). TTL 30min.`);
+    console.log(`⚡ MODALITÀ CACHE: Node-Cache (Safe & Fast). TTL 30min.`);
     console.log(`⚡ SPEED LOGIC: Parallelismo attivo (DB + Remote + FailFast).`);
     console.log(`🧠 SMART FILTER: Attivo (Protezione Frankenstein).`);
     console.log(`🛡️  SECURITY: Helmet CSP DISATTIVATO (Nessun blocco).`);
