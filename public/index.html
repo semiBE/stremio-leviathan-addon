@@ -103,7 +103,7 @@
         header { text-align: center; margin-bottom: 50px; position: relative; }
         
         .logo-container {
-            width: 130px; height: 130px; margin: 0 auto 20px;
+            width: 150px; height: 150px; margin: 0 auto 20px;
             border-radius: 50%; border: 2px solid var(--primary);
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 0 50px rgba(0, 242, 255, 0.2), inset 0 0 30px rgba(0, 242, 255, 0.1);
@@ -120,7 +120,7 @@
         @keyframes breathe { 0%, 100% { transform: scale(1); box-shadow: 0 0 50px rgba(0, 242, 255, 0.2); } 50% { transform: scale(1.05); box-shadow: 0 0 80px rgba(0, 242, 255, 0.5); } }
 
         .logo-icon { 
-            font-size: 3.5rem; 
+            font-size: 4rem; 
             color: #fff; 
             filter: drop-shadow(0 0 10px var(--primary)); 
             animation: icon-rotate 20s linear infinite; 
@@ -129,15 +129,15 @@
 
 
         .brand-title {
-            font-family: 'Rajdhani', sans-serif; font-size: 5rem; font-weight: 800;
-            margin: 0; line-height: 0.9; text-transform: uppercase; letter-spacing: -2px;
+            font-family: 'Rajdhani', sans-serif; font-size: 5.5rem; font-weight: 800;
+            margin: 0; line-height: 0.9; text-transform: uppercase; letter-spacing: -3px;
             background: linear-gradient(180deg, #fff 0%, var(--primary) 50%, #004e92 100%);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             filter: drop-shadow(0 0 20px rgba(0, 242, 255, 0.4));
         }
         .brand-subtitle {
-            font-family: 'Rajdhani', sans-serif; letter-spacing: 6px; color: var(--primary);
-            font-weight: 600; font-size: 1rem; margin-top: 10px; text-transform: uppercase;
+            font-family: 'Rajdhani', sans-serif; letter-spacing: 8px; color: var(--primary);
+            font-weight: 600; font-size: 1.2rem; margin-top: 10px; text-transform: uppercase;
             text-shadow: 0 0 10px var(--primary);
         }
 
@@ -163,7 +163,7 @@
             display: flex; align-items: center; gap: 15px;
         }
         .panel-title {
-            font-family: 'Rajdhani', sans-serif; font-size: 1.6rem; font-weight: 700; color: #fff;
+            font-family: 'Rajdhani', sans-serif; font-size: 1.8rem; font-weight: 700; color: #fff;
             text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
         }
 
@@ -599,7 +599,7 @@
         // --- PARTICLES ---
         function createParticles() {
             const container = document.getElementById('particles');
-            for(let i=0; i<30; i++) {
+            for(let i=0; i<50; i++) {  // Aumentate particelle per un effetto più immersivo
                 const p = document.createElement('div');
                 p.classList.add('particle');
                 const size = Math.random() * 6 + 2;
