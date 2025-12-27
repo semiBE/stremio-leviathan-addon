@@ -1,4 +1,4 @@
-// db-helper.js - GOD TIER ULTIMATE (SSL FIX + SMART PACK + AUTO-REPAIR)
+// db-helper.js - INSTANT TIER (INDEX OPTIMIZED + ATOMIC INSERTS)
 const { Pool } = require('pg');
 
 // Tracker List Statica 
@@ -13,13 +13,12 @@ const DEFAULT_TRACKERS = [
     "udp://opentracker.i2p.rocks:6969/announce"
 ];
 
-// --- 1. CONFIGURAZIONE POOL (CON FIX SSL + AUTO-REPAIR) ---
+// --- 1. CONFIGURAZIONE POOL OTTIMIZZATA ---
 let pool = null;
 
 function initDatabase(config = {}) {
   if (pool) return pool;
 
-  // FIX SSL: Rileva se disabilitare SSL (es. locale o docker)
   let sslConfig = { rejectUnauthorized: false }; 
   const connString = process.env.DATABASE_URL || "";
   if (connString.includes('sslmode=disable')) {
@@ -39,13 +38,12 @@ function initDatabase(config = {}) {
 
   pool = new Pool({
     ...poolConfig,
-    max: 20,
+    max: 40, // AUMENTATO: Per gestire meglio la concorrenza di addon.js
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000, 
+    connectionTimeoutMillis: 2000, // RIDOTTO: Fail-fast se il DB è giù
   });
 
-  // --- AUTO-REPAIR: CREAZIONE TABELLE AUTOMATICA ---
-  // Questo blocco risolve l'errore "relation does not exist"
+  // --- AUTO-REPAIR & INDEXING AVANZATO ---
   const schemaQuery = `
     CREATE TABLE IF NOT EXISTS torrents (
         info_hash TEXT PRIMARY KEY,
@@ -72,28 +70,35 @@ function initDatabase(config = {}) {
         imdb_episode INTEGER
     );
 
+    -- INDICI STANDARD
     CREATE INDEX IF NOT EXISTS idx_torrents_imdb_id ON torrents(imdb_id);
     CREATE INDEX IF NOT EXISTS idx_torrents_all_imdb_ids ON torrents USING gin (all_imdb_ids);
-    CREATE INDEX IF NOT EXISTS idx_files_lookup ON files(imdb_id, imdb_season, imdb_episode);
+    
+    -- [NEW] INDICE COMPOSITO PER ORDINAMENTO VELOCE (Evita il "Sort" in memoria)
+    -- Questo permette al DB di estrarre direttamente i risultati migliori
+    CREATE INDEX IF NOT EXISTS idx_torrents_ranking ON torrents (cached_rd DESC NULLS LAST, seeders DESC);
+    
+    -- [NEW] INDICE COVERING PER FILES (Include le colonne necessarie per evitare lookup alla tabella principale troppo spesso)
+    CREATE INDEX IF NOT EXISTS idx_files_lookup_covered ON files(imdb_id, imdb_season, imdb_episode) INCLUDE (info_hash);
   `;
 
-  // Eseguiamo la query di creazione tabelle all'avvio
   pool.query(schemaQuery)
-      .then(() => console.log('✅ Tabelle DB verificate/create con successo (Auto-Repair).'))
-      .catch(err => console.error('❌ ERRORE CREAZIONE TABELLE:', err.message));
+      .then(() => console.log('✅ DB Schema & Indexes Optimized (Instant Tier).'))
+      .catch(err => console.error('❌ ERRORE INIT DB:', err.message));
 
   pool.on('error', (err) => console.error('❌ Errore inatteso client DB', err));
   
-  console.log(`✅ PostgreSQL Pool Initialized (SSL: ${sslConfig ? 'ACTIVE' : 'DISABLED'})`);
+  console.log(`✅ PostgreSQL Pool Initialized (Max: 40 | SSL: ${sslConfig ? 'ACTIVE' : 'DISABLED'})`);
   return pool;
 }
 
-// --- 2. UTILITY PER FORMATTAZIONE ---
+// --- 2. UTILITY PER FORMATTAZIONE (INVARIATA) ---
 function injectTrackers(magnet) {
     if (!magnet) return "";
     let cleanMagnet = magnet.trim();
+    // Ottimizzazione stringhe: controlla presenza tracker in un colpo solo se possibile,
+    // ma il loop qui è trascurabile per le performance.
     const trackersToAdd = DEFAULT_TRACKERS;
-    
     trackersToAdd.forEach(tr => {
         if (!cleanMagnet.includes(encodeURIComponent(tr))) {
             cleanMagnet += `&tr=${encodeURIComponent(tr)}`;
@@ -118,48 +123,61 @@ function formatRow(row, sourceTag = "LeviathanDB") {
     };
 }
 
-// --- UTILITY INTERNA PER PACK (SMART FILTER) ---
 function isPackRelevant(title, targetSeason) {
     if (!title) return false;
     const cleanTitle = title.toLowerCase();
     const s = parseInt(targetSeason);
-
-    // 1. Caso "Serie Completa"
-    if (/\b(complete|total|collection|anthology|tutte le stagioni|serie completa)\b/i.test(cleanTitle)) {
-        return true;
-    }
-    // 2. Caso "Range di Stagioni"
+    if (/\b(complete|total|collection|anthology|tutte le stagioni|serie completa)\b/i.test(cleanTitle)) return true;
     const rangeMatch = cleanTitle.match(/s(\d{1,2})\s*-\s*s?(\d{1,2})/i);
     if (rangeMatch) {
         const start = parseInt(rangeMatch[1]);
         const end = parseInt(rangeMatch[2]);
         return s >= start && s <= end;
     }
-    // 3. Caso "Stagione Singola"
     const seasonMatch = cleanTitle.match(/\b(s|season|stagione)\s?0?(\d{1,2})\b/i);
     if (seasonMatch) {
-        const foundSeason = parseInt(seasonMatch[2]);
-        return foundSeason === s;
+        return parseInt(seasonMatch[2]) === s;
     }
     return false;
 }
 
-// --- 3. CORE FUNCTIONS ---
+// --- 3. CORE FUNCTIONS OTTIMIZZATE ---
 
 async function searchByImdbId(imdbId, type = null) {
   if (!pool) return [];
   try {
+    // OTTIMIZZAZIONE: Usiamo UNION invece di OR.
+    // PostgreSQL spesso fatica a ottimizzare OR tra indici diversi (B-Tree vs GIN).
+    // Spezzare in due query e unirle è spesso 2x più veloce su grandi dataset.
     let query = `
       SELECT info_hash, title, size, seeders, cached_rd 
       FROM torrents 
-      WHERE (imdb_id = $1 OR all_imdb_ids @> $2::jsonb)
+      WHERE imdb_id = $1 ${type ? "AND type = $2" : ""}
+      
+      UNION
+      
+      SELECT info_hash, title, size, seeders, cached_rd 
+      FROM torrents 
+      WHERE all_imdb_ids @> $3::jsonb ${type ? "AND type = $2" : ""}
+      
+      ORDER BY cached_rd DESC NULLS LAST, seeders DESC 
+      LIMIT 50
     `;
-    const params = [imdbId, JSON.stringify([imdbId])];
-    if (type) {
-      query += ' AND type = $3';
-      params.push(type);
+    
+    const jsonId = JSON.stringify([imdbId]);
+    const params = type ? [imdbId, type, jsonId] : [imdbId, jsonId]; // Nota: $3 diventa jsonId
+    
+    // Ricalibrazione params per query dinamica brutale ma efficace
+    if (!type) {
+        query = `
+            SELECT info_hash, title, size, seeders, cached_rd FROM torrents WHERE imdb_id = $1
+            UNION
+            SELECT info_hash, title, size, seeders, cached_rd FROM torrents WHERE all_imdb_ids @> $2::jsonb
+            ORDER BY cached_rd DESC NULLS LAST, seeders DESC LIMIT 50
+        `;
+        params.length = 0; params.push(imdbId, jsonId);
     }
-    query += ' ORDER BY cached_rd DESC NULLS LAST, seeders DESC LIMIT 50';
+
     const result = await pool.query(query, params);
     return result.rows;
   } catch (error) {
@@ -171,6 +189,7 @@ async function searchByImdbId(imdbId, type = null) {
 async function searchEpisodeFiles(imdbId, season, episode) {
   if (!pool) return [];
   try {
+    // Join ottimizzata grazie al nuovo indice 'idx_files_lookup_covered'
     const query = `
       SELECT f.title as file_title, f.size as file_size, t.info_hash, t.title as torrent_title, t.seeders, t.cached_rd
       FROM files f
@@ -190,15 +209,21 @@ async function searchEpisodeFiles(imdbId, season, episode) {
 async function searchPacksByImdbId(imdbId, season) {
     if (!pool) return [];
     try {
+        // Anche qui UNION per velocità
         const query = `
             SELECT t.info_hash, t.title, t.size, t.seeders, t.cached_rd
             FROM torrents t
-            WHERE (imdb_id = $1 OR all_imdb_ids @> $2::jsonb) AND type = 'series'
-            ORDER BY cached_rd DESC NULLS LAST, seeders DESC LIMIT 50
+            WHERE imdb_id = $1 AND type = 'series'
+            UNION
+            SELECT t.info_hash, t.title, t.size, t.seeders, t.cached_rd
+            FROM torrents t
+            WHERE all_imdb_ids @> $2::jsonb AND type = 'series'
+            ORDER BY cached_rd DESC NULLS LAST, seeders DESC 
+            LIMIT 50
         `;
         const result = await pool.query(query, [imdbId, JSON.stringify([imdbId])]);
         
-        // APPLICAZIONE FILTRO SMART
+        // Filtro JS rimane perché la Regex SQL complessa è pesante sulla CPU DB
         const validPacks = result.rows.filter(row => isPackRelevant(row.title, season));
         
         return validPacks.slice(0, 15); 
@@ -208,43 +233,62 @@ async function searchPacksByImdbId(imdbId, season) {
     }
 }
 
-// --- 4. FUNZIONI DI SCRITTURA ---
+// --- 4. FUNZIONI DI SCRITTURA OTTIMIZZATE ---
+
 async function insertTorrent(torrent) {
   if (!pool) return false;
-  const client = await pool.connect();
+  // Rimosso pool.connect() manuale per singole query semplici (pool.query lo gestisce internamente ed è più veloce per query singole)
+  // Per transazioni complesse serve connect(), ma qui usiamo ON CONFLICT per renderla atomica.
+  
   try {
-    await client.query('BEGIN');
-    const check = await client.query('SELECT 1 FROM torrents WHERE info_hash = $1', [torrent.infoHash]);
-    if (check.rowCount > 0) { 
-        await client.query('ROLLBACK'); 
-        return false; 
-    }
-
-    await client.query(
-      `INSERT INTO torrents (info_hash, provider, title, size, type, seeders, imdb_id, tmdb_id, upload_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
-      [torrent.infoHash, torrent.provider || 'P2P', torrent.title, torrent.size, torrent.type, torrent.seeders, torrent.imdbId, torrent.tmdbId]
-    );
-    await client.query('COMMIT');
+    // OTTIMIZZAZIONE: ON CONFLICT invece di SELECT + INSERT
+    // Risparmia 1 Round Trip Time (RTT) verso il server DB.
+    const query = `
+        INSERT INTO torrents (info_hash, provider, title, size, type, seeders, imdb_id, tmdb_id, upload_date)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+        ON CONFLICT (info_hash) DO NOTHING
+    `;
+    
+    await pool.query(query, [
+        torrent.infoHash, 
+        torrent.provider || 'P2P', 
+        torrent.title, 
+        torrent.size, 
+        torrent.type, 
+        torrent.seeders, 
+        torrent.imdbId, 
+        torrent.tmdbId
+    ]);
     return true;
   } catch (e) {
-    await client.query('ROLLBACK');
     console.error("❌ Insert Error:", e.message);
     return false;
-  } finally {
-    client.release();
   }
 }
 
 async function updateRdCacheStatus(cacheResults) {
     if (!pool || !cacheResults.length) return 0;
     try {
+        // Uso una singola connessione per il batch update per non stressare il pool
+        const client = await pool.connect();
         let updated = 0;
-        for (const res of cacheResults) {
-            if (!res.hash) continue;
-            const q = `UPDATE torrents SET cached_rd = $1, last_cached_check = NOW() WHERE info_hash = $2`;
-            const r = await pool.query(q, [res.cached, res.hash.toLowerCase()]);
-            updated += r.rowCount;
+        try {
+            await client.query('BEGIN');
+            for (const res of cacheResults) {
+                if (!res.hash) continue;
+                // Prepared statement reuse implicito
+                await client.query(
+                    `UPDATE torrents SET cached_rd = $1, last_cached_check = NOW() WHERE info_hash = $2`, 
+                    [res.cached, res.hash.toLowerCase()]
+                );
+                updated++;
+            }
+            await client.query('COMMIT');
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
         }
         return updated;
     } catch (e) { 
@@ -256,12 +300,12 @@ async function updateRdCacheStatus(cacheResults) {
 // --- 5. HEALTH CHECK ---
 async function healthCheck() {
     if (!pool) throw new Error('Pool not initialized');
-    const result = await pool.query('SELECT NOW()');
-    if (result.rows.length !== 1) throw new Error('DB health check failed');
+    // Query più leggera possibile
+    const result = await pool.query('SELECT 1'); 
     return true;
 }
 
-// --- 6. ADATTATORE PER ADDON.JS ---
+// --- 6. EXPORT ---
 const dbHelper = {
     initDatabase,
     healthCheck,
@@ -272,10 +316,13 @@ const dbHelper = {
     },
 
     searchSeries: async (imdbId, season, episode) => {
-        const files = await searchEpisodeFiles(imdbId, season, episode);
-        const formattedFiles = files.map(r => formatRow(r, "LeviathanDB"));
+        // Eseguiamo query file e pack in parallelo per risparmiare tempo
+        const [files, packs] = await Promise.all([
+            searchEpisodeFiles(imdbId, season, episode),
+            searchPacksByImdbId(imdbId, season)
+        ]);
 
-        const packs = await searchPacksByImdbId(imdbId, season);
+        const formattedFiles = files.map(r => formatRow(r, "LeviathanDB"));
         const formattedPacks = packs.map(r => {
             const formatted = formatRow(r, "LeviathanDB");
             formatted.title = `📦 [S${season} Pack] ${formatted.title}`;
