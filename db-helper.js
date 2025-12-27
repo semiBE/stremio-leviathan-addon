@@ -1,4 +1,4 @@
-// db-helper.js - GOD TIER EDITION (CLEAN, OPTIMIZED & ROBUST)
+// db-helper.js - GOD TIER ULTIMATE (SSL FIX + SMART PACK + AUTO-REPAIR)
 const { Pool } = require('pg');
 
 // Tracker List Statica 
@@ -13,22 +13,28 @@ const DEFAULT_TRACKERS = [
     "udp://opentracker.i2p.rocks:6969/announce"
 ];
 
-// --- 1. CONFIGURAZIONE POOL ---
-// Variabile globale per il pool, con lazy initialization.
+// --- 1. CONFIGURAZIONE POOL (CON FIX SSL + AUTO-REPAIR) ---
 let pool = null;
 
 function initDatabase(config = {}) {
   if (pool) return pool;
 
+  // FIX SSL: Rileva se disabilitare SSL (es. locale o docker)
+  let sslConfig = { rejectUnauthorized: false }; 
+  const connString = process.env.DATABASE_URL || "";
+  if (connString.includes('sslmode=disable')) {
+      sslConfig = false; 
+  }
+
   const poolConfig = process.env.DATABASE_URL 
-    ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
+    ? { connectionString: process.env.DATABASE_URL, ssl: sslConfig }
     : {
         host: config.host || process.env.DB_HOST || 'localhost',
         port: config.port || process.env.DB_PORT || 5432,
         database: config.database || process.env.DB_NAME || 'leviathan',
         user: config.user || process.env.DB_USER || 'postgres',
         password: config.password || process.env.DB_PASSWORD,
-        ssl: { rejectUnauthorized: false }
+        ssl: sslConfig
       };
 
   pool = new Pool({
@@ -38,13 +44,51 @@ function initDatabase(config = {}) {
     connectionTimeoutMillis: 5000, 
   });
 
+  // --- AUTO-REPAIR: CREAZIONE TABELLE AUTOMATICA ---
+  // Questo blocco risolve l'errore "relation does not exist"
+  const schemaQuery = `
+    CREATE TABLE IF NOT EXISTS torrents (
+        info_hash TEXT PRIMARY KEY,
+        provider TEXT DEFAULT 'P2P',
+        title TEXT NOT NULL,
+        size BIGINT,
+        type TEXT,
+        seeders INTEGER DEFAULT 0,
+        imdb_id TEXT,
+        tmdb_id TEXT,
+        upload_date TIMESTAMP DEFAULT NOW(),
+        cached_rd BOOLEAN DEFAULT FALSE,
+        all_imdb_ids JSONB DEFAULT '[]'::jsonb,
+        last_cached_check TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS files (
+        id SERIAL PRIMARY KEY,
+        info_hash TEXT REFERENCES torrents(info_hash) ON DELETE CASCADE,
+        title TEXT,
+        size BIGINT,
+        imdb_id TEXT,
+        imdb_season INTEGER,
+        imdb_episode INTEGER
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_torrents_imdb_id ON torrents(imdb_id);
+    CREATE INDEX IF NOT EXISTS idx_torrents_all_imdb_ids ON torrents USING gin (all_imdb_ids);
+    CREATE INDEX IF NOT EXISTS idx_files_lookup ON files(imdb_id, imdb_season, imdb_episode);
+  `;
+
+  // Eseguiamo la query di creazione tabelle all'avvio
+  pool.query(schemaQuery)
+      .then(() => console.log('✅ Tabelle DB verificate/create con successo (Auto-Repair).'))
+      .catch(err => console.error('❌ ERRORE CREAZIONE TABELLE:', err.message));
+
   pool.on('error', (err) => console.error('❌ Errore inatteso client DB', err));
-  console.log('✅ PostgreSQL Pool Initialized (God Tier)');
+  
+  console.log(`✅ PostgreSQL Pool Initialized (SSL: ${sslConfig ? 'ACTIVE' : 'DISABLED'})`);
   return pool;
 }
 
 // --- 2. UTILITY PER FORMATTAZIONE ---
-// Funzione per iniettare tracker in un magnet link, evitando duplicati.
 function injectTrackers(magnet) {
     if (!magnet) return "";
     let cleanMagnet = magnet.trim();
@@ -58,13 +102,8 @@ function injectTrackers(magnet) {
     return cleanMagnet;
 }
 
-// Funzione per formattare una riga del DB in un oggetto standard per l'addon.
 function formatRow(row, sourceTag = "LeviathanDB") {
-    // IMPORTANTE: Se è un file singolo mappato, usiamo "file_title". 
-    // Se è un torrent generico (pack), usiamo "title".
     const displayTitle = row.file_title || row.title;
-    
-    // Iniettiamo i tracker per velocizzare il download dei metadati
     const baseMagnet = row.info_hash ? `magnet:?xt=urn:btih:${row.info_hash}` : row.magnet;
     const fullMagnet = injectTrackers(baseMagnet);
     
@@ -79,8 +118,34 @@ function formatRow(row, sourceTag = "LeviathanDB") {
     };
 }
 
+// --- UTILITY INTERNA PER PACK (SMART FILTER) ---
+function isPackRelevant(title, targetSeason) {
+    if (!title) return false;
+    const cleanTitle = title.toLowerCase();
+    const s = parseInt(targetSeason);
+
+    // 1. Caso "Serie Completa"
+    if (/\b(complete|total|collection|anthology|tutte le stagioni|serie completa)\b/i.test(cleanTitle)) {
+        return true;
+    }
+    // 2. Caso "Range di Stagioni"
+    const rangeMatch = cleanTitle.match(/s(\d{1,2})\s*-\s*s?(\d{1,2})/i);
+    if (rangeMatch) {
+        const start = parseInt(rangeMatch[1]);
+        const end = parseInt(rangeMatch[2]);
+        return s >= start && s <= end;
+    }
+    // 3. Caso "Stagione Singola"
+    const seasonMatch = cleanTitle.match(/\b(s|season|stagione)\s?0?(\d{1,2})\b/i);
+    if (seasonMatch) {
+        const foundSeason = parseInt(seasonMatch[2]);
+        return foundSeason === s;
+    }
+    return false;
+}
+
 // --- 3. CORE FUNCTIONS ---
-// Ricerca generica per IMDB ID, con opzionale filtro per tipo (movie/series).
+
 async function searchByImdbId(imdbId, type = null) {
   if (!pool) return [];
   try {
@@ -103,13 +168,9 @@ async function searchByImdbId(imdbId, type = null) {
   }
 }
 
-// Ricerca file specifici per episodio (mappati esattamente).
 async function searchEpisodeFiles(imdbId, season, episode) {
   if (!pool) return [];
   try {
-    // Questa query recupera i file mappati esattamente per quell'episodio
-    // Se il mapping nel DB è errato (es. file ep 5 mappato su ep 2), lo restituisce.
-    // Il "Smart Parser" in addon.js dovrà filtrarlo dopo.
     const query = `
       SELECT f.title as file_title, f.size as file_size, t.info_hash, t.title as torrent_title, t.seeders, t.cached_rd
       FROM files f
@@ -126,19 +187,21 @@ async function searchEpisodeFiles(imdbId, season, episode) {
   }
 }
 
-// Ricerca pack stagionali (ottimizzata per evitare stagioni errate dove possibile).
 async function searchPacksByImdbId(imdbId, season) {
     if (!pool) return [];
     try {
-        
         const query = `
             SELECT t.info_hash, t.title, t.size, t.seeders, t.cached_rd
             FROM torrents t
             WHERE (imdb_id = $1 OR all_imdb_ids @> $2::jsonb) AND type = 'series'
-            ORDER BY cached_rd DESC NULLS LAST, seeders DESC LIMIT 20
+            ORDER BY cached_rd DESC NULLS LAST, seeders DESC LIMIT 50
         `;
         const result = await pool.query(query, [imdbId, JSON.stringify([imdbId])]);
-        return result.rows;
+        
+        // APPLICAZIONE FILTRO SMART
+        const validPacks = result.rows.filter(row => isPackRelevant(row.title, season));
+        
+        return validPacks.slice(0, 15); 
     } catch (e) { 
         console.error(`❌ DB Error searchPacksByImdbId:`, e.message);
         return []; 
@@ -146,7 +209,6 @@ async function searchPacksByImdbId(imdbId, season) {
 }
 
 // --- 4. FUNZIONI DI SCRITTURA ---
-// Inserimento di un nuovo torrent con transazione per atomicità.
 async function insertTorrent(torrent) {
   if (!pool) return false;
   const client = await pool.connect();
@@ -174,7 +236,6 @@ async function insertTorrent(torrent) {
   }
 }
 
-// Aggiornamento batch dello status cache RD.
 async function updateRdCacheStatus(cacheResults) {
     if (!pool || !cacheResults.length) return 0;
     try {
@@ -193,7 +254,6 @@ async function updateRdCacheStatus(cacheResults) {
 }
 
 // --- 5. HEALTH CHECK ---
-// Funzione per verificare la connessione al DB (usata in healthcheck).
 async function healthCheck() {
     if (!pool) throw new Error('Pool not initialized');
     const result = await pool.query('SELECT NOW()');
@@ -202,7 +262,6 @@ async function healthCheck() {
 }
 
 // --- 6. ADATTATORE PER ADDON.JS ---
-// Oggetto esportato con metodi pubblici.
 const dbHelper = {
     initDatabase,
     healthCheck,
@@ -213,15 +272,16 @@ const dbHelper = {
     },
 
     searchSeries: async (imdbId, season, episode) => {
-        // 1. Cerca file episodi specifici (Priorità alta)
         const files = await searchEpisodeFiles(imdbId, season, episode);
         const formattedFiles = files.map(r => formatRow(r, "LeviathanDB"));
 
-        // 2. Cerca Pack completi (Season Pack)
         const packs = await searchPacksByImdbId(imdbId, season);
-        const formattedPacks = packs.map(r => formatRow(r, "LeviathanDB [Pack]"));
+        const formattedPacks = packs.map(r => {
+            const formatted = formatRow(r, "LeviathanDB");
+            formatted.title = `📦 [S${season} Pack] ${formatted.title}`;
+            return formatted;
+        });
 
-        // Debug Log: Cosa abbiamo trovato nel DB?
         if (formattedFiles.length > 0 || formattedPacks.length > 0) {
             console.log(`🗄️ [DB HIT] ID:${imdbId} S:${season} E:${episode} -> Found ${formattedFiles.length} files, ${formattedPacks.length} packs.`);
         }
