@@ -1,4 +1,4 @@
-// db-helper.js - INSTANT TIER (NO SSL + INDEX OPTIMIZED)
+// db-helper.js - INSTANT TIER (PROVIDER NAME FIX)
 const { Pool } = require('pg');
 
 // Tracker List Statica 
@@ -25,7 +25,6 @@ function initDatabase(config = {}) {
   if (pool) return pool;
 
   // FIX SSL: DISABILITATO DI DEFAULT per Docker/VPS Self-hosted
-  // Se il server non supporta SSL, forzarlo causava l'errore.
   let sslConfig = false; 
   if (process.env.DB_SSL === 'true') {
       sslConfig = { rejectUnauthorized: false };
@@ -39,14 +38,14 @@ function initDatabase(config = {}) {
         database: config.database || process.env.DB_NAME || 'torrent_library',
         user: config.user || process.env.DB_USER || 'postgres',
         password: config.password || process.env.DB_PASSWORD,
-        ssl: sslConfig // Ora è false
+        ssl: sslConfig 
       };
 
   pool = new Pool({
     ...poolConfig,
     max: 40,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000, // Aumentato per connessioni remote
+    connectionTimeoutMillis: 5000, 
   });
 
   const schemaQuery = `
@@ -86,7 +85,7 @@ function initDatabase(config = {}) {
       .catch(err => console.error('❌ ERRORE INIT DB:', err.message));
 
   pool.on('error', (err) => console.error('❌ Errore inatteso client DB', err));
-  
+   
   console.log(`✅ PostgreSQL Pool Initialized (Target: ${poolConfig.host})`);
   return pool;
 }
@@ -104,10 +103,13 @@ function injectTrackers(magnet) {
     return cleanMagnet;
 }
 
-function formatRow(row, sourceTag = "LeviathanDB") {
+function formatRow(row) {
     const displayTitle = row.file_title || row.title;
     const baseMagnet = row.info_hash ? `magnet:?xt=urn:btih:${row.info_hash}` : row.magnet;
     const fullMagnet = injectTrackers(baseMagnet);
+    
+    // MODIFICA QUI: Usa row.provider invece del tag fisso
+    const sourceName = row.provider || "P2P"; 
     
     return {
         title: displayTitle, 
@@ -115,7 +117,7 @@ function formatRow(row, sourceTag = "LeviathanDB") {
         info_hash: row.info_hash,
         size: parseInt(row.file_size || row.size) || 0,
         seeders: row.seeders || 0,
-        source: `${sourceTag}${row.cached_rd ? " ⚡" : ""}`,
+        source: `${sourceName}${row.cached_rd ? " ⚡" : ""}`, // Mostra Provider + Fulmine
         isCached: row.cached_rd
     };
 }
@@ -143,14 +145,15 @@ function isPackRelevant(title, targetSeason) {
 async function searchByImdbId(imdbId, type = null) {
   if (!pool) return [];
   try {
+    // AGGIUNTO 'provider' ALLA SELECT
     let query = `
-      SELECT info_hash, title, size, seeders, cached_rd 
+      SELECT info_hash, provider, title, size, seeders, cached_rd 
       FROM torrents 
       WHERE imdb_id = $1 ${SQL_ITA_FILTER} ${type ? "AND type = $2" : ""}
       
       UNION
       
-      SELECT info_hash, title, size, seeders, cached_rd 
+      SELECT info_hash, provider, title, size, seeders, cached_rd 
       FROM torrents 
       WHERE all_imdb_ids @> $3::jsonb ${SQL_ITA_FILTER} ${type ? "AND type = $2" : ""}
       
@@ -162,10 +165,11 @@ async function searchByImdbId(imdbId, type = null) {
     const params = type ? [imdbId, type, jsonId] : [imdbId, jsonId]; 
 
     if (!type) {
+        // AGGIUNTO 'provider' ALLA SELECT ANCHE QUI
         query = `
-            SELECT info_hash, title, size, seeders, cached_rd FROM torrents WHERE imdb_id = $1 ${SQL_ITA_FILTER}
+            SELECT info_hash, provider, title, size, seeders, cached_rd FROM torrents WHERE imdb_id = $1 ${SQL_ITA_FILTER}
             UNION
-            SELECT info_hash, title, size, seeders, cached_rd FROM torrents WHERE all_imdb_ids @> $2::jsonb ${SQL_ITA_FILTER}
+            SELECT info_hash, provider, title, size, seeders, cached_rd FROM torrents WHERE all_imdb_ids @> $2::jsonb ${SQL_ITA_FILTER}
             ORDER BY cached_rd DESC NULLS LAST, seeders DESC LIMIT 50
         `;
         params.length = 0; params.push(imdbId, jsonId);
@@ -182,8 +186,9 @@ async function searchByImdbId(imdbId, type = null) {
 async function searchEpisodeFiles(imdbId, season, episode) {
   if (!pool) return [];
   try {
+    // AGGIUNTO 't.provider' ALLA SELECT
     const query = `
-      SELECT f.title as file_title, f.size as file_size, t.info_hash, t.title as torrent_title, t.seeders, t.cached_rd
+      SELECT f.title as file_title, f.size as file_size, t.info_hash, t.provider, t.title as torrent_title, t.seeders, t.cached_rd
       FROM files f
       JOIN torrents t ON f.info_hash = t.info_hash
       WHERE f.imdb_id = $1 AND f.imdb_season = $2 AND f.imdb_episode = $3
@@ -202,12 +207,13 @@ async function searchEpisodeFiles(imdbId, season, episode) {
 async function searchPacksByImdbId(imdbId, season) {
     if (!pool) return [];
     try {
+        // AGGIUNTO 't.provider' ALLA SELECT
         const query = `
-            SELECT t.info_hash, t.title, t.size, t.seeders, t.cached_rd
+            SELECT t.info_hash, t.provider, t.title, t.size, t.seeders, t.cached_rd
             FROM torrents t
             WHERE imdb_id = $1 AND type = 'series' ${SQL_ITA_FILTER_T}
             UNION
-            SELECT t.info_hash, t.title, t.size, t.seeders, t.cached_rd
+            SELECT t.info_hash, t.provider, t.title, t.size, t.seeders, t.cached_rd
             FROM torrents t
             WHERE all_imdb_ids @> $2::jsonb AND type = 'series' ${SQL_ITA_FILTER_T}
             ORDER BY cached_rd DESC NULLS LAST, seeders DESC 
@@ -293,7 +299,8 @@ const dbHelper = {
     
     searchMovie: async (imdbId) => {
         const rows = await searchByImdbId(imdbId, 'movie');
-        return rows.map(r => formatRow(r, "LeviathanDB"));
+        // MODIFICA: Rimossa stringa "LeviathanDB"
+        return rows.map(r => formatRow(r));
     },
 
     searchSeries: async (imdbId, season, episode) => {
@@ -302,9 +309,10 @@ const dbHelper = {
             searchPacksByImdbId(imdbId, season)
         ]);
 
-        const formattedFiles = files.map(r => formatRow(r, "LeviathanDB"));
+        // MODIFICA: Rimossa stringa "LeviathanDB"
+        const formattedFiles = files.map(r => formatRow(r));
         const formattedPacks = packs.map(r => {
-            const formatted = formatRow(r, "LeviathanDB");
+            const formatted = formatRow(r);
             formatted.title = `📦 [S${season} Pack] ${formatted.title}`;
             return formatted;
         });
