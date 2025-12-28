@@ -13,6 +13,7 @@ const NodeCache = require("node-cache");
 
 // --- MODULI PROPRIETARI LEVIATHAN ---
 const { fetchExternalAddonsFlat } = require("./external-addons");
+// IMPORTIAMO IL NUOVO MODULO PACK RESOLVER
 const leviathanResolver = require("./leviathan-pack-resolver");
 
 // --- 1. CONFIGURAZIONE LOGGER (Winston) ---
@@ -175,7 +176,6 @@ function deduplicateResults(results) {
     if (!hashMatch) continue;
     
     const hash = hashMatch[1].toUpperCase();
-    // LOGICA PACK: Chiave unica = Hash + FileIdx (o 'base')
     const uniqueKey = `${hash}:${item.fileIdx !== undefined ? item.fileIdx : 'base'}`;
 
     if (!hashMap.has(uniqueKey) || (item.seeders || 0) > (hashMap.get(uniqueKey).seeders || 0)) {
@@ -389,7 +389,7 @@ async function resolveDebridLink(config, item, showFake, reqHost) {
         let streamData = null;
         let fileIdxToUse = item.fileIdx;
 
-        // --- INTEGRAZIONE PACK RESOLVER ---
+        // --- INTEGRAZIONE PACK RESOLVER PROPRIETARIO ---
         if (fileIdxToUse === undefined && service === 'rd') {
             const packResult = await leviathanResolver.resolveSeriesPackFile(
                 item.hash,           
@@ -455,7 +455,7 @@ async function queryRemoteIndexer(tmdbId, type, season = null, episode = null) {
     }
 }
 
-// --- GENERATE STREAM CON CACHE INTEGRATA ---
+// --- GENERATE STREAM ---
 async function generateStream(type, id, config, userConfStr, reqHost) {
   if (!config.key && !config.rd) return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key nel configuratore" }] };
   
@@ -497,7 +497,6 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   logger.info(`🚀 [SPEED] Start PARALLEL search: ${meta.title}`);
   const tmdbIdLookup = meta.tmdb_id || (await imdbToTmdb(meta.imdb_id, userTmdbKey))?.tmdbId;
 
-  // 1. QUERY PARALLELA DB + REMOTE
   const remotePromise = withTimeout(
       queryRemoteIndexer(tmdbIdLookup, type, meta.season, meta.episode),
       CONFIG.TIMEOUTS.REMOTE_INDEXER,
@@ -519,35 +518,16 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   });
 
   const [remoteResults, dbResultsRaw] = await Promise.all([remotePromise, dbPromise]);
+  let dbResults = dbResultsRaw || [];
   
   if (remoteResults.length > 0) logger.info(`✅ [REMOTE] ${remoteResults.length} items`);
-  if (dbResultsRaw && dbResultsRaw.length > 0) logger.info(`✅ [LOCAL DB] ${dbResultsRaw.length} items`);
+  if (dbResults.length > 0) logger.info(`✅ [LOCAL DB] ${dbResults.length} items`);
 
-  // --- LOGICA CLEAN COUNT ---
-  // 1. Uniamo i risultati grezzi
-  let rawInternal = [...remoteResults, ...(dbResultsRaw || [])];
+  if (dbResults.length > 6) dbResults = dbResults.slice(0, 10);
+  let currentResults = [...remoteResults, ...dbResults];
 
-  // 2. Filtriamo PREVENTIVAMENTE per avere il conteggio "pulito"
-  // Questa lista 'cleanInternal' contiene solo file che passano SmartMatch, Anno, etc.
-  let cleanInternal = rawInternal.filter(item => {
-      if (!item?.magnet) return false;
-      const fileYearMatch = item.title.match(REGEX_YEAR);
-      if (fileYearMatch && Math.abs(parseInt(fileYearMatch[0]) - parseInt(meta.year)) > 1) return false;
-      if (!smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return false;
-      return true;
-  });
-
-  // 3. Deduplichiamo
-  let currentResults = deduplicateResults(cleanInternal);
-  
-  // Aggiungiamo metadati
-  currentResults.forEach(r => r.imdb_id = meta.imdb_id);
-
-  logger.info(`🧐 [CLEAN COUNT] ${currentResults.length} risultati validi dopo pulizia.`);
-
-  // --- TRIGGER EXTERNAL ADDONS (Se Clean Count <= 4) ---
   if (currentResults.length <= 4) {
-      logger.info(`⚠️ Risultati PULITI scarsi (${currentResults.length} <= 4), attivo ADDON ESTERNI...`);
+      logger.info(`⚠️ Risultati scarsi (${currentResults.length} <= 4), attivo ADDON ESTERNI...`);
       try {
           const externalResults = await withTimeout(
               fetchExternalAddonsFlat(type, finalId).then(items => {
@@ -560,8 +540,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
                       source: i.externalProvider || i.source.replace(/\[EXT\]\s*/, ''), 
                       hash: i.infoHash,
                       fileIdx: i.fileIdx,
-                      isExternal: true, // Flag per bypassare smartMatch dopo
-                      imdb_id: meta.imdb_id
+                      isExternal: true 
                   }));
               }),
               CONFIG.TIMEOUTS.EXTERNAL,
@@ -570,7 +549,6 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
           
           if (externalResults && externalResults.length > 0) {
               logger.info(`✅ [EXTERNAL] Trovati ${externalResults.length} nuovi risultati`);
-              // Aggiungiamo i risultati esterni alla lista corrente
               currentResults.push(...externalResults);
           } else {
               logger.info(`❌ [EXTERNAL] Nessun risultato extra trovato.`);
@@ -580,10 +558,9 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       }
   }
 
-  // --- TRIGGER SCRAPER (Se ancora < 6 risultati totali) ---
   let scrapedResults = [];
   if (currentResults.length < 6) { 
-      logger.info(`⚠️ Risultati totali ancora bassi (${currentResults.length}), attivo SCRAPER...`);
+      logger.info(`⚠️ Low results (${currentResults.length}), triggering SCRAPING...`);
       let dynamicTitles = [];
       try {
           if (tmdbIdLookup) dynamicTitles = await getTmdbAltTitles(tmdbIdLookup, type, userTmdbKey);
@@ -612,28 +589,25 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
           }); 
       });
       scrapedResults = (await Promise.all(promises)).flat();
-      
-      // Filtriamo subito i risultati dello scraper (che non sono external e vanno controllati)
-      scrapedResults = scrapedResults.filter(item => {
-          if (!item?.magnet) return false;
-          const fileYearMatch = item.title.match(REGEX_YEAR);
-          if (fileYearMatch && Math.abs(parseInt(fileYearMatch[0]) - parseInt(meta.year)) > 1) return false;
-          if (!smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return false;
-          return true;
-      });
-      scrapedResults.forEach(r => r.imdb_id = meta.imdb_id);
-      
-      currentResults.push(...scrapedResults);
   } else {
       logger.info(`⚡ SKIP SCRAPER: Have ${currentResults.length} valid results.`);
   }
 
-  // --- FILTRO FINALE (Di sicurezza) ---
-  // Rimuoviamo eventuali duplicati tra fonti diverse (es. Scraper ha trovato lo stesso magnet dell'External)
-  // Nota: smartMatch è già stato applicato a tutti (interni pre-filtrati, esterni bypass, scraper post-filtrati)
-  let finalCleanResults = deduplicateResults(currentResults);
-  
-  const ranked = rankAndFilterResults(finalCleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
+  let resultsRaw = [...currentResults, ...scrapedResults];
+  resultsRaw.forEach(r => r.imdb_id = meta.imdb_id);
+
+  resultsRaw = resultsRaw.filter(item => {
+    if (!item?.magnet) return false;
+    if (item.isExternal) return true; 
+
+    const fileYearMatch = item.title.match(REGEX_YEAR);
+    if (fileYearMatch && Math.abs(parseInt(fileYearMatch[0]) - parseInt(meta.year)) > 1) return false;
+    if (!smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return false;
+    return true;
+  });
+
+  let cleanResults = deduplicateResults(resultsRaw);
+  const ranked = rankAndFilterResults(cleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
 
   if (config.service === 'tb' && ranked.length > 0) {
       const hashes = ranked.map(r => r.hash);
@@ -647,6 +621,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       const rdPromises = ranked.map(item => {
           item.season = meta.season;
           item.episode = meta.episode;
+          if (!item.imdb_id) item.imdb_id = meta.imdb_id;
           config.rawConf = userConfStr; 
           return LIMITERS.rd.schedule(() => resolveDebridLink(config, item, config.filters?.showFake, reqHost));
       });
@@ -784,7 +759,7 @@ app.listen(PORT, () => {
     console.log(`🧠 SMART FILTER: Attivo (Protezione Frankenstein).`);
     console.log(`🌍 Addon accessibile su: http://${PUBLIC_IP}:${PUBLIC_PORT}/manifest.json`);
     console.log(`📡 Connesso a Indexer DB: ${CONFIG.INDEXER_URL}`);
-    console.log(`🔗 EXTERNAL ADDONS: Integrati (Trigger su risultato PULITO <= 4)`);
+    console.log(`🔗 EXTERNAL ADDONS: Integrati (Trigger <= 4 results)`);
     console.log(`📦 PACK RESOLVER: Proprietario (Leviathan Engine v1)`);
     console.log(`-----------------------------------------------------`);
 });
