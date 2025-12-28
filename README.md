@@ -262,47 +262,53 @@ Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico
 
 ---
 
-**Architetto del sistema:**  
-<a href="https://github.com/LUC4N3X"><b>LUC4N3X</b></a>
+<div align="center">
+
+---
+
+### 🧬 **SYSTEM ARCHITECTURE & CORE**
+
+<a href="https://github.com/LUC4N3X">
+  <img src="https://github.com/LUC4N3X.png" width="100px;" alt=""/>
+  <br />
+  <b>LUC4N3X</b>
+</a>
+<br>
+<sub>Leviathan Project © 2025</sub>
 
 <br>
 
-<sub>Leviathan Project © 2025</sub>
-
-<br><br>
-
 <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00E0FF&center=true&vCenter=true&width=550&lines=Rimani+legale.;Rimani+lucido.;Lunga+vita+al+codice." alt="Typing SVG" />
 
+---
+
+### 🧠 **NEURAL NETWORK / CREDITS**
+
+<sub>*Il codice vive dove le menti si incontrano.*</sub>
+<br><br>
+
+<table>
+  <tr>
+    <td align="center" width="200px">
+      <a href="https://github.com/qwertyuiop8899">
+        <img src="https://github.com/qwertyuiop8899.png" width="60" style="border-radius:50%;" alt=""/>
+        <br />
+        <b>qwertyuiop8899</b>
+      </a>
+      <br>
+      <sub>Debugging Strategico &<br>Logica Core</sub>
+    </td>
+    <td align="center" width="200px">
+      <a href="https://github.com/diogomiguel93">
+        <img src="https://github.com/diogomiguel93.png" width="60" style="border-radius:50%;" alt=""/>
+        <br />
+        <b>diogomiguel93</b>
+      </a>
+      <br>
+      <sub>Integrazione &<br>Torrentio Base</sub>
+    </td>
+  </tr>
+</table>
+
 </div>
-
----
----
-
-### 🧠 Crediti & Ringraziamenti
-
-<sub>
-  Questo progetto esiste anche grazie al contributo e al supporto di menti affini.
-</sub>
-
-<br><br>
-
-- <a href="https://github.com/qwertyuiop8899" target="_blank"><b>qwertyuiop8899</b></a>  
-  <sub>
-    Supporto costante, debug strategico e logica chiave del  
-    <b>external-addons.js</b>
-  </sub>
-
-- <a href="https://github.com/diogomiguel93" target="_blank"><b>diogomiguel93</b></a>  
-  <sub>
-    Base e ispirazione per l’integrazione dell’addon  
-    <b>Torrentio (ITA)</b>
-  </sub>
-
-<br><br>
-
-<sub>
-  Il codice vive dove le menti si incontrano.
-</sub>
-
----
 
