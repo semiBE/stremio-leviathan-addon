@@ -274,3 +274,31 @@ Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico
 <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00E0FF&center=true&vCenter=true&width=550&lines=Rimani+legale.;Rimani+lucido.;Lunga+vita+al+codice." alt="Typing SVG" />
 
 </div>
+
+---
+### 🧠 Crediti & Ringraziamenti
+
+<sub>
+  Questo progetto esiste anche grazie al contributo e al supporto di menti affini.
+</sub>
+
+<br><br>
+
+- **@prisonmike**  
+  <sub>
+    Supporto costante, debug strategico e logica chiave del  
+    <b>pack-files-handler.cjs</b>
+  </sub>
+
+- **@diogoo**  
+  <sub>
+    Base e ispirazione per l’integrazione dell’addon  
+    <b>Torrentio (ITA)</b>
+  </sub>
+
+<br><br>
+
+<sub>
+  Il codice evolve più velocemente quando non è scritto da una sola persona.
+</sub>
+
