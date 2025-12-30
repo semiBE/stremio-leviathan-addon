@@ -12,7 +12,6 @@ const winston = require('winston');
 const NodeCache = require("node-cache");
 
 // --- IMPORT ESTERNI ---
-// Assicurati che external-addons.js sia nella stessa cartella e usi module.exports
 const { fetchExternalAddonsFlat } = require("./external-addons");
 
 // --- 1. CONFIGURAZIONE LOGGER (Winston) ---
@@ -176,11 +175,8 @@ function deduplicateResults(results) {
     if (!hashMatch) continue;
     
     const hash = hashMatch[1].toUpperCase();
-    // LOGICA PACK: La chiave unica è Hash + Index del file.
-    // Se non c'è index, usa 'base'.
     const uniqueKey = `${hash}:${item.fileIdx !== undefined ? item.fileIdx : 'base'}`;
 
-    // Manteniamo il risultato se è nuovo o se ha più seeders
     if (!hashMap.has(uniqueKey) || (item.seeders || 0) > (hashMap.get(uniqueKey).seeders || 0)) {
       item.hash = hash;
       item._size = parseSize(item.size || item.sizeBytes);
@@ -279,7 +275,6 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     let displaySource = source;
     if (/corsaro/i.test(displaySource)) displaySource = "ilCorSaRoNeRo";
     
-    // Il source ora è pulito (es. "TorrentGalaxy"), quindi non apparirà [EXT]
     const sourceLine = `⚡ [${serviceTag}] ${displaySource}`;
     const name = `🦑 LEVIATHAN\n${qIcon} ${quality}`; 
     const cleanName = cleanFilename(fileTitle)
@@ -318,7 +313,6 @@ function formatVixStream(meta, vixData) {
     };
 }
 
-// FIX: Modificata per accettare 'ai-recs'
 function validateStreamRequest(type, id) {
   const validTypes = ['movie', 'series'];
   if (!validTypes.includes(type)) {
@@ -326,9 +320,7 @@ function validateStreamRequest(type, id) {
     throw new Error(`Tipo non valido: ${type}`);
   }
   
-  // Rimuovi il prefisso ai-recs per il controllo di validità
   const cleanIdToCheck = id.replace('ai-recs:', '');
-
   const idPattern = /^(tt\d+|\d+|tmdb:\d+|kitsu:\d+)(:\d+)?(:\d+)?$/;
   
   if (!idPattern.test(cleanIdToCheck) && !idPattern.test(id)) {
@@ -394,8 +386,6 @@ async function resolveDebridLink(config, item, showFake, reqHost) {
         }
 
         let streamData = null;
-        
-        // FIX: Passiamo item.fileIdx alle funzioni di sblocco per supportare i Pack
         if (service === 'rd') streamData = await RD.getStreamLink(apiKey, item.magnet, item.season, item.episode, item.fileIdx);
         else if (service === 'ad') streamData = await AD.getStreamLink(apiKey, item.magnet, item.season, item.episode, item.fileIdx);
 
@@ -435,7 +425,6 @@ async function queryRemoteIndexer(tmdbId, type, season = null, episode = null) {
                 sizeBytes: parseInt(t.size),
                 seeders: t.seeders,
                 source: providerName,
-                // FIX: Catturiamo l'indice del file se il DB lo fornisce (Supporto Pack Nativo)
                 fileIdx: t.file_index !== undefined ? parseInt(t.file_index) : undefined 
             };
         });
@@ -445,7 +434,43 @@ async function queryRemoteIndexer(tmdbId, type, season = null, episode = null) {
     }
 }
 
-// --- GENERATE STREAM CON CACHE INTEGRATA ---
+// --- FUNZIONE DI SUPPORTO: External Addons ---
+async function fetchExternalResults(type, finalId) {
+    logger.info(`🌐 [EXTERNAL] Start Parallel Fetch...`);
+    try {
+        const externalResults = await withTimeout(
+            fetchExternalAddonsFlat(type, finalId).then(items => {
+                return items.map(i => ({
+                    title: i.title || i.filename,
+                    magnet: i.magnetLink,
+                    size: i.size,         
+                    sizeBytes: i.mainFileSize, 
+                    seeders: i.seeders,
+                    // Source pulita, niente [EXT]
+                    source: i.externalProvider || i.source.replace(/\[EXT\]\s*/, ''), 
+                    hash: i.infoHash,
+                    fileIdx: i.fileIdx, 
+                    isExternal: true 
+                }));
+            }),
+            CONFIG.TIMEOUTS.EXTERNAL,
+            'External Addons'
+        );
+        
+        if (externalResults && externalResults.length > 0) {
+            logger.info(`✅ [EXTERNAL] Trovati ${externalResults.length} risultati`);
+            return externalResults;
+        } else {
+            logger.info(`❌ [EXTERNAL] Nessun risultato trovato.`);
+            return [];
+        }
+    } catch (err) {
+        logger.warn('External Addons fallito/timeout', { error: err.message });
+        return [];
+    }
+}
+
+// --- GENERATE STREAM CON LOGICA PARALLELA + FALLBACK SCRAPER ---
 async function generateStream(type, id, config, userConfStr, reqHost) {
   if (!config.key && !config.rd) return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key nel configuratore" }] };
   
@@ -458,8 +483,6 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   }
 
   const userTmdbKey = config.tmdb; 
-  
-  // FIX: Rimuovi prefisso 'ai-recs:' se presente per ottenere l'ID pulito
   let finalId = id.replace('ai-recs:', '');
   
   if (finalId.startsWith("tmdb:")) {
@@ -486,10 +509,12 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   const meta = await getMetadata(finalId, type); 
   if (!meta) return { streams: [] };
 
-  logger.info(`🚀 [SPEED] Start PARALLEL search: ${meta.title}`);
+  logger.info(`🚀 [SPEED] Start TOTAL PARALLEL search: ${meta.title}`);
   const tmdbIdLookup = meta.tmdb_id || (await imdbToTmdb(meta.imdb_id, userTmdbKey))?.tmdbId;
 
-  // 1. Cerca in DB Remote e Locale (in parallelo)
+  // --- DEFINIZIONE PROMISE PARALLELE ---
+  
+  // 1. Indexer Remoto
   const remotePromise = withTimeout(
       queryRemoteIndexer(tmdbIdLookup, type, meta.season, meta.episode),
       CONFIG.TIMEOUTS.REMOTE_INDEXER,
@@ -499,6 +524,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       return [];
   });
 
+  // 2. DB Locale
   const dbPromise = withTimeout(
       type === 'movie' 
           ? dbHelper.searchMovie(meta.imdb_id)
@@ -510,55 +536,29 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       return [];
   });
 
-  const [remoteResults, dbResultsRaw] = await Promise.all([remotePromise, dbPromise]);
+  // 3. External Addons (IN PARALLELO, NON CONTA COME SCRAPER)
+  const externalPromise = fetchExternalResults(type, finalId);
+
+  // --- ESECUZIONE PARALLELA ---
+  const [remoteResults, dbResultsRaw, externalResults] = await Promise.all([
+      remotePromise, 
+      dbPromise, 
+      externalPromise
+  ]);
+
   let dbResults = dbResultsRaw || [];
   
   if (remoteResults.length > 0) logger.info(`✅ [REMOTE] ${remoteResults.length} items`);
   if (dbResults.length > 0) logger.info(`✅ [LOCAL DB] ${dbResults.length} items`);
 
+  // Unione risultati iniziali
   if (dbResults.length > 6) dbResults = dbResults.slice(0, 10);
-  let currentResults = [...remoteResults, ...dbResults];
+  let currentResults = [...remoteResults, ...dbResults, ...externalResults];
 
-  // --- LOGICA EXTERNAL ADDONS (Se risultati <= 4) ---
-  if (currentResults.length <= 4) {
-      logger.info(`⚠️ Risultati scarsi (${currentResults.length} <= 4), attivo ADDON ESTERNI...`);
-      try {
-          const externalResults = await withTimeout(
-              fetchExternalAddonsFlat(type, finalId).then(items => {
-                  return items.map(i => ({
-                      title: i.title || i.filename,
-                      magnet: i.magnetLink,
-                      size: i.size,         // string
-                      sizeBytes: i.mainFileSize, // number
-                      seeders: i.seeders,
-                      // MODIFICA: Source pulita! Se c'è il provider (es. TorrentGalaxy), usa quello. 
-                      // Altrimenti usa il nome dell'addon (es. Torrentio). Niente [EXT].
-                      source: i.externalProvider || i.source.replace(/\[EXT\]\s*/, ''), 
-                      hash: i.infoHash,
-                      fileIdx: i.fileIdx, // Importante per i Pack
-                      isExternal: true // FLAG IMPORTANTE: Per bypassare smartMatch
-                  }));
-              }),
-              CONFIG.TIMEOUTS.EXTERNAL,
-              'External Addons'
-          );
-          
-          if (externalResults && externalResults.length > 0) {
-              logger.info(`✅ [EXTERNAL] Trovati ${externalResults.length} nuovi risultati`);
-              currentResults.push(...externalResults);
-          } else {
-              logger.info(`❌ [EXTERNAL] Nessun risultato extra trovato.`);
-          }
-      } catch (err) {
-          logger.warn('External Addons fallito/timeout', { error: err.message });
-      }
-  }
-
-  // --- LOGICA SCRAPER (Fallback finale se ancora pochi risultati) ---
+  // --- LOGICA SCRAPER (Fallback SOLO se < 3 risultati) ---
   let scrapedResults = [];
-  // Se anche dopo gli external addons siamo sotto a 6, o se gli external hanno fallito, prova lo scraper
-  if (currentResults.length < 6) { 
-      logger.info(`⚠️ Low results (${currentResults.length}), triggering SCRAPING...`);
+  if (currentResults.length < 3) { 
+      logger.info(`⚠️ Low TOTAL results (${currentResults.length} < 3), triggering SCRAPING (Engines)...`);
       let dynamicTitles = [];
       try {
           if (tmdbIdLookup) dynamicTitles = await getTmdbAltTitles(tmdbIdLookup, type, userTmdbKey);
@@ -588,14 +588,13 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       });
       scrapedResults = (await Promise.all(promises)).flat();
   } else {
-      logger.info(`⚡ SKIP SCRAPER: Have ${currentResults.length} valid results.`);
+      logger.info(`⚡ SKIP SCRAPER: Have ${currentResults.length} valid results (>= 3).`);
   }
 
   let resultsRaw = [...currentResults, ...scrapedResults];
   resultsRaw = resultsRaw.filter(item => {
     if (!item?.magnet) return false;
-    
-    // --- MODIFICA FILTRO: Se è esterno, passa SEMPRE (Bypass SmartMatch) ---
+    // --- BYPASS SMARTMATCH PER EXTERNAL ---
     if (item.isExternal) return true; 
 
     const fileYearMatch = item.title.match(REGEX_YEAR);
@@ -752,10 +751,10 @@ app.listen(PORT, () => {
     console.log(`🚀 Leviathan (God Tier) attivo su porta interna ${PORT}`);
     console.log(`-----------------------------------------------------`);
     console.log(`⚡ MODALITÀ CACHE: Node-Cache (Safe & Fast). TTL 30min.`);
-    console.log(`⚡ SPEED LOGIC: Parallelismo attivo (DB + Remote + FailFast).`);
+    console.log(`⚡ SPEED LOGIC: TOTALE PARALLELO (DB + Remote + External).`);
     console.log(`🧠 SMART FILTER: Attivo (Protezione Frankenstein).`);
     console.log(`🌍 Addon accessibile su: http://${PUBLIC_IP}:${PUBLIC_PORT}/manifest.json`);
     console.log(`📡 Connesso a Indexer DB: ${CONFIG.INDEXER_URL}`);
-    console.log(`🔗 EXTERNAL ADDONS: Integrati (Trigger <= 4 results)`);
+    console.log(`🔗 EXTERNAL ADDONS: Integrati (Parallel). SCRAPER (Fallback < 3)`);
     console.log(`-----------------------------------------------------`);
 });
