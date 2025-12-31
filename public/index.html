@@ -530,6 +530,15 @@
                     <span class="opt-label" style="color:#ccc; font-weight:500;">Mostra Check Cache</span>
                     <label class="switch"><input type="checkbox" id="showFake"><span class="slider"></span></label>
                 </div>
+                <div class="option-card">
+                    <span class="opt-label" style="color:#ccc; font-weight:500;">Compatibilità AIO
+                        <div class="tooltip-wrapper">
+                            <span class="tooltip-icon">?</span>
+                            <div class="tooltip-content">Formato compatto (es: Leviathan RD⚡) ottimizzato per AIOStreams.</div>
+                        </div>
+                    </span>
+                    <label class="switch"><input type="checkbox" id="aiostreams_mode"><span class="slider"></span></label>
+                </div>
             </div>
 
             <div class="faq-area">
@@ -637,6 +646,9 @@
                     if (config.key) document.getElementById('apiKey').value = config.key;
                     if (config.tmdb) document.getElementById('tmdbKey').value = config.tmdb;
                     if (config.service) selectService(config.service, true);
+                    // CHECKBOX AIOSTREAMS (CARICAMENTO)
+                    if (config.aiostreams_mode) document.getElementById('aiostreams_mode').checked = true;
+
                     if (config.mediaflow) {
                         document.getElementById('mfUrl').value = config.mediaflow.url || "";
                         document.getElementById('mfPass').value = config.mediaflow.pass || "";
@@ -686,6 +698,8 @@
                 service: currentService,
                 key: document.getElementById('apiKey').value.trim(),
                 tmdb: document.getElementById('tmdbKey').value.trim(),
+                // CHECKBOX AIOSTREAMS (SALVATAGGIO)
+                aiostreams_mode: document.getElementById('aiostreams_mode').checked,
                 mediaflow: {
                     url: document.getElementById('mfUrl').value.trim().replace(/\/$/, ""),
                     pass: document.getElementById('mfPass').value.trim(),
@@ -719,6 +733,7 @@
                 <li>Servizio Debrid <span>${c.service.toUpperCase()}</span></li>
                 <li>Includi ENG <span>${c.filters.allowEng ? 'ATTIVO' : 'NO'}</span></li>
                 <li>StreamingCommunity <span>${c.filters.enableVix ? 'ATTIVO' : 'NO'}</span></li>
+                <li>Modalità AIOStreams <span>${c.aiostreams_mode ? 'ATTIVO' : 'NO'}</span></li>
                 <li>Proxy Ghost <span>${c.mediaflow.proxyDebrid ? 'ATTIVO' : 'NO'}</span></li>
             `;
             const m = document.getElementById('installModal'); m.style.display = 'flex';
