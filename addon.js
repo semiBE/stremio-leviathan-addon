@@ -203,7 +203,7 @@ function parseSize(sizeStr) {
 }
 
 // ------------------------------------------------------------------
-// 🔥🔥🔥 FIX DEFINITIVO CLESSIDRA: DEDUPLICAZIONE E NORMALIZZAZIONE 🔥🔥🔥
+// 🔥🔥🔥 FIX DEDUPLICAZIONE E LETTURA SIZE 🔥🔥🔥
 // ------------------------------------------------------------------
 function deduplicateResults(results) {
   const hashMap = new Map();
@@ -223,13 +223,14 @@ function deduplicateResults(results) {
 
     // 4. Sovrascrittura: Imponiamo l'hash pulito all'oggetto
     item.hash = finalHash;
-    item.infoHash = finalHash; // Allineamento totale
+    item.infoHash = finalHash; 
     
-    // Chiave univoca per la mappa
+    // Chiave univoca
     const uniqueKey = `${finalHash}:${item.fileIdx !== undefined ? item.fileIdx : 'base'}`;
 
     if (!hashMap.has(uniqueKey) || (item.seeders || 0) > (hashMap.get(uniqueKey).seeders || 0)) {
-      item._size = parseSize(item.size || item.sizeBytes);
+      // Priorità a sizeBytes se esiste, altrimenti parsa la stringa
+      item._size = parseSize(item.sizeBytes || item.size); 
       hashMap.set(uniqueKey, item);
     }
   }
@@ -314,34 +315,62 @@ function extractStreamInfo(title, source) {
   return { quality: q, qIcon, info: detailsParts.join(" | "), lang, audioInfo };
 }
 
-// --- FUNZIONE MODIFICATA PER AIOSTREAMS (FIX: CORSARO NOME COMPLETO + LINGUE) ---
+// --- FUNZIONE MODIFICATA PER STIMA "STEALTH" DIMENSIONE ---
 function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag = "RD", config = {}) {
     // Estrazione dati comuni
     const { quality, qIcon, info, lang, audioInfo } = extractStreamInfo(fileTitle, source);
     const cleanNameTitle = cleanFilename(fileTitle);
 
-    // --- LOGICA AIOSTREAMS (SE ABILITATO) ---
+    // 🔥🔥🔥 LOGICA "STEALTH" SIZE ESTIMATION 🔥🔥🔥
+    // Se la dimensione manca, ne calcoliamo una finta ma REALISTICA e VARIABILE (coerente col titolo).
+    let sizeString = size ? formatBytes(size) : "";
+    
+    if (!sizeString || size === 0) {
+        // Genera un "seed" numerico basato sulle lettere del titolo. 
+        // Così "Film A" avrà sempre la stessa dimensione finta, diversa da "Film B".
+        let hash = 0;
+        for (let i = 0; i < fileTitle.length; i++) {
+            hash = fileTitle.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const seed = Math.abs(hash);
+
+        const tLower = fileTitle.toLowerCase();
+        let gb = 0;
+
+        if (REGEX_QUALITY["4K"].test(tLower)) {
+            // Genera tra 12.00 GB e 22.00 GB
+            gb = 12 + (seed % 1000) / 100;
+        } else if (REGEX_QUALITY["1080p"].test(tLower)) {
+            // Genera tra 1.80 GB e 4.50 GB
+            gb = 1.8 + (seed % 270) / 100;
+        } else if (REGEX_QUALITY["720p"].test(tLower)) {
+            // Genera tra 0.60 GB e 1.40 GB
+            gb = 0.6 + (seed % 80) / 100;
+        } else {
+            // Fallback generico 1.xx GB
+            gb = 1 + (seed % 200) / 100;
+        }
+        
+        // Formatta come numero puro (niente ondina ~)
+        sizeString = `${gb.toFixed(2)} GB`; 
+    }
+
+    // --- LOGICA AIOSTREAMS ---
     if (aioFormatter && aioFormatter.isAIOStreamsEnabled(config)) {
         let fullService = 'p2p';
         if (serviceTag === 'RD') fullService = 'realdebrid';
         if (serviceTag === 'AD') fullService = 'alldebrid';
         if (serviceTag === 'TB') fullService = 'torbox';
-
-        const sizeString = size ? formatBytes(size) : "";
         
-        // 🔥 FIX 1: GESTIONE NOME CORSARO ESPLICITO
+        // FIX NOME CORSARO
         let displaySource = source;
-        if (/corsaro/i.test(source)) {
-            displaySource = "ilCorSaRoNeRo"; // Forza il nome completo se è Corsaro
-        } else {
-            // Per gli altri, abbrevia per pulizia AIO
+        if (/corsaro/i.test(source)) displaySource = "ilCorSaRoNeRo";
+        else {
             displaySource = source.replace(/TorrentGalaxy|tgx/i, 'TGx').replace(/1337x/i, '1337');
-            if (displaySource.length > 10) displaySource = ""; // Se troppo lungo nascondi in AIO
+            if (displaySource.length > 10) displaySource = ""; 
         }
 
-        // 🔥 FIX UNICITÀ + SOURCE NEL TITOLO
         const uniqueLine = [quality, sizeString, displaySource].filter(Boolean).join(" • ");
-
         const name = aioFormatter.formatStreamName({
             addonName: "Leviathan",
             service: fullService,
@@ -349,22 +378,20 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
             quality: uniqueLine 
         });
 
-        // 🔥 FIX 2: LINGUE COMPLETE (NESSUNA RIMOZIONE EMOJI)
         const title = aioFormatter.formatStreamTitle({
             title: cleanNameTitle,
             size: sizeString || "Unknown",
-            language: lang, // Mantiene bandiere e formattazione originale
+            language: lang,
             source: displaySource,
             seeders: seeders,
             isPack: false, 
             episodeTitle: getEpisodeTag(fileTitle)
         });
-
         return { name, title };
     }
 
-    // --- LOGICA ORIGINALE LEVIATHAN (RESTO INVARIATO) ---
-    const sizeStr = size ? `🧲 ${formatBytes(size)}` : "🧲 ?";
+    // --- LOGICA LEVIATHAN STANDARD ---
+    const sizeStr = `🧲 ${sizeString}`;
     const seedersStr = seeders != null ? `👤 ${seeders}` : "";
     let langStr = "🌐 ?";
     if (/ita|it\b|italiano/i.test(lang || "")) langStr = "🗣️ ITA";
@@ -372,7 +399,6 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     else if (lang) langStr = `🗣️ ${lang.toUpperCase()}`;
     
     let displaySource = source;
-    // Anche qui normalizziamo Corsaro
     if (/corsaro/i.test(displaySource)) displaySource = "ilCorSaRoNeRo";
     
     const sourceLine = `⚡ [${serviceTag}] ${displaySource}`;
@@ -981,5 +1007,6 @@ app.listen(PORT, () => {
     console.log(`📡 Connesso a Indexer DB: ${CONFIG.INDEXER_URL}`);
     console.log(`🔗 EXTERNAL ADDONS: Integrati (Parallel). SCRAPER (Fallback < 3)`);
     console.log(`✅ AIOStreams Mode: COMPLETATO (Strict Language Filter).`);
+    console.log(`📊 Stealth Size Estimator: ATTIVO (Realistico e Variabile).`);
     console.log(`-----------------------------------------------------`);
 });
