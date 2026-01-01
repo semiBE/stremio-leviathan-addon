@@ -12,7 +12,7 @@ const EXTERNAL_ADDONS = {
         timeout: 4500
     },
     comet: {
-        baseUrl: 'https://comet.elfhosted.com', // URL Comet suggerito
+        baseUrl: 'https://comet.elfhosted.com', 
         name: 'Comet',
         emoji: '🅒',
         timeout: 4500
