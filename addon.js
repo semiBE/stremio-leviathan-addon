@@ -121,7 +121,7 @@ const REGEX_ITA = [
 ];
 const REGEX_CLEANER = /\b(ita|eng|ger|fre|spa|latino|rus|sub|h264|h265|x264|x265|hevc|avc|vc1|1080p|1080i|720p|480p|4k|2160p|uhd|sdr|hdr|hdr10|dv|dolby|vision|bluray|bd|bdrip|brrip|web-?dl|webrip|hdtv|rip|remux|mux|ac-?3|aac|dts|ddp|flac|truehd|atmos|multi|dual|complete|pack|amzn|nf|dsnp|hmax|atvp|apple|hulu|peacock|rakuten|iyp|dvd|dvdrip|unrated|extended|director|cut)\b.*/yi;
 
-// ✅ Helper: Convert Base32 to Hex (Necessario per magnet compressi)
+//  Helper: Convert Base32 to Hex (Necessario per magnet compressi)
 function base32ToHex(base32) {
     const base32chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
     let bits = "";
@@ -137,7 +137,7 @@ function base32ToHex(base32) {
     return hex;
 }
 
-// ✅ Improved Info Hash Extraction (Con vera conversione e supporto Base32)
+//  Improved Info Hash Extraction 
 function extractInfoHash(magnet) {
     if (!magnet) return null;
     const match = magnet.match(/btih:([A-Fa-f0-9]{40}|[A-Za-z2-7]{32})/i);
@@ -321,8 +321,7 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     const { quality, qIcon, info, lang, audioInfo } = extractStreamInfo(fileTitle, source);
     const cleanNameTitle = cleanFilename(fileTitle);
 
-    // 🔥🔥🔥 LOGICA "STEALTH" SIZE ESTIMATION 🔥🔥🔥
-    // Se la dimensione manca, ne calcoliamo una finta ma REALISTICA e VARIABILE (coerente col titolo).
+    //  LOGICA "STEALTH" SIZE ESTIMATION 
     let sizeString = size ? formatBytes(size) : "";
     
     if (!sizeString || size === 0) {
@@ -523,7 +522,7 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
         const apiKey = config.key || config.rd;
         if (!apiKey) return null;
 
-        // ✅ FIX APPLICATO: Usiamo SOLO item.hash (che ora è pulito)
+        //   Usiamo SOLO item.hash (che ora è pulito)
         if (!item.hash || item.hash.length !== 40) {
             console.warn(`[SKIP RESOLVE] Hash perso o invalido: ${item.title}`);
             return null;
@@ -531,7 +530,10 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
 
         const isSeries = meta && meta.isSeries;
 
-        if (isSeries && PackResolver.isSeasonPack(item.title) && item.fileIdx === undefined) {
+        // 🔥 FIX PACK: Accetta anche fileIdx null o undefined per triggerare il Resolver
+        const isPackCandidate = item.fileIdx === undefined || item.fileIdx === null;
+
+        if (isSeries && PackResolver.isSeasonPack(item.title) && isPackCandidate) {
              try {
                 const resolverConfig = { 
                     rd_key: service === 'rd' ? apiKey : null,
@@ -569,7 +571,7 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
                 const { name, title } = formatStreamTitleCinePro(item.title, item.source, item._size, item.seeders, serviceTag, config);
                 
                 // 🔥🔥🔥 FIX URL TORBOX: Aggiunto &f= per il file index
-                const proxyUrl = `${reqHost}/${config.rawConf}/play_tb/${item.hash}?s=${item.season || 0}&e=${item.episode || 0}&f=${item.fileIdx || ''}`;
+                const proxyUrl = `${reqHost}/${config.rawConf}/play_tb/${item.hash}?s=${item.season || 0}&e=${item.episode || 0}&f=${item.fileIdx !== undefined ? item.fileIdx : ''}`;
                 
                 return { 
                     name, 
@@ -578,7 +580,7 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
                     infoHash: item.hash, 
                     behaviorHints: { 
                         notWebReady: false, 
-                        // 🔥 FIX: BingieGroup univoco per evitare raggruppamenti indesiderati
+                        //  FIX: BingieGroup univoco per evitare raggruppamenti indesiderati
                         bingieGroup: `corsaro-tb-${item.hash}` 
                     } 
                 };
@@ -589,8 +591,11 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
         let streamData = null;
         const cleanMagnet = `magnet:?xt=urn:btih:${item.hash}&dn=${encodeURIComponent(item.title)}`;
 
-        if (service === 'rd') streamData = await RD.getStreamLink(apiKey, cleanMagnet, item.season, item.episode, item.fileIdx);
-        else if (service === 'ad') streamData = await AD.getStreamLink(apiKey, cleanMagnet, item.season, item.episode, item.fileIdx);
+        // 🔥 Assicuriamoci di passare un fileIdx valido a RD se non è pack
+        const safeFileIdx = item.fileIdx !== undefined && item.fileIdx !== null ? item.fileIdx : 0;
+
+        if (service === 'rd') streamData = await RD.getStreamLink(apiKey, cleanMagnet, item.season, item.episode, safeFileIdx);
+        else if (service === 'ad') streamData = await AD.getStreamLink(apiKey, cleanMagnet, item.season, item.episode, safeFileIdx);
 
         if (!streamData || (streamData.type === "ready" && streamData.size < CONFIG.REAL_SIZE_FILTER)) return null;
 
@@ -673,6 +678,7 @@ async function fetchExternalResults(type, finalId) {
                     // Source pulita, niente [EXT]
                     source: i.externalProvider || i.source.replace(/\[EXT\]\s*/, ''), 
                     hash: i.infoHash,
+                    //  MANTENIAMO undefined se arriva undefined da external-addons
                     fileIdx: i.fileIdx, 
                     isExternal: true 
                 }));
@@ -760,7 +766,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       return [];
   });
 
-  // 3. External Addons (IN PARALLELO, NON CONTA COME SCRAPER)
+  // 3. External Addons (IN PARALLELO)
   const externalPromise = fetchExternalResults(type, finalId);
 
   // --- ESECUZIONE PARALLELA ---
@@ -827,8 +833,23 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
     const isItalian = isSafeForItalian(item) || /corsaro/i.test(item.source);
     if (!allowEng && !isItalian) return false;
 
-    // 2. BYPASS PER EXTERNAL (Ma solo se ha superato il filtro lingua!)
-    if (item.isExternal) return true; 
+    // 2. BYPASS PER EXTERNAL CON CONTROLLO INTELLIGENTE
+    // Invece di "return true" secco, facciamo un controllo leggero se è una serie TV.
+    if (item.isExternal) {
+        // Se è un Film, accetta tutto 
+        if (!meta.isSeries) return true;
+        
+        // --- CONTROLLO EPISODIO ---
+        // Se è l'episodio giusto (es: S01E03), passa.
+        if (simpleSeriesFallback(meta, item.title)) return true;
+        if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
+
+        // --- CONTROLLO PACK (NUOVO) ---
+        if (PackResolver.isSeasonPack(item.title)) return true;
+
+        // Se non è né l'episodio giusto né un pack, scartalo 
+        return false; 
+    }
 
     // --- [LEVIATHAN FIX] FILTRO ANNO SOLO PER FILM ---
     if (!meta.isSeries) {
