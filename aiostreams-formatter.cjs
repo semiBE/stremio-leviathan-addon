@@ -1,67 +1,75 @@
+/**
+ * AIOStreams Custom Formatter - Leviathan Edition
+ * Layout a 3 righe con Provider su riga dedicata
+ */
+
 function formatStreamName({ 
     addonName, 
     service, 
     cached, 
-    quality, // Da addon.js arriva: "1080p • 2.5GB • Source"
+    quality, 
     hasError = false 
 }) {
-    // 1. Abbreviazioni dei servizi
     const serviceAbbr = {
         'realdebrid': '[RD',
         'torbox': '[TB',
         'alldebrid': '[AD',
         'p2p': '[P2P'
     };
-    
-    // Gestione icona cache
     const srv = serviceAbbr[service?.toLowerCase()] || '[P2P';
     const bolt = cached ? '⚡]' : ']';
-    const prefix = `${srv}${bolt}`;
-    
-    // Indicatore errore
-    const errorIndicator = hasError ? ' ⚠️' : '';
-
-    // Se addonName è "Leviathan", lo mostriamo. 
-    // La 'quality' passata da addon.js contiene già info utili (es. 4K • 10GB).
-    // Risultato: [RD⚡] Leviathan • 1080p • 5.2GB
-    return `${prefix} ${addonName} • ${quality}${errorIndicator}`;
+    // Esempio output: [RD⚡] Leviathan
+    return `${srv}${bolt} ${addonName}${hasError ? ' ⚠️' : ''}`;
 }
 
 /**
- * Titolo descrittivo - Layout Multi-riga
- * Qui usiamo il filename per garantire l'unicità
+ * Titolo descrittivo - Layout Fisso 3 Righe
  */
 function formatStreamTitle({ 
-    title,       // NOTA: Da addon.js qui arriva il "Nome File Originale" (es. Avengers.2012.1080p.mkv)
-    size,        // Stringa dimensione (es. 12.5 GB)
-    language,    // Lingua (es. 🇮🇹 ITA)
-    source,      // Fonte (es. ilCorsaroNero)
-    seeders,     // Numero seeders
-    episodeTitle, // Eventuale tag episodio (S01E01)
-    infoHash     // Hash (passato da addon.js ma lo nascondiamo o mostriamo piccolo se vuoi)
+    title,       // Nome File
+    size,        // Dimensione
+    language,    // Lingua
+    source,      // IL PROVIDER (Index)
+    seeders,     
+    episodeTitle, 
+    infoHash     
 }) {
-    // Gestione dati mancanti
-    const displaySeeders = seeders !== undefined && seeders !== null ? seeders : '-';
+    const displaySeeders = seeders !== undefined && seeders !== null 
+        ? seeders : '-';
     const displayLang = language || '🌍';
-    const displaySource = source || 'P2P';
 
-    // RIGA 1: Il Nome File (Cruciale per evitare che Stremio unisca i risultati)
-    // Aggiungiamo un'icona cartella per estetica
-    const row1 = `📁 ${title}`;
+    // --- LOGICA DI PULIZIA PROVIDER ---
+    let displaySource = 'Unknown Indexer';
 
-    // RIGA 2: Dati Tecnici
-    const row2 = `💾 ${size} • 👤 ${displaySeeders}`;
+    if (source) {
+        if (source.includes('•')) {
+            const parts = source.split('•');
+            // Prende l'ultima parte (il sito) e rimuove spazi
+            displaySource = parts[parts.length - 1].trim();
+        } else {
+            displaySource = source;
+        }
+    }
 
-    // RIGA 3: Lingua e Fonte
-    const row3 = `${displayLang} • ${displaySource}`;
+    // --- RINOMINA SPECIFICA ---
+    // Se il provider estratto è "1337", lo rinomina in "1337x"
+    if (displaySource === '1337') {
+        displaySource = '1337x';
+    }
+    // -------------------------
 
-    // Unione con newline
+    // RIGA 1: Nome File
+    let row1 = `📁 ${title}`;
+
+    // RIGA 2: Dati Tecnici + Lingua
+    const row2 = `💾 ${size} • 👤 ${displaySeeders} • ${displayLang}`;
+
+    // RIGA 3: PROVIDER (DEDICATA)
+    const row3 = `🔎 ${displaySource}`;
+
     return `${row1}\n${row2}\n${row3}`;
 }
 
-/**
- * Controllo se AIOStreams è abilitato
- */
 function isAIOStreamsEnabled(config) {
     return config?.aiostreams_mode === true;
 }
