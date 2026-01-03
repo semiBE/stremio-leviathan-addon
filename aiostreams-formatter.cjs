@@ -1,72 +1,62 @@
 function formatStreamName({ 
     addonName, 
     service, 
-    provider, 
     cached, 
-    quality, 
-    size, 
-    source, 
-    title, 
+    quality, // Da addon.js arriva: "1080p • 2.5GB • Source"
     hasError = false 
 }) {
     // 1. Abbreviazioni dei servizi
     const serviceAbbr = {
-        'realdebrid': 'RD',
-        'torbox': 'TB',
-        'alldebrid': 'AD',
-        'p2p': 'P2P'
+        'realdebrid': '[RD',
+        'torbox': '[TB',
+        'alldebrid': '[AD',
+        'p2p': '[P2P'
     };
-    const abbr = serviceAbbr[service?.toLowerCase()] || 'P2P';
-
-    // 2. Icone e stati
-    const cacheSymbol = cached ? '⚡' : '⏳';
+    
+    // Gestione icona cache
+    const srv = serviceAbbr[service?.toLowerCase()] || '[P2P';
+    const bolt = cached ? '⚡]' : ']';
+    const prefix = `${srv}${bolt}`;
+    
+    // Indicatore errore
     const errorIndicator = hasError ? ' ⚠️' : '';
 
-    // 3. Pulizia dati
-    const cleanQuality = quality ? quality.replace("1080p", "FHD").replace("2160p", "4K") : "SD";
-    const cleanSize = size ? `• ${size}` : "• ?";
-    const cleanSource = source ? `• ${source}` : "";
-    const cleanProvider = provider ? `• ${provider}` : "";
-
-    // 4. Generatore tag unico per evitare raggruppamenti
-    const uniqueTag = title ? title.slice(0,3).toUpperCase() : Math.random().toString(36).slice(2,5);
-
-    // 5. Composizione nome finale
-    return `${abbr}${cacheSymbol} ${cleanQuality} ${cleanSize} ${cleanSource} ${cleanProvider} • ${uniqueTag}${errorIndicator}`.replace(/\s+/g,' ').trim();
+    // Se addonName è "Leviathan", lo mostriamo. 
+    // La 'quality' passata da addon.js contiene già info utili (es. 4K • 10GB).
+    // Risultato: [RD⚡] Leviathan • 1080p • 5.2GB
+    return `${prefix} ${addonName} • ${quality}${errorIndicator}`;
 }
 
 /**
- * Titolo descrittivo compatto per seconda riga in Stremio
+ * Titolo descrittivo - Layout Multi-riga
+ * Qui usiamo il filename per garantire l'unicità
  */
 function formatStreamTitle({ 
-    title, 
-    size, 
-    language, 
-    source, 
-    seeders, 
-    isPack = false, 
-    episodeTitle 
+    title,       // NOTA: Da addon.js qui arriva il "Nome File Originale" (es. Avengers.2012.1080p.mkv)
+    size,        // Stringa dimensione (es. 12.5 GB)
+    language,    // Lingua (es. 🇮🇹 ITA)
+    source,      // Fonte (es. ilCorsaroNero)
+    seeders,     // Numero seeders
+    episodeTitle, // Eventuale tag episodio (S01E01)
+    infoHash     // Hash (passato da addon.js ma lo nascondiamo o mostriamo piccolo se vuoi)
 }) {
-    const lines = [];
+    // Gestione dati mancanti
+    const displaySeeders = seeders !== undefined && seeders !== null ? seeders : '-';
+    const displayLang = language || '🌍';
+    const displaySource = source || 'P2P';
 
-    // Linea principale
-    if (isPack && episodeTitle) {
-        lines.push(`📂 ${episodeTitle}`);
-    } else {
-        lines.push(`📄 ${title}`);
-    }
+    // RIGA 1: Il Nome File (Cruciale per evitare che Stremio unisca i risultati)
+    // Aggiungiamo un'icona cartella per estetica
+    const row1 = `📁 ${title}`;
 
-    // Lingua
-    if (language) lines.push(`🗣️ ${language}`);
+    // RIGA 2: Dati Tecnici
+    const row2 = `💾 ${size} • 👤 ${displaySeeders}`;
 
-    // Seeders se P2P
-    if (seeders !== undefined && seeders !== null) lines.push(`👥 ${seeders}`);
+    // RIGA 3: Lingua e Fonte
+    const row3 = `${displayLang} • ${displaySource}`;
 
-    // Fonte/Dimensioni opzionali
-    if (source) lines.push(`• ${source}`);
-    if (size) lines.push(`• ${size}`);
-
-    return lines.join(' ');
+    // Unione con newline
+    return `${row1}\n${row2}\n${row3}`;
 }
 
 /**
