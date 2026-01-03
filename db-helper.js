@@ -1,6 +1,8 @@
-// db-helper.js - GOD TIER EDITION (FIX COLONNE DB)
+// db-helper.js - GOD TIER EDITION (FIX EXPORT & INIT)
 const { Pool } = require('pg');
 const axios = require('axios');
+
+console.log("📂 Caricamento modulo db-helper..."); // Log di debug all'avvio
 
 // --- 1. GESTIONE TRACKER DINAMICI ---
 const TRACKERS_URL = 'https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best.txt';
@@ -27,7 +29,7 @@ async function updateTrackers() {
     }
 }
 
-// Avvia update e poi ogni 6 ore
+// Avvia update subito
 updateTrackers();
 setInterval(updateTrackers, 6 * 60 * 60 * 1000);
 
@@ -38,7 +40,10 @@ const SQL_ITA_FILTER = `AND (t.title ~* '\\y(ita|italian|italy|multi|dual|corsar
 const SQL_ITA_FILTER_PACK = `AND (t.title ~* '\\y(ita|italian|italy|multi|dual|corsaro)\\y')`;
 
 function initDatabase(config = {}) {
-  if (pool) return pool;
+  if (pool) {
+      console.log("♻️ DB Pool già inizializzato.");
+      return pool;
+  }
 
   let sslConfig = false; 
   if (process.env.DB_SSL === 'true') {
@@ -63,13 +68,12 @@ function initDatabase(config = {}) {
     connectionTimeoutMillis: 5000, 
   });
    
-  console.log(`✅ DB Pool Initialized (Target: ${poolConfig.host})`);
+  console.log(`✅ DB Pool Inizializzato (Target: ${poolConfig.host || 'Cloud'})`);
   return pool;
 }
 
 // --- 3. UTILITY & PROVIDER EXTRACTION ---
 
-// Lista Provider Noti (Case Insensitive)
 const KNOWN_PROVIDERS = [
     "ilCorSaRoNeRo", "Corsaro",
     "1337x", "1337X",
@@ -98,7 +102,6 @@ const KNOWN_PROVIDERS = [
 function extractOriginalProvider(text) {
     if (!text) return null;
     
-    // 1. Pattern classici Torrentio/Stremio (Emoji)
     const torrentioMatch = text.match(/🔍\s*([^\n]+)/);
     if (torrentioMatch) return torrentioMatch[1].trim();
 
@@ -108,14 +111,12 @@ function extractOriginalProvider(text) {
     const cometMatch = text.match(/🔎\s*([^\n]+)/);
     if (cometMatch) return cometMatch[1].trim();
 
-    // 2. DIZIONARIO PROVIDER (Case Insensitive)
     const lowerText = text.toLowerCase();
     for (const provider of KNOWN_PROVIDERS) {
         if (lowerText.includes(provider.toLowerCase())) {
             return provider;
         }
     }
-
     return null;
 }
 
@@ -241,27 +242,22 @@ async function searchPacksByImdbId(imdbId, season) {
     }
 }
 
-// --- 5. FUNZIONI DI SCRITTURA (FIX COLONNE) ---
+// --- 5. FUNZIONI DI SCRITTURA (AUTO-LEARNING) ---
 
 async function insertTorrent(meta, torrent) {
     if (!pool) return false;
-    
-    // Validazione base
     if (!torrent.info_hash) return false;
 
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
-        // 1. Pulizia Dati
         const cleanHash = torrent.info_hash.toLowerCase();
         const seeders = torrent.seeders || 0; 
         const size = torrent.size || 0;
 
-        // 2. ESTRAZIONE PROVIDER
+        // Estrazione Provider
         let providerName = torrent.provider;
-        
-        // Se il provider è generico o vuoto, cerchiamo nel titolo
         const extracted = extractOriginalProvider(torrent.title);
         
         if (extracted) {
@@ -270,8 +266,7 @@ async function insertTorrent(meta, torrent) {
             providerName = 'External';
         }
 
-        // 3. Inserimento/Aggiornamento Torrent
-        // 🔥 RIMOSSO created_at perché non esiste nella tabella
+        // Query Torrents (SENZA created_at per evitare errori se manca colonna)
         const queryTorrent = `
             INSERT INTO torrents (info_hash, provider, title, size, seeders)
             VALUES ($1, $2, $3, $4, $5)
@@ -280,18 +275,12 @@ async function insertTorrent(meta, torrent) {
                 seeders = GREATEST(torrents.seeders, EXCLUDED.seeders),
                 title = EXCLUDED.title, 
                 provider = EXCLUDED.provider,
-                last_cached_check = NOW(); -- Questo aggiorna il timestamp se il torrent esiste già
+                last_cached_check = NOW();
         `;
         
-        await client.query(queryTorrent, [
-            cleanHash,
-            providerName, 
-            torrent.title,
-            size,
-            seeders
-        ]);
+        await client.query(queryTorrent, [cleanHash, providerName, torrent.title, size, seeders]);
 
-        // 4. Collegamento File -> IMDb
+        // Query Files
         const queryFile = `
             INSERT INTO files (info_hash, imdb_id, imdb_season, imdb_episode, title)
             VALUES ($1, $2, $3, $4, $5)
@@ -301,13 +290,7 @@ async function insertTorrent(meta, torrent) {
         const s = (meta.type === 'movie') ? null : meta.season;
         const e = (meta.type === 'movie') ? null : meta.episode;
 
-        await client.query(queryFile, [
-            cleanHash,
-            meta.imdb_id,
-            s,
-            e,
-            torrent.title
-        ]);
+        await client.query(queryFile, [cleanHash, meta.imdb_id, s, e, torrent.title]);
 
         await client.query('COMMIT');
         return true;
@@ -325,9 +308,9 @@ async function updateRdCacheStatus(cacheResults) {
     if (!pool || !cacheResults.length) return 0;
     try {
         const client = await pool.connect();
-        let updated = 0;
         try {
             await client.query('BEGIN');
+            let updated = 0;
             for (const res of cacheResults) {
                 if (!res.hash) continue;
                 await client.query(
@@ -337,13 +320,13 @@ async function updateRdCacheStatus(cacheResults) {
                 updated++;
             }
             await client.query('COMMIT');
+            return updated;
         } catch (e) {
             await client.query('ROLLBACK');
             throw e;
         } finally {
             client.release();
         }
-        return updated;
     } catch (e) { 
         console.error(`❌ DB Error updateCache:`, e.message);
         return 0; 
@@ -356,21 +339,22 @@ async function healthCheck() {
     return true;
 }
 
-// --- EXPORT FINALE ---
+// Wrapper per searchSeries per gestire film e serie insieme
+async function searchSeriesWrapper(imdbId, season, episode) {
+    const [files, packs] = await Promise.all([
+        searchEpisodeFiles(imdbId, season, episode),
+        searchPacksByImdbId(imdbId, season)
+    ]);
+    return [...files, ...packs];
+}
 
-const dbHelper = {
+// --- EXPORT FINALE (IMPORTANTE: NON CANCELLARE) ---
+
+module.exports = {
     initDatabase,
     healthCheck,
     searchMovie, 
-    searchSeries: async (imdbId, season, episode) => {
-        const [files, packs] = await Promise.all([
-            searchEpisodeFiles(imdbId, season, episode),
-            searchPacksByImdbId(imdbId, season)
-        ]);
-        return [...files, ...packs];
-    },
+    searchSeries: searchSeriesWrapper,
     insertTorrent,
     updateRdCacheStatus
 };
-
-module.exports = dbHelper;
