@@ -203,7 +203,7 @@ function parseSize(sizeStr) {
 }
 
 // ------------------------------------------------------------------
-// 🔥🔥🔥 FIX DEDUPLICAZIONE E LETTURA SIZE 🔥🔥🔥
+//  FIX DEDUPLICAZIONE E LETTURA SIZE 
 // ------------------------------------------------------------------
 function deduplicateResults(results) {
   const hashMap = new Map();
@@ -315,8 +315,8 @@ function extractStreamInfo(title, source) {
   return { quality: q, qIcon, info: detailsParts.join(" | "), lang, audioInfo };
 }
 
-// --- FUNZIONE MODIFICATA PER STIMA "STEALTH" DIMENSIONE ---
-function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag = "RD", config = {}) {
+// --- FUNZIONE MODIFICATA PER STIMA "STEALTH" DIMENSIONE & AIO FIX ---
+function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag = "RD", config = {}, infoHash = null) {
     // Estrazione dati comuni
     const { quality, qIcon, info, lang, audioInfo } = extractStreamInfo(fileTitle, source);
     const cleanNameTitle = cleanFilename(fileTitle);
@@ -325,8 +325,7 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     let sizeString = size ? formatBytes(size) : "";
     
     if (!sizeString || size === 0) {
-        // Genera un "seed" numerico basato sulle lettere del titolo. 
-        // Così "Film A" avrà sempre la stessa dimensione finta, diversa da "Film B".
+        // Genera un "seed" numerico basato sulle lettere del titolo.
         let hash = 0;
         for (let i = 0; i < fileTitle.length; i++) {
             hash = fileTitle.charCodeAt(i) + ((hash << 5) - hash);
@@ -337,20 +336,15 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
         let gb = 0;
 
         if (REGEX_QUALITY["4K"].test(tLower)) {
-            // Genera tra 12.00 GB e 22.00 GB
             gb = 12 + (seed % 1000) / 100;
         } else if (REGEX_QUALITY["1080p"].test(tLower)) {
-            // Genera tra 1.80 GB e 4.50 GB
             gb = 1.8 + (seed % 270) / 100;
         } else if (REGEX_QUALITY["720p"].test(tLower)) {
-            // Genera tra 0.60 GB e 1.40 GB
             gb = 0.6 + (seed % 80) / 100;
         } else {
-            // Fallback generico 1.xx GB
             gb = 1 + (seed % 200) / 100;
         }
         
-        // Formatta come numero puro (niente ondina ~)
         sizeString = `${gb.toFixed(2)} GB`; 
     }
 
@@ -377,8 +371,10 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
             quality: uniqueLine 
         });
 
+        //  MODIFICA CRUCIALE PER AIOSTREAMS 
         const title = aioFormatter.formatStreamTitle({
-            title: cleanNameTitle,
+            title: fileTitle,      // ✅ USA IL NOME FILE ORIGINALE (es. Batman.2022.1080p...)
+            infoHash: infoHash,    // Passiamo l'hash nascosto
             size: sizeString || "Unknown",
             language: lang,
             source: displaySource,
@@ -568,7 +564,8 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
         if (service === 'tb') {
             if (item._tbCached) {
                 const serviceTag = "TB";
-                const { name, title } = formatStreamTitleCinePro(item.title, item.source, item._size, item.seeders, serviceTag, config);
+                // 🔥 PASSATO item.hash come ultimo parametro
+                const { name, title } = formatStreamTitleCinePro(item.title, item.source, item._size, item.seeders, serviceTag, config, item.hash);
                 
                 // 🔥🔥🔥 FIX URL TORBOX: Aggiunto &f= per il file index
                 const proxyUrl = `${reqHost}/${config.rawConf}/play_tb/${item.hash}?s=${item.season || 0}&e=${item.episode || 0}&f=${item.fileIdx !== undefined ? item.fileIdx : ''}`;
@@ -600,13 +597,14 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
         if (!streamData || (streamData.type === "ready" && streamData.size < CONFIG.REAL_SIZE_FILTER)) return null;
 
         const serviceTag = service.toUpperCase();
-        const { name, title } = formatStreamTitleCinePro(streamData.filename || item.title, item.source, streamData.size || item.size, item.seeders, serviceTag, config);
+        // 🔥 PASSATO item.hash come ultimo parametro
+        const { name, title } = formatStreamTitleCinePro(streamData.filename || item.title, item.source, streamData.size || item.size, item.seeders, serviceTag, config, item.hash);
         
         return { 
             name, 
             title, 
             url: streamData.url, 
-            infoHash: item.hash, 
+            infoHash: item.hash, // 💡 IMPORTANTE: L'hash viene passato qui per uso interno/system
             behaviorHints: { 
                 notWebReady: false, 
                 // 🔥 FIX: BingieGroup univoco (Service + Hash)
@@ -1027,7 +1025,7 @@ app.listen(PORT, () => {
     console.log(`🌍 Addon accessibile su: http://${PUBLIC_IP}:${PUBLIC_PORT}/manifest.json`);
     console.log(`📡 Connesso a Indexer DB: ${CONFIG.INDEXER_URL}`);
     console.log(`🔗 EXTERNAL ADDONS: Integrati (Parallel). SCRAPER (Fallback < 3)`);
-    console.log(`✅ AIOStreams Mode: COMPLETATO (Strict Language Filter).`);
+    console.log(`✅ AIOStreams Mode: COMPLETATO (Fix: Original Filename).`);
     console.log(`📊 Stealth Size Estimator: ATTIVO (Realistico e Variabile).`);
     console.log(`-----------------------------------------------------`);
 });
