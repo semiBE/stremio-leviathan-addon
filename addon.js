@@ -1,11 +1,10 @@
 require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
-// const helmet = require("helmet"); // DISABILITATO TEMPORANEAMENTE
 const compression = require('compression');
 const path = require("path");
 const axios = require("axios");
-const crypto = require("crypto"); 
+const crypto = require("crypto");
 const Bottleneck = require("bottleneck");
 const rateLimit = require("express-rate-limit");
 const winston = require('winston');
@@ -20,7 +19,7 @@ const aioFormatter = require("./aiostreams-formatter.cjs");
 
 // --- 1. CONFIGURAZIONE LOGGER (Winston) ---
 const logger = winston.createLogger({
-  level: 'debug', 
+  level: 'debug',
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.json()
@@ -28,7 +27,7 @@ const logger = winston.createLogger({
   transports: [
     new winston.transports.File({ filename: 'error.log', level: 'error' }),
     new winston.transports.File({ filename: 'combined.log' }),
-    new winston.transports.Console({ format: winston.format.simple() }) 
+    new winston.transports.Console({ format: winston.format.simple() })
   ]
 });
 
@@ -47,7 +46,7 @@ const Cache = {
         if (data) logger.info(`⚡ CACHE HIT: ${key}`);
         return data || null;
     },
-    cacheStream: async (key, value, ttl = 1800) => { 
+    cacheStream: async (key, value, ttl = 1800) => {
         myCache.set(`stream:${key}`, value, ttl);
     },
     listKeys: async () => myCache.keys(),
@@ -64,7 +63,7 @@ const kitsuHandler = require("./kitsu_handler");
 const RD = require("./debrid/realdebrid");
 const AD = require("./debrid/alldebrid");
 const TB = require("./debrid/torbox");
-const dbHelper = require("./db-helper"); 
+const dbHelper = require("./db-helper"); // Deve contenere la nuova insertTorrent
 const { searchVix } = require("./vix/vix_handler");
 const { getManifest } = require("./manifest");
 
@@ -73,18 +72,18 @@ dbHelper.initDatabase();
 
 // --- CONFIGURAZIONE CENTRALE ---
 const CONFIG = {
-  INDEXER_URL: process.env.INDEXER_URL || "http://185.229.239.195:8080", 
+  INDEXER_URL: process.env.INDEXER_URL || "http://185.229.239.195:8080",
   CINEMETA_URL: "https://v3-cinemeta.strem.io",
   REAL_SIZE_FILTER: 80 * 1024 * 1024,
-  MAX_RESULTS: 60, 
+  MAX_RESULTS: 60,
   TIMEOUTS: {
     TMDB: 2000,
-    SCRAPER: 6000, 
+    SCRAPER: 6000,
     REMOTE_INDEXER: 2500,
     DB_QUERY: 5000,
     DEBRID: 5000,
-    PACK_RESOLVER: 8000, 
-    EXTERNAL: 4000 
+    PACK_RESOLVER: 8000,
+    EXTERNAL: 4000
   }
 };
 
@@ -97,15 +96,15 @@ const REGEX_QUALITY = {
 };
 const REGEX_AUDIO = {
     channels: /\b(7\.1|5\.1|2\.1|2\.0)\b/,
-    atmos: /atmos/i, 
+    atmos: /atmos/i,
     dtsx: /dts[:\s-]?x/i,
-    truehd: /truehd/i, 
+    truehd: /truehd/i,
     dtshd: /\bdts-?hd\b|\bma\b/i,
     dts: /\bdts\b/i,
-    ddp: /\bddp\b|\beac-?3\b|\bdolby\s?digital\s?plus\b/i, 
-    dolby: /\bac-?3\b|\bdd\b|\bdolby\b/i, 
+    ddp: /\bddp\b|\beac-?3\b|\bdolby\s?digital\s?plus\b/i,
+    dolby: /\bac-?3\b|\bdd\b|\bdolby\b/i,
     aac: /\baac\b/i,
-    flac: /\bflac\b/i 
+    flac: /\bflac\b/i
 };
 
 const REGEX_ITA = [
@@ -137,7 +136,7 @@ function base32ToHex(base32) {
     return hex;
 }
 
-//  Improved Info Hash Extraction 
+//  Improved Info Hash Extraction
 function extractInfoHash(magnet) {
     if (!magnet) return null;
     const match = magnet.match(/btih:([A-Fa-f0-9]{40}|[A-Za-z2-7]{32})/i);
@@ -153,8 +152,8 @@ function extractInfoHash(magnet) {
 }
 
 const LIMITERS = {
-  scraper: new Bottleneck({ maxConcurrent: 40, minTime: 10 }), 
-  rd: new Bottleneck({ maxConcurrent: 25, minTime: 40 }), 
+  scraper: new Bottleneck({ maxConcurrent: 40, minTime: 10 }),
+  rd: new Bottleneck({ maxConcurrent: 25, minTime: 40 }),
 };
 
 const SCRAPER_MODULES = [ require("./engines") ];
@@ -171,16 +170,16 @@ app.use(compression({
 }));
 
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, 
-    max: 350, 
-    standardHeaders: true, 
+    windowMs: 15 * 60 * 1000,
+    max: 350,
+    standardHeaders: true,
     legacyHeaders: false,
     message: "Troppe richieste da questo IP, riprova più tardi."
 });
 app.use(limiter);
 
 app.use(cors());
-app.use(express.json()); 
+app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // --- UTILS & HELPERS ---
@@ -203,7 +202,7 @@ function parseSize(sizeStr) {
 }
 
 // ------------------------------------------------------------------
-//  FIX DEDUPLICAZIONE E LETTURA SIZE 
+// 🔥🔥🔥 FIX DEDUPLICAZIONE E LETTURA SIZE 🔥🔥🔥
 // ------------------------------------------------------------------
 function deduplicateResults(results) {
   const hashMap = new Map();
@@ -223,14 +222,14 @@ function deduplicateResults(results) {
 
     // 4. Sovrascrittura: Imponiamo l'hash pulito all'oggetto
     item.hash = finalHash;
-    item.infoHash = finalHash; 
+    item.infoHash = finalHash;
     
     // Chiave univoca
     const uniqueKey = `${finalHash}:${item.fileIdx !== undefined ? item.fileIdx : 'base'}`;
 
     if (!hashMap.has(uniqueKey) || (item.seeders || 0) > (hashMap.get(uniqueKey).seeders || 0)) {
       // Priorità a sizeBytes se esiste, altrimenti parsa la stringa
-      item._size = parseSize(item.sizeBytes || item.size); 
+      item._size = parseSize(item.sizeBytes || item.size);
       hashMap.set(uniqueKey, item);
     }
   }
@@ -275,7 +274,7 @@ function extractAudioInfo(title) {
     const t = String(title).toLowerCase();
     const channelMatch = t.match(REGEX_AUDIO.channels);
     let channels = channelMatch ? channelMatch[1] : "";
-    if (channels === "2.0") channels = ""; 
+    if (channels === "2.0") channels = "";
     let audioTag = "";
     if (REGEX_AUDIO.atmos.test(t)) audioTag = "💣 Atmos";
     else if (REGEX_AUDIO.dtsx.test(t)) audioTag = "💣 DTS:X";
@@ -304,11 +303,11 @@ function extractStreamInfo(title, source) {
   if (/dolby|vision|\bdv\b/.test(t)) videoTags.push("DV");
   if (/imax/.test(t)) videoTags.push("IMAX");
   if (/x265|h265|hevc/.test(t)) videoTags.push("HEVC");
-  let lang = "🇬🇧 ENG"; 
+  let lang = "🇬🇧 ENG";
   if (/corsaro/i.test(source) || isSafeForItalian({ title })) {
       lang = "🇮🇹 ITA";
       if (/multi|mui/i.test(t)) lang = "🇮🇹 MULTI";
-  } 
+  }
   const audioInfo = extractAudioInfo(title);
   let detailsParts = [];
   if (videoTags.length) detailsParts.push(`🖥️ ${videoTags.join(" ")}`);
@@ -321,7 +320,7 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     const { quality, qIcon, info, lang, audioInfo } = extractStreamInfo(fileTitle, source);
     const cleanNameTitle = cleanFilename(fileTitle);
 
-    //  LOGICA "STEALTH" SIZE ESTIMATION 
+    //  LOGICA "STEALTH" SIZE ESTIMATION
     let sizeString = size ? formatBytes(size) : "";
     
     if (!sizeString || size === 0) {
@@ -345,7 +344,7 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
             gb = 1 + (seed % 200) / 100;
         }
         
-        sizeString = `${gb.toFixed(2)} GB`; 
+        sizeString = `${gb.toFixed(2)} GB`;
     }
 
     // --- LOGICA AIOSTREAMS ---
@@ -355,31 +354,30 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
         if (serviceTag === 'AD') fullService = 'alldebrid';
         if (serviceTag === 'TB') fullService = 'torbox';
         
-        // FIX NOME CORSARO
+        // FIX NOME PROVIDER (INDEXER)
         let displaySource = source;
         if (/corsaro/i.test(source)) displaySource = "ilCorSaRoNeRo";
         else {
             displaySource = source.replace(/TorrentGalaxy|tgx/i, 'TGx').replace(/1337x/i, '1337');
-            if (displaySource.length > 10) displaySource = ""; 
         }
 
         const uniqueLine = [quality, sizeString, displaySource].filter(Boolean).join(" • ");
         const name = aioFormatter.formatStreamName({
             addonName: "Leviathan",
             service: fullService,
-            cached: true, 
-            quality: uniqueLine 
+            cached: true,
+            quality: uniqueLine
         });
 
-        //  MODIFICA CRUCIALE PER AIOSTREAMS 
+        // 🔥🔥🔥 MODIFICA CRUCIALE PER AIOSTREAMS: NOME FILE REALE 🔥🔥🔥
         const title = aioFormatter.formatStreamTitle({
-            title: fileTitle,      // ✅ USA IL NOME FILE ORIGINALE (es. Batman.2022.1080p...)
-            infoHash: infoHash,    // Passiamo l'hash nascosto
+            title: fileTitle,       // ✅ USA IL NOME FILE ORIGINALE
+            infoHash: infoHash,     // Passiamo l'hash nascosto
             size: sizeString || "Unknown",
             language: lang,
             source: displaySource,
             seeders: seeders,
-            isPack: false, 
+            isPack: false,
             episodeTitle: getEpisodeTag(fileTitle)
         });
         return { name, title };
@@ -397,7 +395,7 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     if (/corsaro/i.test(displaySource)) displaySource = "ilCorSaRoNeRo";
     
     const sourceLine = `⚡ [${serviceTag}] ${displaySource}`;
-    const name = `🦑 LEVIATHAN\n${qIcon} ${quality}`; 
+    const name = `🦑 LEVIATHAN\n${qIcon} ${quality}`;
     const cleanName = cleanFilename(fileTitle)
         .replace(/(s\d{1,2}e\d{1,2}|\d{1,2}x\d{1,2}|s\d{1,2})/ig, "")
         .replace(/\s{2,}/g, " ")
@@ -424,10 +422,10 @@ function formatVixStream(meta, vixData) {
     lines.push(`🇮🇹 ITA • 🔊 AAC`);
     lines.push(`🎞️ HLS • Bitrate Variabile`);
     lines.push(`☁️ Web Stream • ⚡ Instant`);
-    lines.push(`🍝 StreamingCommunity`); 
+    lines.push(`🍝 StreamingCommunity`);
     
     return {
-        name: `🌪️ StreamingCommunity\n${qIcon} ${quality}`, 
+        name: `🌪️ StreamingCommunity\n${qIcon} ${quality}`,
         title: lines.join("\n"),
         url: vixData.url,
         behaviorHints: { notWebReady: false, bingieGroup: "vix-stream" }
@@ -462,7 +460,7 @@ async function withTimeout(promise, ms, operation = 'Operation') {
       return result;
   } catch (error) {
       clearTimeout(timer);
-      throw error; 
+      throw error;
   }
 }
 
@@ -478,16 +476,16 @@ async function getMetadata(id, type) {
     const { data: cData } = await axios.get(`${CONFIG.CINEMETA_URL}/meta/${type}/${cleanId}.json`, { timeout: CONFIG.TIMEOUTS.TMDB }).catch(() => ({ data: {} }));
     return cData?.meta ? {
       title: cData.meta.name,
-      originalTitle: cData.meta.name, 
+      originalTitle: cData.meta.name,
       year: cData.meta.year?.split("–")[0],
-      imdb_id: cleanId, 
+      imdb_id: cleanId,
       isSeries: type === "series",
       season: parseInt(s),
       episode: parseInt(e)
     } : null;
-  } catch (err) { 
+  } catch (err) {
     logger.error(`Errore getMetadata: ${err.message}`);
-    return null; 
+    return null;
   }
 }
 
@@ -511,6 +509,41 @@ function simpleSeriesFallback(meta, filename) {
     return re.test(filename);
 }
 
+// --- NUOVA FUNZIONE: SALVATAGGIO BACKGROUND ---
+function saveResultsToDbBackground(meta, results) {
+    if (!results || results.length === 0) return;
+    
+    // Eseguiamo in "Fire & Forget" (non attendiamo la fine)
+    (async () => {
+        let savedCount = 0;
+        for (const item of results) {
+            // Saltiamo se è già marchiato come proveniente dal DB per non intasare
+            // Assumiamo che se source è "DB" o "LeviathanDB" esista già.
+            // Ma dbHelper.insertTorrent gestisce i duplicati, quindi possiamo provare a salvare
+            // per aggiornare seeders o collegamenti mancanti.
+            
+            // Creiamo un oggetto pulito per dbHelper
+            const torrentObj = {
+                info_hash: item.hash || item.infoHash,
+                title: item.title,
+                size: item._size || item.sizeBytes || 0,
+                seeders: item.seeders || 0,
+                provider: item.source || 'External'
+            };
+
+            // Se l'hash manca, saltiamo
+            if (!torrentObj.info_hash) continue;
+
+            const success = await dbHelper.insertTorrent(meta, torrentObj);
+            if (success) savedCount++;
+        }
+        if (savedCount > 0) {
+            console.log(`💾 [AUTO-LEARN] Salvati ${savedCount} nuovi torrent nel DB per ${meta.imdb_id}`);
+        }
+    })().catch(err => console.error("❌ Errore background save:", err.message));
+}
+
+
 // --- [LEVIATHAN] UPDATED RESOLVE DEBRID LINK ---
 async function resolveDebridLink(config, item, showFake, reqHost, meta = null, dbHelper = null) {
     try {
@@ -518,15 +551,12 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
         const apiKey = config.key || config.rd;
         if (!apiKey) return null;
 
-        //   Usiamo SOLO item.hash (che ora è pulito)
         if (!item.hash || item.hash.length !== 40) {
             console.warn(`[SKIP RESOLVE] Hash perso o invalido: ${item.title}`);
             return null;
         }
 
         const isSeries = meta && meta.isSeries;
-
-        // 🔥 FIX PACK: Accetta anche fileIdx null o undefined per triggerare il Resolver
         const isPackCandidate = item.fileIdx === undefined || item.fileIdx === null;
 
         if (isSeries && PackResolver.isSeasonPack(item.title) && isPackCandidate) {
@@ -538,7 +568,7 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
                 
                 const resolved = await withTimeout(
                     PackResolver.resolveSeriesPackFile(
-                        item.hash, // ✅ UBIQUO: Ora è sicuro
+                        item.hash, 
                         resolverConfig, 
                         meta.imdb_id, 
                         meta.season, 
@@ -564,10 +594,8 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
         if (service === 'tb') {
             if (item._tbCached) {
                 const serviceTag = "TB";
-                // 🔥 PASSATO item.hash come ultimo parametro
                 const { name, title } = formatStreamTitleCinePro(item.title, item.source, item._size, item.seeders, serviceTag, config, item.hash);
                 
-                // 🔥🔥🔥 FIX URL TORBOX: Aggiunto &f= per il file index
                 const proxyUrl = `${reqHost}/${config.rawConf}/play_tb/${item.hash}?s=${item.season || 0}&e=${item.episode || 0}&f=${item.fileIdx !== undefined ? item.fileIdx : ''}`;
                 
                 return { 
@@ -577,7 +605,6 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
                     infoHash: item.hash, 
                     behaviorHints: { 
                         notWebReady: false, 
-                        //  FIX: BingieGroup univoco per evitare raggruppamenti indesiderati
                         bingieGroup: `corsaro-tb-${item.hash}` 
                     } 
                 };
@@ -587,8 +614,6 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
         // 3. Real Debrid / All Debrid Generation
         let streamData = null;
         const cleanMagnet = `magnet:?xt=urn:btih:${item.hash}&dn=${encodeURIComponent(item.title)}`;
-
-        // 🔥 Assicuriamoci di passare un fileIdx valido a RD se non è pack
         const safeFileIdx = item.fileIdx !== undefined && item.fileIdx !== null ? item.fileIdx : 0;
 
         if (service === 'rd') streamData = await RD.getStreamLink(apiKey, cleanMagnet, item.season, item.episode, safeFileIdx);
@@ -597,17 +622,18 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
         if (!streamData || (streamData.type === "ready" && streamData.size < CONFIG.REAL_SIZE_FILTER)) return null;
 
         const serviceTag = service.toUpperCase();
-        // 🔥 PASSATO item.hash come ultimo parametro
-        const { name, title } = formatStreamTitleCinePro(streamData.filename || item.title, item.source, streamData.size || item.size, item.seeders, serviceTag, config, item.hash);
+
+        const effectiveTitle = streamData.filename && streamData.filename.length > 3 ? streamData.filename : item.title;
+
+        const { name, title } = formatStreamTitleCinePro(effectiveTitle, item.source, streamData.size || item.size, item.seeders, serviceTag, config, item.hash);
         
         return { 
             name, 
             title, 
             url: streamData.url, 
-            infoHash: item.hash, // 💡 IMPORTANTE: L'hash viene passato qui per uso interno/system
+            infoHash: item.hash, 
             behaviorHints: { 
                 notWebReady: false, 
-                // 🔥 FIX: BingieGroup univoco (Service + Hash)
                 bingieGroup: `corsaro-${service}-${item.hash}` 
             } 
         };
@@ -647,12 +673,12 @@ async function queryRemoteIndexer(tmdbId, type, season = null, episode = null) {
             return {
                 title: t.title,
                 magnet: magnet,
-                hash: t.info_hash ? t.info_hash.toUpperCase() : null, 
-                size: "💾 DB", 
+                hash: t.info_hash ? t.info_hash.toUpperCase() : null,
+                size: "💾 DB",
                 sizeBytes: parseInt(t.size),
                 seeders: t.seeders,
                 source: providerName,
-                fileIdx: t.file_index !== undefined ? parseInt(t.file_index) : undefined 
+                fileIdx: t.file_index !== undefined ? parseInt(t.file_index) : undefined
             };
         });
     } catch (e) {
@@ -670,15 +696,13 @@ async function fetchExternalResults(type, finalId) {
                 return items.map(i => ({
                     title: i.title || i.filename,
                     magnet: i.magnetLink,
-                    size: i.size,           
-                    sizeBytes: i.mainFileSize, 
+                    size: i.size,            
+                    sizeBytes: i.mainFileSize,
                     seeders: i.seeders,
-                    // Source pulita, niente [EXT]
-                    source: i.externalProvider || i.source.replace(/\[EXT\]\s*/, ''), 
+                    source: i.externalProvider || i.source.replace(/\[EXT\]\s*/, ''),
                     hash: i.infoHash,
-                    //  MANTENIAMO undefined se arriva undefined da external-addons
-                    fileIdx: i.fileIdx, 
-                    isExternal: true 
+                    fileIdx: i.fileIdx,
+                    isExternal: true
                 }));
             }),
             CONFIG.TIMEOUTS.EXTERNAL,
@@ -707,10 +731,10 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   
   const cachedResult = await Cache.getCachedStream(cacheKey);
   if (cachedResult) {
-      return cachedResult; 
+      return cachedResult;
   }
 
-  const userTmdbKey = config.tmdb; 
+  const userTmdbKey = config.tmdb;
   let finalId = id.replace('ai-recs:', '');
   
   if (finalId.startsWith("tmdb:")) {
@@ -718,8 +742,8 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
           const parts = finalId.split(":");
           const imdbId = await tmdbToImdb(parts[1], type, userTmdbKey);
           if (imdbId) {
-              if (type === "series" && parts.length >= 4) finalId = `${imdbId}:${parts[2]}:${parts[3]}`; 
-              else finalId = imdbId; 
+              if (type === "series" && parts.length >= 4) finalId = `${imdbId}:${parts[2]}:${parts[3]}`;
+              else finalId = imdbId;
           }
       } catch (err) {}
   }
@@ -728,13 +752,13 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
           const parts = finalId.split(":");
           const kData = await kitsuHandler(parts[1]);
           if (kData && kData.imdbID) {
-              const s = kData.season || 1; 
+              const s = kData.season || 1;
               finalId = kData.type === 'series' || type === 'series' ? `${kData.imdbID}:${s}:${parts[2] || 1}` : kData.imdbID;
           }
       } catch (err) {}
   }
 
-  const meta = await getMetadata(finalId, type); 
+  const meta = await getMetadata(finalId, type);
   if (!meta) return { streams: [] };
 
   logger.info(`🚀 [SPEED] Start TOTAL PARALLEL search: ${meta.title}`);
@@ -785,24 +809,24 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
 
   // --- LOGICA SCRAPER (Fallback SOLO se < 3 risultati) ---
   let scrapedResults = [];
-  if (currentResults.length < 3) { 
+  if (currentResults.length < 3) {
       logger.info(`⚠️ Low TOTAL results (${currentResults.length} < 3), triggering SCRAPING (Engines)...`);
       let dynamicTitles = [];
       try {
           if (tmdbIdLookup) dynamicTitles = await getTmdbAltTitles(tmdbIdLookup, type, userTmdbKey);
       } catch (e) {}
-      const allowEng = config.filters?.allowEng === true; 
+      const allowEng = config.filters?.allowEng === true;
       const queries = generateSmartQueries(meta, dynamicTitles, allowEng);
       
       let promises = [];
-      queries.forEach(q => { 
-          SCRAPER_MODULES.forEach(scraper => { 
-              if (scraper.searchMagnet) { 
+      queries.forEach(q => {
+          SCRAPER_MODULES.forEach(scraper => {
+              if (scraper.searchMagnet) {
                   const searchOptions = { allowEng };
                   promises.push(
                       LIMITERS.scraper.schedule(() => 
                           withTimeout(
-                              scraper.searchMagnet(q, meta.year, type, finalId, searchOptions), 
+                              scraper.searchMagnet(q, meta.year, type, finalId, searchOptions),
                               CONFIG.TIMEOUTS.SCRAPER,
                               `Scraper ${scraper.name || 'Module'}`
                           ).catch(err => {
@@ -810,43 +834,32 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
                               return [];
                           })
                       )
-                  ); 
-              } 
-          }); 
+                  );
+              }
+          });
       });
       scrapedResults = (await Promise.all(promises)).flat();
   } else {
       logger.info(`⚡ SKIP SCRAPER: Have ${currentResults.length} valid results (>= 3).`);
   }
 
-  // 🔥🔥 FIX FILTRI RIGOROSI 🔥🔥
-  const allowEng = config.filters?.allowEng === true; 
+  const allowEng = config.filters?.allowEng === true;
   
   let resultsRaw = [...currentResults, ...scrapedResults];
   resultsRaw = resultsRaw.filter(item => {
     if (!item?.magnet) return false;
 
     // 1. FILTRO LINGUA SUPREMO
-    // Se l'utente NON ha spuntato "Includi ENG", scarta tutto ciò che non è ITA o Corsaro
     const isItalian = isSafeForItalian(item) || /corsaro/i.test(item.source);
     if (!allowEng && !isItalian) return false;
 
     // 2. BYPASS PER EXTERNAL CON CONTROLLO INTELLIGENTE
-    // Invece di "return true" secco, facciamo un controllo leggero se è una serie TV.
     if (item.isExternal) {
-        // Se è un Film, accetta tutto 
         if (!meta.isSeries) return true;
-        
-        // --- CONTROLLO EPISODIO ---
-        // Se è l'episodio giusto (es: S01E03), passa.
         if (simpleSeriesFallback(meta, item.title)) return true;
         if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
-
-        // --- CONTROLLO PACK (NUOVO) ---
         if (PackResolver.isSeasonPack(item.title)) return true;
-
-        // Se non è né l'episodio giusto né un pack, scartalo 
-        return false; 
+        return false;
     }
 
     // --- [LEVIATHAN FIX] FILTRO ANNO SOLO PER FILM ---
@@ -858,7 +871,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
     // --- [LEVIATHAN FIX] LOGICA IBRIDA ---
     if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
     if (meta.isSeries && simpleSeriesFallback(meta, item.title)) {
-        return true; 
+        return true;
     }
 
     return false;
@@ -866,10 +879,16 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
 
   // ✅ FIXED: Deduplica con supporto Base32 e propagazione Hash
   let cleanResults = deduplicateResults(resultsRaw);
+  
+  // 🔥🔥🔥 [NEW] AUTO-LEARNING: SALVATAGGIO ASINCRONO NEL DB 🔥🔥🔥
+  // Salva in background tutto quello che è stato trovato (Scraper, Torrentio, Remote)
+  // Non rallenta la risposta all'utente
+  saveResultsToDbBackground(meta, cleanResults);
+  // 🔥🔥🔥 FINE NUOVA SEZIONE 🔥🔥🔥
+
   const ranked = rankAndFilterResults(cleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
 
   if (config.service === 'tb' && ranked.length > 0) {
-      // Usiamo SOLO gli hash puliti (che deduplicateResults ha garantito)
       const hashes = ranked.map(r => r.hash);
       const cachedHashes = await TB.checkCached(config.key || config.rd, hashes);
       const cachedSet = new Set(cachedHashes.map(h => h.toUpperCase()));
@@ -881,7 +900,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       const rdPromises = ranked.map(item => {
           item.season = meta.season;
           item.episode = meta.episode;
-          config.rawConf = userConfStr; 
+          config.rawConf = userConfStr;
           
           return LIMITERS.rd.schedule(() => resolveDebridLink(config, item, config.filters?.showFake, reqHost, meta, dbHelper));
       });
@@ -889,7 +908,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   }
 
   const vixPromise = searchVix(meta, config);
-  const rawVix = await vixPromise; 
+  const rawVix = await vixPromise;
   const formattedVix = rawVix.map(v => formatVixStream(meta, v));
   
   const finalStreams = [...formattedVix, ...debridStreams];
@@ -901,7 +920,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       logger.info(`💾 SAVED TO CACHE: ${cacheKey}`);
   }
 
-  return resultObj; 
+  return resultObj;
 }
 
 // --- ROTTE DI CORTESIA (FIX 404) ---
@@ -936,24 +955,24 @@ app.get("/:conf/play_tb/:hash", async (req, res) => {
 // --- ADMIN API ---
 const authMiddleware = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    const validPass = process.env.ADMIN_PASS || "GodTierAccess2024"; 
+    const validPass = process.env.ADMIN_PASS || "GodTierAccess2024";
     if (authHeader === validPass) next();
     else {
       logger.warn(`Tentativo accesso admin fallito da IP: ${req.ip}`);
       res.status(403).json({ error: "Password errata" });
     }
 };
-app.get("/admin/keys", authMiddleware, async (req, res) => { res.json(await Cache.listKeys()); }); 
-app.delete("/admin/key", authMiddleware, async (req, res) => { 
+app.get("/admin/keys", authMiddleware, async (req, res) => { res.json(await Cache.listKeys()); });
+app.delete("/admin/key", authMiddleware, async (req, res) => {
   const { key } = req.query;
   if (key) {
     await Cache.deleteKey(key);
     res.json({ success: true });
   } else res.json({ error: "Key mancante" });
 });
-app.post("/admin/flush", authMiddleware, async (req, res) => { 
+app.post("/admin/flush", authMiddleware, async (req, res) => {
   await Cache.flushAll();
-  res.json({ success: true }); 
+  res.json({ success: true });
 });
 
 // --- HEALTHCHECK ---
@@ -973,7 +992,7 @@ app.get("/health", async (req, res) => {
   } catch (err) {
     checks.services.indexer = "down";
   }
-  checks.services.cache = myCache.keys().length > 0 ? "active" : "empty"; 
+  checks.services.cache = myCache.keys().length > 0 ? "active" : "empty";
   res.status(checks.status === "ok" ? 200 : 503).json(checks);
 });
 
@@ -986,7 +1005,7 @@ app.get("/:conf/manifest.json", (req, res) => { res.setHeader("Access-Control-Al
 app.get("/:conf/catalog/:type/:id/:extra?.json", async (req, res) => { res.setHeader("Access-Control-Allow-Origin", "*"); res.json({metas:[]}); });
 app.get("/vixsynthetic.m3u8", handleVixSynthetic);
 
-app.get("/:conf/stream/:type/:id.json", async (req, res) => { 
+app.get("/:conf/stream/:type/:id.json", async (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     try {
         validateStreamRequest(req.params.type, req.params.id.replace('.json', ''));
@@ -995,20 +1014,20 @@ app.get("/:conf/stream/:type/:id.json", async (req, res) => {
         const protocol = req.headers['x-forwarded-proto'] || req.protocol;
         const host = `${protocol}://${req.get('host')}`;
         const result = await generateStream(type, cleanId, getConfig(conf), conf, host);
-        res.json(result); 
+        res.json(result);
     } catch (err) {
         logger.error('Validazione/Stream Fallito', { error: err.message, params: req.params });
         return res.status(400).json({ streams: [] });
     }
 });
 
-function getConfig(configStr) { 
-  try { 
-    return JSON.parse(Buffer.from(configStr, "base64").toString()); 
-  } catch (err) { 
+function getConfig(configStr) {
+  try {
+    return JSON.parse(Buffer.from(configStr, "base64").toString());
+  } catch (err) {
     logger.error(`Errore parsing config: ${err.message}`);
-    return {}; 
-  } 
+    return {};
+  }
 }
 
 const PORT = process.env.PORT || 7000;
@@ -1021,11 +1040,12 @@ app.listen(PORT, () => {
     console.log(`⚡ MODALITÀ CACHE: Node-Cache (Safe & Fast). TTL 30min.`);
     console.log(`⚡ SPEED LOGIC: TOTALE PARALLELO (DB + Remote + External).`);
     console.log(`🧠 SMART FILTER: Ibrido (Paranoid + Salvagente Serie TV).`);
+    console.log(`💾 AUTO-LEARNING: ATTIVO (Salva automaticamente da Torrentio/Scraper nel DB).`);
     console.log(`🦑 PACK RESOLVER: Attivo (FILM SAFE MODE ON).`);
     console.log(`🌍 Addon accessibile su: http://${PUBLIC_IP}:${PUBLIC_PORT}/manifest.json`);
     console.log(`📡 Connesso a Indexer DB: ${CONFIG.INDEXER_URL}`);
     console.log(`🔗 EXTERNAL ADDONS: Integrati (Parallel). SCRAPER (Fallback < 3)`);
-    console.log(`✅ AIOStreams Mode: COMPLETATO (Fix: Original Filename).`);
+    console.log(`✅ AIOStreams Mode: COMPLETATO (Fix: Filename Override & Provider Display).`);
     console.log(`📊 Stealth Size Estimator: ATTIVO (Realistico e Variabile).`);
     console.log(`-----------------------------------------------------`);
 });
