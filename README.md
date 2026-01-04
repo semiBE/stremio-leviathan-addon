@@ -1,11 +1,17 @@
 <div align="center">
 
   <img src="https://i.ibb.co/jvTQLbjb/Gemini-Generated-Image-51j2ce51j2ce51j2-1.png" 
-       style="width: 220px; border-radius: 30px; filter: drop-shadow(0 0 20px rgba(0, 234, 255, 0.5)); margin-bottom: 10px;" />
+       width="200" style="border-radius: 20px; margin-bottom: 10px;" />
 
-  <h1 style="background: linear-gradient(180deg, #fff 30%, #00eaff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 6rem; font-weight: 900; margin: 0; line-height: 0.9; letter-spacing: -4px; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-transform: uppercase; filter: drop-shadow(0px 5px 15px rgba(0, 234, 255, 0.3));">
-    LEVIATHAN
-  </h1>
+  <br />
+
+  <img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=900&size=70&pause=1000&color=00EAFF&center=true&vCenter=true&width=500&height=100&lines=LEVIATHAN" alt="LEVIATHAN" />
+
+  <br />
+
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=20&pause=1000&color=00EAFF&center=true&vCenter=true&width=435&lines=L'abisso+si+risveglia" alt="Tagline" />
+
+
 
   <p style="color: #00eaff; font-family: monospace; letter-spacing: 8px; margin-top: -5px; font-size: 1rem; opacity: 0.8; text-transform: uppercase;">
     The Abyss Awakens
