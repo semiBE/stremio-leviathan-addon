@@ -1,8 +1,27 @@
-/**
- * AIOStreams Custom Formatter - Leviathan Edition
- * Layout a 3 righe con Provider su riga dedicata
- */
+function cleanFileNameForDisplay(filename) {
+    
+    let name = filename;
 
+    
+    name = name.replace(/\[[^\]]+\]/g, '').trim();
+
+    
+    name = name.replace(/\s{2,}/g, ' ');
+
+    
+    name = name.replace(/\(([^)]*?(BluRay|WEB|HDR|HEVC|x265|10bit|AAC)[^)]*?)\)/gi, '($1)');
+
+    // Se non ha estensione, aggiunge .mkv
+    if (!/\.\w{2,4}$/.test(name)) {
+        name += '.mkv';
+    }
+
+    return name;
+}
+
+/**
+ * Formatta il nome del servizio/addon
+ */
 function formatStreamName({ 
     addonName, 
     service, 
@@ -18,58 +37,50 @@ function formatStreamName({
     };
     const srv = serviceAbbr[service?.toLowerCase()] || '[P2P';
     const bolt = cached ? '⚡]' : ']';
-    // Esempio output: [RD⚡] Leviathan
     return `${srv}${bolt} ${addonName}${hasError ? ' ⚠️' : ''}`;
 }
 
 /**
- * Titolo descrittivo - Layout Fisso 3 Righe
+ * Formatta il titolo dello stream a 3 righe
  */
 function formatStreamTitle({ 
-    title,       // Nome File
-    size,        // Dimensione
-    language,    // Lingua
-    source,      // IL PROVIDER (Index)
+    title,       
+    size,        
+    language,    
+    source,      
     seeders,     
     episodeTitle, 
     infoHash     
 }) {
-    const displaySeeders = seeders !== undefined && seeders !== null 
-        ? seeders : '-';
+    const displaySeeders = seeders !== undefined && seeders !== null ? seeders : '-';
     const displayLang = language || '🌍';
 
-    // --- LOGICA DI PULIZIA PROVIDER ---
-    let displaySource = 'Unknown Indexer';
+    // --- CLEAN TITLE ---
+    const cleanTitle = cleanFileNameForDisplay(title);
 
-    if (source) {
-        if (source.includes('•')) {
-            const parts = source.split('•');
-            // Prende l'ultima parte (il sito) e rimuove spazi
-            displaySource = parts[parts.length - 1].trim();
-        } else {
-            displaySource = source;
-        }
-    }
+    // --- CLEAN PROVIDER ---
+    let displaySource = source || 'Unknown Indexer';
 
-    // --- RINOMINA SPECIFICA ---
-    // Se il provider estratto è "1337", lo rinomina in "1337x"
-    if (displaySource === '1337') {
-        displaySource = '1337x';
-    }
-    // -------------------------
+    if (/corsaro/i.test(displaySource)) displaySource = 'ilCorSaRoNeRo';
+    else displaySource = displaySource
+        .replace(/TorrentGalaxy|tgx/i, 'TGx')
+        .replace(/1337/i, '1337x');
 
-    // RIGA 1: Nome File
-    let row1 = `📁 ${title}`;
+    // --- RIGA 1: Nome file pulito ---
+    const row1 = `📁 ${cleanTitle}`;
 
-    // RIGA 2: Dati Tecnici + Lingua
-    const row2 = `💾 ${size} • 👤 ${displaySeeders} • ${displayLang}`;
+    // --- RIGA 2: Dimensione, seeders, lingua ---
+    const row2 = `💾 ${size || 'Unknown'} • 👤 ${displaySeeders} • ${displayLang}`;
 
-    // RIGA 3: PROVIDER (DEDICATA)
+    // --- RIGA 3: Provider dedicato ---
     const row3 = `🔎 ${displaySource}`;
 
     return `${row1}\n${row2}\n${row3}`;
 }
 
+/**
+ * Controlla se AIOStreams è abilitato
+ */
 function isAIOStreamsEnabled(config) {
     return config?.aiostreams_mode === true;
 }
@@ -77,5 +88,6 @@ function isAIOStreamsEnabled(config) {
 module.exports = {
     formatStreamName,
     formatStreamTitle,
-    isAIOStreamsEnabled
+    isAIOStreamsEnabled,
+    cleanFileNameForDisplay
 };
