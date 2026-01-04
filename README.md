@@ -1,11 +1,16 @@
 <div align="center">
 
   <img src="https://i.ibb.co/jvTQLbjb/Gemini-Generated-Image-51j2ce51j2ce51j2-1.png" 
-       style="width: 200px; height: auto; border-radius: 20px; filter: drop-shadow(0 0 15px rgba(0, 234, 255, 0.6)); margin-bottom: 15px;" />
+       style="width: 220px; border-radius: 30px; filter: drop-shadow(0 0 20px rgba(0, 234, 255, 0.5)); margin-bottom: 10px;" />
 
-  <h1 style="font-size: 5rem; font-weight: 800; margin: 0; line-height: 1; letter-spacing: -2px; color: #fff; font-family: sans-serif;">
+  <h1 style="background: linear-gradient(180deg, #fff 30%, #00eaff 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 6rem; font-weight: 900; margin: 0; line-height: 0.9; letter-spacing: -4px; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-transform: uppercase; filter: drop-shadow(0px 5px 15px rgba(0, 234, 255, 0.3));">
     LEVIATHAN
   </h1>
+
+  <p style="color: #00eaff; font-family: monospace; letter-spacing: 8px; margin-top: -5px; font-size: 1rem; opacity: 0.8; text-transform: uppercase;">
+    The Abyss Awakens
+  </p>
+
 
 
 
