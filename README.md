@@ -75,6 +75,7 @@ Il core, sviluppato in **Node.js**, orchestra scansioni parallele sui principali
 * 🚀 **Core Refactoring:** Motore riscritto per massimizzare stabilità e concorrenza.
 * 🌪️ **VIX Hybrid Module:** Integrazione diretta con **StreamingCommunity** per flussi istantanei (No-P2P).
 * 👻 **Ghost Proxying:** Supporto nativo a **MediaFlow** per l'uso sicuro di Account Debrid condivisi.
+* 🔗 **AIOStreams:** Supporto nativo per flussi AIOStreams, integrato nel motore Leviathan.
 * 🏎️ **Fast Lane Mode:** Gestione intelligente dei timeout per API ad alta velocità.
 * 🇮🇹 **Strict ITA Validation:** Filtri regex chirurgici per l'eliminazione dei falsi positivi.
 * 🛡️ **Cloudscraper Integration:** Ottimizzazione avanzata per il superamento dei controlli Cloudflare.
