@@ -18,11 +18,6 @@
     The Abyss Awakens
   </p>
 
-  <p style="color: #00eaff; font-family: monospace; font-size: 1rem; margin-top: 20px;">
-    <strong>GitHub:</strong> <a href="https://github.com/LUC4N3X/stremio-leviathan-addon" target="_blank" style="color:#00eaff; text-decoration:none;">LUC4N3X/Leviathan</a>
-  </p>
-
-
 
 
   <div style="font-size: 1.1rem; color: #94a3b8; margin-top: 10px; font-weight: 400; letter-spacing: 1px;">
