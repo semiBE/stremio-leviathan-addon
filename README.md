@@ -22,17 +22,6 @@
     <strong>GitHub:</strong> <a href="https://github.com/LUC4N3X/stremio-leviathan-addon" target="_blank" style="color:#00eaff; text-decoration:none;">LUC4N3X/Leviathan</a>
   </p>
 
-  <p style="color: #00eaff; font-family: monospace; font-size: 0.9rem; opacity:0.7;">
-    Unleash the abyss. ⚡ Built for speed, control, and power.
-  </p>
-
-
-
-
-
-
-
-
 
 
 
