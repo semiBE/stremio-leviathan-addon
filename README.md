@@ -19,14 +19,6 @@
   </h1>
 
 
-
-
-
-
-  <div style="font-size: 1.1rem; color: #94a3b8; margin-top: 10px; font-weight: 400; letter-spacing: 1px;">
-    ADVANCED TORRENT AGGREGATION PROTOCOL
-  
-
   <br>
 
   <p>
