@@ -1,22 +1,31 @@
 <div align="center">
 
-  <img src="https://i.ibb.co/jvTQLbjb/Gemini-Generated-Image-51j2ce51j2ce51j2-1.png" 
+  <!-- Logo -->
+  <img src="https://i.ibb.co/jvTQLbjb/Gemini-Generated-Image-51j2ce51j2ce51j2-1.png"
        width="200" style="border-radius: 20px; margin-bottom: 10px;" />
 
   <br />
 
-  <img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=900&size=70&pause=1000&color=00EAFF&center=true&vCenter=true&width=500&height=100&lines=LEVIATHAN" alt="LEVIATHAN" />
+  <!-- Titolo fermo -->
+  <h1 style="
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 900;
+      font-size: 70px;
+      color: #00EAFF;
+      margin: 0;
+      text-align: center;
+  ">LEVIATHAN</h1>
 
   <br />
 
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=20&pause=1000&color=00EAFF&center=true&vCenter=true&width=435&lines=L'abisso+si+risveglia" alt="Tagline" />
-
-
-
-  <p style="color: #00eaff; font-family: monospace; letter-spacing: 8px; margin-top: -5px; font-size: 1rem; opacity: 0.8; text-transform: uppercase;">
-    The Abyss Awakens
-  </p>
-
+  <!-- Tagline ferma -->
+  <p style="
+      font-family: 'Fira Code', monospace;
+      font-size: 20px;
+      color: #00EAFF;
+      text-align: center;
+      margin: 0;
+  ">L'abisso si risveglia</p>
 
 
   <div style="font-size: 1.1rem; color: #94a3b8; margin-top: 10px; font-weight: 400; letter-spacing: 1px;">
