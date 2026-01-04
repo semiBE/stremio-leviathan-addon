@@ -1,11 +1,11 @@
-<div align="center" style="background-color:#0a0a0a; padding: 40px 20px; border-radius: 20px;">
+<div align="center">
 
   <!-- Logo -->
   <img src="https://i.ibb.co/jvTQLbjb/Gemini-Generated-Image-51j2ce51j2ce51j2-1.png" 
        alt="Leviathan Logo"
        style="width: 220px; border-radius: 30px; filter: drop-shadow(0 0 30px rgba(0, 234, 255, 0.7)); margin-bottom: 20px;" />
 
-  <!-- Titolo epico -->
+  <!-- Titolo -->
   <h1 style="background: linear-gradient(180deg, #fff 30%, #00eaff 100%);
              -webkit-background-clip: text; -webkit-text-fill-color: transparent;
              font-size: 6rem; font-weight: 900; margin: 0; line-height: 0.85;
@@ -15,13 +15,12 @@
     𝗟𝗘𝗩𝗜𝗔𝗧𝗛𝗔𝗡
   </h1>
 
-  <!-- Slogan -->
-  <p style="color: #00eaff; font-family: monospace; letter-spacing: 6px; 
-            margin-top: -10px; font-size: 1.2rem; opacity: 0.85; text-transform: uppercase;
+  <!-- Slogan subito sotto -->
+  <p style="color: #00eaff; font-family: monospace; letter-spacing: 2px; 
+            margin-top: -5px; font-size: 1.2rem; opacity: 0.85; text-transform: uppercase;
             text-shadow: 0 0 10px rgba(0, 234, 255, 0.5);">
-    ⚡ The Abyss Awakens ⚡
+    ⚡ L'abisso si risveglia ⚡
   </p>
-
 
   <div style="font-size: 1.1rem; color: #94a3b8; margin-top: 10px; font-weight: 400; letter-spacing: 1px;">
     ADVANCED TORRENT AGGREGATION PROTOCOL
