@@ -926,7 +926,7 @@ resultsRaw = resultsRaw.filter(item => {
   
   const finalStreams = [...formattedVix, ...debridStreams];
   
-  const resultObj = { streams: finalStreams.length > 0 ? finalStreams : [{ name: "⛔", title: "Nessun risultato trovato" }] };
+  const resultObj = { streams: finalStreams };
 
   if (finalStreams.length > 0) {
       await Cache.cacheStream(cacheKey, resultObj, 1800);
