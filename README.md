@@ -5,22 +5,20 @@
        alt="Leviathan Logo"
        style="width: 220px; border-radius: 30px; filter: drop-shadow(0 0 30px rgba(0, 234, 255, 0.7)); margin-bottom: 20px;" />
 
-  <!-- Titolo -->
+  <!-- Titolo + Slogan nello stesso blocco -->
   <h1 style="background: linear-gradient(180deg, #fff 30%, #00eaff 100%);
              -webkit-background-clip: text; -webkit-text-fill-color: transparent;
              font-size: 6rem; font-weight: 900; margin: 0; line-height: 1;
              letter-spacing: -5px; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
              text-transform: uppercase;
              filter: drop-shadow(0 8px 20px rgba(0, 234, 255, 0.5));">
-    𝗟𝗘𝗩𝗜𝗔𝗧𝗛𝗔𝗡
+    𝗟𝗘𝗩𝗜𝗔𝗧𝗛𝗔𝗡<br>
+    <span style="font-size: 1.5rem; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 234, 255, 0.5);">
+      ⚡ L'abisso si risveglia ⚡
+    </span>
   </h1>
 
-  <!-- Slogan senza separatore -->
-  <p style="color: #00eaff; font-family: monospace; letter-spacing: 2px; 
-            margin: 0; font-size: 1.5rem; line-height: 1; text-transform: uppercase;
-            text-shadow: 0 0 10px rgba(0, 234, 255, 0.5);">
-    ⚡ L'abisso si risveglia ⚡
-  </p>
+</div>
 
 
 
