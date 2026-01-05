@@ -275,8 +275,9 @@ Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico
         <br>
         <sub style="font-size: 10px;">Architect & Core</sub>
       </td>
+     
       ```
-      <td align="center" width="180px" style="border: none;">
+  <td align="center" width="180px" style="border: none;">
         <a href="https://github.com/qwertyuiop8899">
           <img src="https://github.com/qwertyuiop8899.png" width="60" style="border-radius:50%;" alt="qwerty"/>
           <br><b>qwertyuiop8899</b>
@@ -284,8 +285,9 @@ Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico
         <br>
         <sub style="font-size: 10px;">Logic & Debugging</sub>
       </td>
+     
       ```
-     <td align="center" width="180px" style="border: none;">
+   <td align="center" width="180px" style="border: none;">
         <a href="https://github.com/diogomiguel93">
           <img src="https://github.com/diogomiguel93.png" width="60" style="border-radius:50%;" alt="diogo"/>
           <br><b>diogomiguel93</b>
