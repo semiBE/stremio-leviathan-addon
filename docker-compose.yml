@@ -1,17 +1,24 @@
 services:
   stremio-addon:
     build: .
-    container_name: my-stremio-addon
+    container_name: stremio-leviathan
     restart: always
     ports:
-      - "7000:7000"
+      - "8397:7000"
     environment:
-      - PORT=7000
+      - PORT=8397
       - NODE_ENV=production
-   
+    networks:
+      - stremio_network   
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     dns:
       - 8.8.8.8
       - 8.8.4.4
+networks:
+  stremio_network:
+    driver: bridge
+    external: true
 
 
 
