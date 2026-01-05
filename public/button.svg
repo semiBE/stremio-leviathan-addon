@@ -1,30 +1,29 @@
-<svg width="600" height="200" viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg">
+<svg width="600" height="180" viewBox="0 0 600 180" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="mainBodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#00ffff"/>
       <stop offset="100%" stop-color="#0070f3"/>
     </linearGradient>
     <filter id="intenseGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="15" result="blur1"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="12"/>
       <feFlood flood-color="#00ffff" result="cyanColor"/>
-      <feComposite in="cyanColor" in2="blur1" operator="in" result="coloredBlur"/>
+      <feComposite in="cyanColor" operator="in" result="coloredBlur"/>
       <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="textGlow"><feGaussianBlur stdDeviation="2"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-    <path id="dragonPath" d="M 58.5 18.9 C 38.3 18.9 22 35.2 22 55.4 C 22 82.9 44.5 88.3 58.5 88.3 C 79.4 88.3 95 75.9 95 55.4 C 95 44.8 89.7 35.4 81.5 29.2 C 83.8 30.8 86.6 31.7 89.5 31.7 C 92.7 31.7 95.6 30.6 98.1 28.8 L 108.4 39.1 L 114.1 33.4 L 103.8 23.1 C 105.6 20.6 106.7 17.7 106.7 14.5 C 106.7 11.6 105.8 8.8 104.2 6.5 C 104.2 6.5 104.1 6.5 104.1 6.5 C 97.9 14.7 88.5 20 77.9 20 C 75.3 20 72.8 19.6 70.4 18.9 C 66.6 18.9 62.6 18.9 58.5 18.9 Z M 58.5 31.7 C 68.8 31.7 79.1 37.4 79.1 52 C 79.1 65.8 70.3 75.4 58.5 75.4 C 46.6 75.4 37.9 65.8 37.9 52 C 37.9 37.4 48.2 31.7 58.5 31.7 Z" />
+    <path id="dragonPath" d="M 58.5 18.9 C 38.3 18.9 22 35.2 22 55.4 C 22 82.9 44.5 88.3 58.5 88.3 C 79.4 88.3 95 75.9 95 55.4 C 95 44.8 89.7 35.4 81.5 29.2 C 83.8 30.8 86.6 31.7 89.5 31.7 C 92.7 31.7 95.6 30.6 98.1 28.8 L 108.4 39.1 L 114.1 33.4 L 103.8 23.1 C 105.6 20.6 106.7 17.7 106.7 14.5 C 106.7 11.6 105.8 8.8 104.2 6.5 C 97.9 14.7 88.5 20 77.9 20 C 75.3 20 72.8 19.6 70.4 18.9 C 66.6 18.9 62.6 18.9 58.5 18.9 Z M 58.5 31.7 C 68.8 31.7 79.1 37.4 79.1 52 C 79.1 65.8 70.3 75.4 58.5 75.4 C 46.6 75.4 37.9 65.8 37.9 52 C 37.9 37.4 48.2 31.7 58.5 31.7 Z" />
   </defs>
 
-  <g transform="translate(35, 20)">
-    <rect x="0" y="0" width="530" height="130" rx="65" ry="65" fill="url(#mainBodyGrad)" filter="url(#intenseGlow)"/>
-    <g transform="translate(35, 12)" filter="url(#textGlow)">
-        <use href="#dragonPath" fill="#e0ffff" transform="scale(1.1) translate(0,5)"/>
+  <g transform="translate(40, 20)">
+    <rect x="0" y="0" width="520" height="130" rx="65" ry="65" fill="url(#mainBodyGrad)" filter="url(#intenseGlow)"/>
+    <g transform="translate(30, 15)">
+        <use href="#dragonPath" fill="#e0ffff" transform="scale(1.05) translate(0,5)"/>
         <g font-family="Arial Black, Arial, sans-serif" font-weight="900" fill="white">
-            <text x="125" y="50" font-size="46">INSTALLA</text>
-            <text x="125" y="98" font-size="46">LEVIATHAN</text>
+            <text x="125" y="50" font-size="44">INSTALLA</text>
+            <text x="125" y="96" font-size="44">LEVIATHAN</text>
         </g>
     </g>
-    <text x="265" y="165" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#00ffff" filter="url(#textGlow)">
-      CORE SYSTEM ONLINE • HF MIRROR AVAILABLE
+    <text x="260" y="160" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#00ffff" opacity="0.9" letter-spacing="2px">
+      CORE SYSTEM ONLINE
     </text>
   </g>
 </svg>
