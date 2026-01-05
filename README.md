@@ -266,7 +266,7 @@ Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico
 
   <br>
 
-  <h3>🧬 PROJECT CORE & NEURAL NETWORK</h3>
+<h3>🧬 PROJECT CORE & NEURAL NETWORK</h3>
   
   <table style="border: none;">
     <tr>
