@@ -56,14 +56,14 @@
 
 <div align="center">
   <a href="https://leviathanaddon.dpdns.org" target="_blank">
-    <img src="public/button.svg" width="350" alt="Installa Leviathan - Main Node">
+    <img src="public/button.svg?v=2" width="350" alt="Installa Leviathan">
   </a>
   
-  <br>
+  <br><br>
 
-  <p style="font-family: sans-serif; font-size: 14px;">
-    <a href="https://leaviathan-leviathan.hf.space" target="_blank" style="color: #00ffff; text-decoration: none; font-weight: bold;">
-      🚀 Istanza Alternativa (Hugging Face Mirror)
+  <p>
+    <a href="https://leaviathan-leviathan.hf.space" target="_blank" style="text-decoration:none;">
+      <kbd>🚀 Istanza Alternativa (Hugging Face Mirror)</kbd>
     </a>
   </p>
 </div>
