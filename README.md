@@ -138,12 +138,15 @@ Progettato per l'elusione dei blocchi IP e la gestione di account Multi-Utente.
 <div align="center">
   <div style="background: rgba(245, 166, 35, 0.1); border: 1px solid rgba(245, 166, 35, 0.3); border-radius: 6px; padding: 15px; width: 90%; max-width: 800px;">
     <strong style="color: #F5A623; font-size: 0.9rem; display: block; margin-bottom: 5px;">
-      ⚠️ RESTRIZIONE ISTANZA PUBBLICA
+      ⚠️ RESTRIZIONE ALLDEBRID
     </strong>
     <span style="color: #cbd5e1; font-size: 0.85rem;">
-      Per motivi di carico e gestione dei CAPTCHA, alcuni provider (es. <b>1337x, TorrentGalaxy</b>) sono disabilitati sull'istanza pubblica.
+      Per motivi di policy del servizio <b>AllDebrid</b>, il servizio è supportato
+      <b>esclusivamente tramite Self-Hosting casalingo</b>.
       <br>
-      Esegui il <b>Self-Hosting</b> (Docker) per sbloccare il pieno potenziale del Network e bypassare le restrizioni WAF.
+      L’istanza pubblica non è compatibile con AllDebrid: per garantire
+      autenticazione corretta, stabilità delle sessioni e continuità del servizio
+      è necessario un <b>deploy locale (Docker su rete domestica)</b>.
     </span>
   </div>
 </div>
