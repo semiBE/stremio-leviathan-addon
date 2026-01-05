@@ -61,44 +61,10 @@
   
   <br>
 
-<style>
-  /* Stile per il pulsante */
-  .hf-backup-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px; /* Spazio tra logo e testo */
-    padding: 10px 20px;
-    background: linear-gradient(145deg, #1f2937, #111827); /* Sfondo scuro moderno */
-    color: #ffffff;
-    text-decoration: none;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    font-weight: 600;
-    font-size: 16px;
-    border: 1px solid #374151;
-    border-radius: 12px; /* Angoli arrotondati */
-    transition: all 0.3s ease; /* Animazione fluida */
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-  }
-
-  /* Effetto Hover (quando passi col mouse) */
-  .hf-backup-button:hover {
-    transform: translateY(-2px); /* Si alza leggermente */
-    border-color: #FFD21E; /* Bordo diventa giallo HF */
-    box-shadow: 0 0 15px rgba(255, 210, 30, 0.2); /* Bagliore giallo */
-  }
-
-  /* Stile dell'immagine logo */
-  .hf-logo-img {
-    width: 24px;
-    height: 24px;
-  }
-</style>
-
-<div style="text-align: center; margin: 20px;">
-  <a href="https://leaviathan-leviathan.hf.space" target="_blank" class="hf-backup-button">
-    <img src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" alt="Hugging Face Logo" class="hf-logo-img">
-    <span>Istanza Backup</span>
+<div align="center">
+  <a href="https://leaviathan-leviathan.hf.space">
+    <img src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" width="35" style="vertical-align: middle;">
+    <b style="font-size: 20px; vertical-align: middle; color: #FFD21E; margin-left: 5px;">Istanza Backup</b>
   </a>
 </div>
   <br>
