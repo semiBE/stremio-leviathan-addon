@@ -62,21 +62,10 @@
   <br>
 
 <div align="center">
-  <a href="https://leaviathan-leviathan.hf.space" style="text-decoration:none;">
-    <table>
-      <tr>
-        <td align="center" style="border: none;">
-          <img src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" width="40">
-        </td>
-        <td align="left" style="border: none;">
-          <span style="font-size: 18px; font-weight: bold; color: white;">Hugging Face</span><br>
-          <span style="font-size: 14px; color: #FFD21E;">Service Mirror 🚀</span>
-        </td>
-      </tr>
-    </table>
+  <a href="https://leaviathan-leviathan.hf.space">
+    <img src="https://img.shields.io/badge/Status-Service%20Mirror%20%F0%9F%9A%80-1f2937?style=for-the-badge&logo=huggingface&logoColor=FFD21E&labelColor=black" alt="Service Mirror">
   </a>
 </div>
-  
   
   <br>
 
