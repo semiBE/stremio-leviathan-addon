@@ -1,0 +1,21 @@
+name: Scheduled Merge from Upstream
+on:
+  schedule:
+    - cron: '0 */6 * * *' # Runs every 6 hours
+  workflow_dispatch:      # Allows you to run it manually with a button
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+      - name: Sync Upstream
+        url: https://github.com/LUC4N3X/stremio-leviathan-addon.git
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git remote add upstream https://github.com/LUC4N3X/stremio-leviathan-addon.git
+          git fetch upstream
+          git merge upstream/main || echo "Conflict detected - manual intervention required"
+          git push origin main
