@@ -9,14 +9,14 @@ services:
       - PORT=8397
       - NODE_ENV=production
     networks:
-      - stremio_network   
+      - stremio_stremio_network   
     labels:
       - "com.centurylinklabs.watchtower.enable=false"
     dns:
       - 8.8.8.8
       - 8.8.4.4
 networks:
-  stremio_network:
+  stremio_stremio_network:
     driver: bridge
     external: true
 
