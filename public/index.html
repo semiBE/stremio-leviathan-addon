@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>LEVIATHAN - Deep Sea Protocol</title>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700;800&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -257,12 +257,23 @@
             letter-spacing: 3px; font-size: 0.9rem; box-shadow: 0 0 20px rgba(112, 0, 255, 0.4);
             border-radius: 5px;
         }
-        .control-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.08); transition: background 0.3s; }
+        .control-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 18px 0; 
+            border-bottom: 1px solid rgba(255,255,255,0.08); 
+            transition: background 0.3s; 
+        }
         .control-row:hover { background: rgba(255,255,255,0.03); }
         .control-title { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.2rem; color: #fff; display: flex; align-items: center; gap: 12px; }
         .control-desc { display: block; font-size: 0.95rem; color: var(--text-dim); margin-top: 8px; font-weight: 300; line-height: 1.5; max-width: 90%; }
        
-        .control-info { flex: 1; padding-right: 20px; }
+        .control-info { 
+            flex: 1; 
+            padding-right: 20px; 
+            min-width: 0; /* IMPEDISCE OVERFLOW SU MOBILE */
+        }
        
         /* --- SWITCHES AVANZATI --- */
         .switch { position: relative; width: 60px; height: 30px; flex-shrink: 0; margin-left: 10px;}
@@ -399,37 +410,107 @@
         .m-go { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #000; box-shadow: var(--glow-strong); }
         .m-go:hover { box-shadow: var(--glow-intense); transform: scale(1.05); }
        
-        @media (max-width: 600px) {
-            .brand-title { font-size: 4rem; }
-            .main-wrapper { margin: 20px 0; padding: 20px; }
-            .glass-panel { padding: 25px 20px; border-radius: 20px; }
-            .options-grid { grid-template-columns: 1fr; }
-            .info-grid { grid-template-columns: 1fr; }
-            .input-group { display: flex; flex-direction: column; gap: 15px; margin-bottom: 40px; }
-            .custom-input { padding-right: 22px !important; }
-            .input-action { position: static; width: 100%; justify-content: center; padding: 15px; margin-top: 10px; }
-            .error-msg { bottom: -30px; }
-            .service-tabs { flex-direction: column; gap: 10px; }
-            .advanced-unit { padding: 25px 20px; }
-            .modal-content { padding: 25px; }
-        }
-
-        /* --- PERFORMANCE FIX (Anti-Lag Mobile) --- */
+        /* --- MEDIA QUERY OPTIMIZED "THE BOMB" MOBILE --- */
         @media (max-width: 768px) {
-            /* Disabilita il filtro blur pesante */
+            /* Header più compatto */
+            header { margin-bottom: 30px; margin-top: 20px; }
+            .brand-title { font-size: 3.5rem; letter-spacing: -2px; }
+            .brand-subtitle { font-size: 1rem; letter-spacing: 5px; margin-top: 5px; }
+            .logo-container { width: 130px; height: 130px; margin-bottom: 15px; }
+            
+            /* Contenitore principale */
+            .main-wrapper { margin: 0; padding: 15px; width: 100%; }
+            .glass-panel { padding: 20px 15px; border-radius: 20px; margin-bottom: 25px; }
+
+            /* Griglia Info Sistemi di Bordo (2x2 invece di 1x4) */
+            .info-grid { 
+                grid-template-columns: 1fr 1fr; 
+                gap: 10px; 
+            }
+            .info-card { 
+                flex-direction: column; 
+                align-items: center; 
+                text-align: center; 
+                padding: 15px 10px; 
+                gap: 10px;
+                height: 100%;
+            }
+            .info-icon { font-size: 1.5rem; margin: 0; }
+            .info-text h4 { font-size: 0.9rem; margin-bottom: 0; line-height: 1.2; }
+            .info-text p { display: none; } /* Nasconde descrizione per pulizia su mobile */
+            
+            /* Tabs Servizi: Orizzontali anche su mobile */
+            .service-tabs { 
+                flex-direction: row; 
+                gap: 8px; 
+                padding: 5px; 
+                overflow-x: auto; /* Fallback per schermi minuscoli */
+            }
+            .service-tab { 
+                padding: 12px 5px; 
+                font-size: 0.85rem; 
+                min-width: 0; /* Permette shrinking */
+            }
+            .tab-icon { font-size: 1.4rem; margin-bottom: 5px; }
+
+            /* Input Key */
+            .input-group { 
+                margin-bottom: 35px; 
+                display: flex;
+                flex-direction: column;
+            }
+            .custom-input { 
+                padding: 18px; 
+                font-size: 1rem; 
+                text-align: center;
+                padding-bottom: 50px; /* Spazio per il bottone interno */
+            }
+            .input-action {
+                position: absolute;
+                bottom: 6px; 
+                left: 6px; 
+                right: 6px;
+                top: auto;
+                width: auto;
+                justify-content: center;
+                padding: 10px;
+                font-size: 0.9rem;
+                background: rgba(0, 242, 255, 0.1);
+                border: 1px solid rgba(0, 242, 255, 0.2);
+            }
+            .error-msg { bottom: -22px; text-align: center; width: 100%; left: 0; }
+
+            /* Griglia Filtri (Switches) 2 colonne */
+            .options-grid { 
+                grid-template-columns: 1fr 1fr; 
+                gap: 10px; 
+            }
+            .option-card { 
+                flex-direction: column; 
+                justify-content: center; 
+                text-align: center; 
+                gap: 12px; 
+                padding: 15px 5px;
+            }
+            .opt-label { font-size: 0.9rem; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+            .tooltip-wrapper { margin: 0; } /* Centra tooltip */
+
+            /* Advanced Unit Fix (StreamingCommunity/Proxy) */
+            .advanced-unit { padding: 20px 15px; margin-top: 30px; }
+            .unit-label { left: 50%; transform: translateX(-50%); width: max-content; }
+            
+            .control-row { padding: 15px 0; }
+            .control-title { font-size: 1rem; gap: 8px; } /* Meno gap tra icona e testo */
+            .control-info { padding-right: 5px; } /* Meno padding destro per dare spazio al testo */
+            
+            /* Performance */
             .glass-panel, .logo-container, .modal-backdrop {
                 backdrop-filter: none !important;
                 -webkit-backdrop-filter: none !important;
                 background: rgba(0, 5, 10, 0.98) !important;
-                box-shadow: 0 0 10px rgba(0, 242, 255, 0.2) !important;
-                border: 1px solid rgba(0, 242, 255, 0.3) !important;
             }
-            /* Nasconde animazioni di sfondo pesanti */
             .light-rays, .wave-container { display: none !important; }
-            /* Rimuove ombre costose dalle particelle */
             .particle { box-shadow: none !important; background: var(--primary); }
-            /* Forza l'accelerazione hardware sul contenitore */
-            .main-wrapper { transform: translateZ(0); will-change: transform; }
         }
     </style>
 </head>
@@ -513,7 +594,7 @@
                 <span class="error-msg">⚠️ Chiave mancante</span>
             </div>
             <div class="input-group">
-                <input type="text" id="tmdbKey" class="custom-input" placeholder="INSERIRE CHIAVE TMDB (OPZIONALE)..." oninput="clearError(this)">
+                <input type="text" id="tmdbKey" class="custom-input" placeholder="CHIAVE TMDB (OPZIONALE)" oninput="clearError(this)">
                 <a href="https://www.themoviedb.org/settings/api" target="_blank" class="input-action">
                     <i class="fas fa-database"></i> PRELEVA KEY
                 </a>
@@ -528,7 +609,7 @@
                             <i class="fas fa-play-circle" style="color: var(--secondary)"></i> StreamingCommunity
                         </div>
                         <span class="control-desc">
-                            Modulo extra opzionale. Attivalo solo se desideri i contenuti di SC oltre ai Torrent.
+                            Modulo extra opzionale. Attiva per SC.
                         </span>
                     </div>
                     <label class="switch mf-switch">
@@ -543,7 +624,7 @@
                             <i class="fas fa-sort-amount-down"></i> Priorità Bassa
                         </div>
                         <span class="control-desc">
-                            Se attivo, visualizza i risultati StreamingCommunity <b>in fondo</b> alla lista (dopo i Torrent).
+                            Risultati SC in fondo alla lista.
                         </span>
                     </div>
                     <label class="switch mf-switch">
@@ -558,11 +639,11 @@
                             <i class="fas fa-user-shield" style="color: var(--secondary)"></i> Debrid Proxy Ghost
                             <div class="tooltip-wrapper">
                                 <span class="tooltip-icon">?</span>
-                                <div class="tooltip-content">Maschera il tuo IP al provider Debrid. Utile se il tuo ISP blocca i link diretti o se condividi l'account.</div>
+                                <div class="tooltip-content">Maschera il tuo IP al provider Debrid.</div>
                             </div>
                         </div>
                         <span class="control-desc">
-                            Incanala il traffico Debrid tramite MediaFlow Proxy.
+                            Traffico Debrid via MediaFlow.
                         </span>
                     </div>
                     <label class="switch mf-switch">
@@ -571,7 +652,7 @@
                     </label>
                 </div>
                 <div class="mf-group">
-                    <input type="text" id="mfUrl" class="mf-input" placeholder="URL MediaFlow Proxy (es: https://my-proxy.com)">
+                    <input type="text" id="mfUrl" class="mf-input" placeholder="URL MediaFlow Proxy">
                     <input type="password" id="mfPass" class="mf-input" style="margin-top: 10px;" placeholder="Password Proxy (Opzionale)">
                 </div>
             </div>
@@ -579,7 +660,7 @@
            
             <div class="options-grid">
                 <div class="option-card">
-                    <span class="opt-label" style="color:#ccc; font-weight:500;">Includi Audio ENG
+                    <span class="opt-label" style="color:#ccc; font-weight:500;">Audio ENG
                         <div class="tooltip-wrapper">
                             <span class="tooltip-icon">?</span>
                             <div class="tooltip-content">Oltre ai risultati ITA, cerca anche file in lingua originale/inglese.</div>
@@ -592,7 +673,7 @@
                     <label class="switch"><input type="checkbox" id="no4k"><span class="slider"></span></label>
                 </div>
                 <div class="option-card">
-                    <span class="opt-label" style="color:#ccc; font-weight:500;">Blocco Cam/Screener</span>
+                    <span class="opt-label" style="color:#ccc; font-weight:500;">No Cam/Screener</span>
                     <label class="switch"><input type="checkbox" id="noCam" checked><span class="slider"></span></label>
                 </div>
                 <div class="option-card">
@@ -611,7 +692,7 @@
             </div>
             <div class="faq-area">
                 <button class="btn-faq" onclick="openFaqModal()">
-                    <i class="fas fa-book-medical"></i> ACCEDI AL DATABASE (FAQ)
+                    <i class="fas fa-book-medical"></i> FAQ DATABASE
                 </button>
             </div>
             <div class="action-area">
@@ -711,7 +792,6 @@
                 priorityRow.style.display = 'flex';
             } else {
                 priorityRow.style.display = 'none';
-                // Opzionale: se spegni SC, potresti voler resettare la priorità, ma meglio lasciarla in memoria
             }
         }
 
