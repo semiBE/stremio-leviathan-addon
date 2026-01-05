@@ -253,76 +253,50 @@ Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico
 
   <img src="https://img.shields.io/badge/STATUS-OPERATIONAL-2ea44f?style=flat-square&logo=github&logoColor=white">
   <img src="https://img.shields.io/badge/MODE-COMMUNITY-0366d6?style=flat-square&logo=linux&logoColor=white">
-
-  <br><br>
-
-  <h3 style="font-weight: normal;">
-    Forgiato nel <b>CODICE</b>. Mantenuto vivo dalla <b>COMMUNITY</b>.
-  </h3>
-
-  <br>
-
   <a href="https://www.paypal.me/luc4nex" target="_blank">
-    <img src="https://img.shields.io/badge/SUPPORT_THE_DEV-OFFRI_UN_CAFFÈ_☕-ffbf00?style=for-the-badge&logo=ko-fi&logoColor=white&labelColor=24292e" alt="Supporta">
+    <img src="https://img.shields.io/badge/SUPPORT-OFFRI_CAFFÈ_☕-ffbf00?style=flat-square&logo=ko-fi&logoColor=white&labelColor=24292e" alt="Supporta">
   </a>
 
   <br><br>
 
-  <sub style="color: grey;">
-    Il tuo contributo garantisce l'evoluzione del protocollo.
-  </sub>
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=20&pause=1000&color=00E0FF&center=true&vCenter=true&width=500&lines=Forgiato+nel+CODICE.;Rimani+legale.+Rimani+lucido.;Lunga+vita+al+progetto." alt="Typing SVG" />
 
-</div>>
+  <br><br>
 
----
-
-<div align="center">
-
----
-
-### 🧬 **SYSTEM ARCHITECTURE & CORE**
-
-<a href="https://github.com/LUC4N3X">
-  <img src="https://github.com/LUC4N3X.png" width="100px;" alt=""/>
-  <br />
-  <b>LUC4N3X</b>
-</a>
-<br>
-<sub>Leviathan Project © 2025</sub>
-
-<br>
-
-<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&pause=1000&color=00E0FF&center=true&vCenter=true&width=550&lines=Rimani+legale.;Rimani+lucido.;Lunga+vita+al+codice." alt="Typing SVG" />
-
----
-
-### 🧠 **NEURAL NETWORK / CREDITS**
-
-<sub>*Il codice vive dove le menti si incontrano.*</sub>
-<br><br>
-
-<table>
-  <tr>
-    <td align="center" width="200px">
-      <a href="https://github.com/qwertyuiop8899">
-        <img src="https://github.com/qwertyuiop8899.png" width="60" style="border-radius:50%;" alt=""/>
-        <br />
-        <b>qwertyuiop8899</b>
-      </a>
-      <br>
-      <sub>Supporto costante, debug strategico e logica chiave del <br>external-addons.js</sub>
-    </td>
-    <td align="center" width="200px">
-      <a href="https://github.com/diogomiguel93">
-        <img src="https://github.com/diogomiguel93.png" width="60" style="border-radius:50%;" alt=""/>
-        <br />
-        <b>diogomiguel93</b>
-      </a>
-      <br>
-      <sub>Base e ispirazione per l’integrazione dell’addon <br>Torrentio(ITA)</sub>
-    </td>
-  </tr>
-</table>
+  <h3>🧬 PROJECT CORE & NEURAL NETWORK</h3>
+  
+  <table style="border: none;">
+    <tr>
+      <td align="center" width="180px" style="border: none;">
+        <a href="https://github.com/LUC4N3X">
+          <img src="https://github.com/LUC4N3X.png" width="60" style="border-radius:50%; border: 2px solid #00E0FF;" alt="LUC4N3X"/>
+          <br><b>LUC4N3X</b>
+        </a>
+        <br>
+        <sub style="font-size: 10px;">Architect & Core</sub>
+      </td>
+      
+      <td align="center" width="180px" style="border: none;">
+        <a href="https://github.com/qwertyuiop8899">
+          <img src="https://github.com/qwertyuiop8899.png" width="60" style="border-radius:50%;" alt="qwerty"/>
+          <br><b>qwertyuiop8899</b>
+        </a>
+        <br>
+        <sub style="font-size: 10px;">Logic & Debugging</sub>
+      </td>
+      
+      <td align="center" width="180px" style="border: none;">
+        <a href="https://github.com/diogomiguel93">
+          <img src="https://github.com/diogomiguel93.png" width="60" style="border-radius:50%;" alt="diogo"/>
+          <br><b>diogomiguel93</b>
+        </a>
+        <br>
+        <sub style="font-size: 10px;">Torrentio Integration</sub>
+      </td>
+    </tr>
+  </table>
+  
+  <sub style="color: grey;">Leviathan Project © 2025 • Evolution Guaranteed</sub>
 
 </div>
 
