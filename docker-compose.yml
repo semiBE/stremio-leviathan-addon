@@ -1,6 +1,6 @@
 services:
   stremio-addon:
-    build: .
+    build: https://github.com/semiBE/stremio-leviathan-addon.git#main
     container_name: stremio-leviathan
     restart: always
     ports:
