@@ -6,7 +6,7 @@ services:
     ports:
       - "8397:7000"
     environment:
-      - PORT=8397
+      - PORT=7000
       - NODE_ENV=production
     networks:
       - stremio_stremio_network   
