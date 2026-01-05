@@ -62,7 +62,7 @@
   <br>
 
   <a href="https://leaviathan-leviathan.hf.space" target="_blank">
-    <img src="public/mirror.svg?v=99" width="280" alt="Backup Mirror">
+    <img src="public/mirror1.svg?v=99" width="280" alt="Backup Mirror">
   </a>
 </div>
 
