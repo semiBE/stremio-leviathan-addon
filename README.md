@@ -602,7 +602,7 @@ Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico
 
 <br><br>
 
----
+
 
 <div align="center">
 
