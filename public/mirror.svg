@@ -115,22 +115,21 @@
       </circle>
     </g>
     
-    <!-- Icona Hugging Face stilizzata a destra -->
-    <g transform="translate(425, 20)" filter="url(#innerGlow)">
-      <!-- Corpo emoji giallo -->
-      <circle cx="12" cy="12" r="11" fill="#FFD21E" stroke="#00ffff" stroke-width="1.5"/>
-      <circle cx="12" cy="12" r="9" fill="#FFC107"/>
+    <!-- Icona Hugging Face originale -->
+    <g transform="translate(425, 18)">
+      <!-- Corpo principale giallo -->
+      <circle cx="12" cy="14" r="12" fill="#FFD21E"/>
       
-      <!-- Occhi sorridenti -->
-      <path d="M 7,10 Q 7,8 9,8 Q 11,8 11,10" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
-      <path d="M 13,10 Q 13,8 15,8 Q 17,8 17,10" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+      <!-- Occhi -->
+      <circle cx="8" cy="12" r="2" fill="#000000"/>
+      <circle cx="16" cy="12" r="2" fill="#000000"/>
       
       <!-- Sorriso -->
-      <path d="M 7,14 Q 12,18 17,14" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M 6,16 Q 12,22 18,16" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round"/>
       
       <!-- Energia pulsante attorno -->
-      <circle cx="12" cy="12" r="13" fill="none" stroke="#00ffff" stroke-width="1" opacity="0.3">
-        <animate attributeName="r" values="13;16;13" dur="2s" repeatCount="indefinite"/>
+      <circle cx="12" cy="14" r="14" fill="none" stroke="#00ffff" stroke-width="1" opacity="0.3">
+        <animate attributeName="r" values="14;17;14" dur="2s" repeatCount="indefinite"/>
         <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite"/>
       </circle>
     </g>
@@ -156,17 +155,4 @@
     <line x1="140" y1="48" x2="340" y2="48" stroke="#00ffff" stroke-width="1" opacity="0.3"/>
   </g>
   
-  <!-- Linea inferiore animata (stile Leviathan) -->
-  <g>
-    <line x1="80" y1="75" x2="420" y2="75" stroke="#00ffff" stroke-width="2" opacity="0.5">
-      <animate attributeName="x1" values="80;100;80" dur="3s" repeatCount="indefinite"/>
-      <animate attributeName="x2" values="420;400;420" dur="3s" repeatCount="indefinite"/>
-    </line>
-    <circle cx="80" cy="75" r="3" fill="#00ffff">
-      <animate attributeName="cx" values="80;100;80" dur="3s" repeatCount="indefinite"/>
-    </circle>
-    <circle cx="420" cy="75" r="3" fill="#00ffff">
-      <animate attributeName="cx" values="420;400;420" dur="3s" repeatCount="indefinite"/>
-    </circle>
-  </g>
 </svg>
