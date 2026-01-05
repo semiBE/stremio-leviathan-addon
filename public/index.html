@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="google" content="notranslate" /> 
     <title>LEVIATHAN - Deep Sea Protocol</title>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700;800&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -138,13 +139,37 @@
             animation: textGlow 3s infinite alternate;
         }
         @keyframes textGlow { 0% { filter: drop-shadow(0 0 25px rgba(0, 242, 255, 0.5)); } 100% { filter: drop-shadow(0 0 40px rgba(0, 242, 255, 0.7)); } }
+        
+        /* --- NUOVO SOTTOTITOLO FIGO --- */
         .brand-subtitle {
-            font-family: 'Rajdhani', sans-serif; letter-spacing: 10px; color: var(--primary);
-            font-weight: 600; font-size: 1.3rem; margin-top: 15px; text-transform: uppercase;
-            text-shadow: 0 0 15px var(--primary);
-            animation: subtitleFade 2s infinite alternate;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 8px;
+            color: var(--primary);
+            text-transform: uppercase;
+            margin-top: 15px;
+            font-weight: 700;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
+            animation: subtitleFloat 3s ease-in-out infinite alternate;
         }
-        @keyframes subtitleFade { 0% { opacity: 0.8; } 100% { opacity: 1; } }
+        /* Linee laterali fighissime */
+        .brand-subtitle::before, .brand-subtitle::after {
+            content: '';
+            display: block;
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary));
+            margin: 0 20px;
+            box-shadow: 0 0 10px var(--primary);
+            opacity: 0.8;
+        }
+        .brand-subtitle::after { transform: rotate(180deg); } /* Specchia la gradient */
+
+        @keyframes subtitleFloat { 0% { transform: translateY(0); opacity: 0.9; } 100% { transform: translateY(-3px); opacity: 1; text-shadow: 0 0 20px var(--primary); } }
        
         /* --- VETRO HI-TECH AVANZATO --- */
         .glass-panel {
@@ -415,7 +440,10 @@
             /* Header più compatto */
             header { margin-bottom: 30px; margin-top: 20px; }
             .brand-title { font-size: 3.5rem; letter-spacing: -2px; }
-            .brand-subtitle { font-size: 1rem; letter-spacing: 5px; margin-top: 5px; }
+            /* Adattamento sottotitolo mobile */
+            .brand-subtitle { font-size: 0.9rem; letter-spacing: 4px; margin-top: 10px; }
+            .brand-subtitle::before, .brand-subtitle::after { width: 20px; margin: 0 10px; }
+            
             .logo-container { width: 130px; height: 130px; margin-bottom: 15px; }
             
             /* Contenitore principale */
@@ -528,8 +556,8 @@
             <div class="logo-container">
                 <img src="https://i.ibb.co/jvTQLbjb/Gemini-Generated-Image-51j2ce51j2ce51j2-1.png" alt="Leviathan Logo" class="logo-image">
             </div>
-            <h1 class="brand-title">LEVIATHAN</h1>
-            <div class="brand-subtitle">PROTOCOLLO ABISSO ATTIVO</div>
+            <h1 class="brand-title class="notranslate" translate="no"">LEVIATHAN</h1>
+            <div class="brand-subtitle class="notranslate" translate="no"">SOVRANO DEGLI ABISSI</div>
         </header>
         <div class="glass-panel">
             <div class="panel-header">
@@ -540,28 +568,28 @@
                 <div class="info-card">
                     <div class="info-icon"><i class="fas fa-bolt"></i></div>
                     <div class="info-text">
-                        <h4>Synapse Cache</h4>
+                        <h4 class="notranslate" translate="no">Synapse Cache</h4>
                         <p>Aggancio istantaneo ai flussi dati.</p>
                     </div>
                 </div>
                 <div class="info-card">
                     <div class="info-icon"><i class="fas fa-globe-europe"></i></div>
                     <div class="info-text">
-                        <h4>Sonar Italiano</h4>
+                        <h4 class="notranslate" translate="no">Sonar Italiano</h4>
                         <p>Scansione prioritaria audio ITA.</p>
                     </div>
                 </div>
                 <div class="info-card">
                     <div class="info-icon"><i class="fas fa-user-secret"></i></div>
                     <div class="info-text">
-                        <h4>Ghost Shell</h4>
+                        <h4 class="notranslate" translate="no">Ghost Shell</h4>
                         <p>Mimetizzazione IP attiva.</p>
                     </div>
                 </div>
                 <div class="info-card">
                     <div class="info-icon"><i class="fas fa-biohazard"></i></div>
                     <div class="info-text">
-                        <h4>Hybrid Core</h4>
+                        <h4 class="notranslate" translate="no">Hybrid Core</h4>
                         <p>Fusione Torrent + SC Stream.</p>
                     </div>
                 </div>
@@ -575,15 +603,15 @@
             <div class="service-tabs">
                 <div class="service-tab active" onclick="selectService('rd')">
                     <span class="tab-icon">🚀</span>
-                    <span class="tab-name">Real-Debrid</span>
+                    <span class="tab-name notranslate" translate="no">Real-Debrid</span>
                 </div>
                 <div class="service-tab" onclick="selectService('ad')">
                     <span class="tab-icon">🦅</span>
-                    <span class="tab-name">AllDebrid</span>
+                    <span class="tab-name notranslate" translate="no">AllDebrid</span>
                 </div>
                 <div class="service-tab" onclick="selectService('tb')">
                     <span class="tab-icon">📦</span>
-                    <span class="tab-name">TorBox</span>
+                    <span class="tab-name notranslate" translate="no">TorBox</span>
                 </div>
             </div>
             <div class="input-group">
@@ -601,11 +629,11 @@
                 <span class="error-msg">⚠️ Chiave mancante</span>
             </div>
             <div class="advanced-unit" id="advUnit">
-                <div class="unit-label">MEDIAFLOW PROXY SYSTEM</div>
+                <div class="unit-label notranslate" translate="no">MEDIAFLOW PROXY SYSTEM</div>
                
                 <div class="control-row">
                     <div class="control-info">
-                        <div class="control-title">
+                        <div class="control-title notranslate" translate="no">
                             <i class="fas fa-play-circle" style="color: var(--secondary)"></i> StreamingCommunity
                         </div>
                         <span class="control-desc">
@@ -636,7 +664,7 @@
                 <div class="control-row">
                     <div class="control-info">
                         <div class="control-title">
-                            <i class="fas fa-user-shield" style="color: var(--secondary)"></i> Debrid Proxy Ghost
+                            <i class="fas fa-user-shield" style="color: var(--secondary)"></i> <span class="notranslate" translate="no">Debrid Proxy Ghost</span>
                             <div class="tooltip-wrapper">
                                 <span class="tooltip-icon">?</span>
                                 <div class="tooltip-content">Maschera il tuo IP al provider Debrid.</div>
@@ -684,7 +712,7 @@
                     <span class="opt-label" style="color:#ccc; font-weight:500;">Compatibilità AIO
                         <div class="tooltip-wrapper">
                             <span class="tooltip-icon">?</span>
-                            <div class="tooltip-content">Formato compatto (es: Leviathan RD⚡) ottimizzato per AIOStreams.</div>
+                            <div class="tooltip-content">Formato compatto (es: <span class="notranslate" translate="no">Leviathan RD⚡</span>) ottimizzato per AIOStreams.</div>
                         </div>
                     </span>
                     <label class="switch"><input type="checkbox" id="aiostreams_mode"><span class="slider"></span></label>
@@ -728,18 +756,18 @@
             <div id="faqList">
                 <div class="faq-item" onclick="toggleFaq(this)">
                     <div class="faq-q">Come funziona? <i class="fas fa-chevron-down"></i></div>
-                    <div class="faq-a">Leviathan scansiona le profondità del web per trovare Torrent (tramite Debrid) e flussi StreamingCommunity ad alta velocità.</div>
+                    <div class="faq-a"><span class="notranslate" translate="no">Leviathan</span> scansiona le profondità del web per trovare Torrent (tramite Debrid) e flussi <span class="notranslate" translate="no">StreamingCommunity</span> ad alta velocità.</div>
                 </div>
                 <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="faq-q">Cos'è Real-Debrid? <i class="fas fa-chevron-down"></i></div>
+                    <div class="faq-q">Cos'è <span class="notranslate" translate="no">Real-Debrid</span>? <i class="fas fa-chevron-down"></i></div>
                     <div class="faq-a">È il motore turbo. Scarica i file per te sui suoi server veloci per permetterti lo streaming istantaneo senza buffering.</div>
                 </div>
                 <div class="faq-item" onclick="toggleFaq(this)">
                     <div class="faq-q">Serve il Proxy? <i class="fas fa-chevron-down"></i></div>
-                    <div class="faq-a">Non è obbligatorio per l'uso base. Puoi abilitarlo se vuoi usare Debrid Proxy Ghost (per nascondere l'IP a Debrid) o se il tuo ISP blocca specifici servizi.</div>
+                    <div class="faq-a">Non è obbligatorio per l'uso base. Puoi abilitarlo se vuoi usare <span class="notranslate" translate="no">Debrid Proxy Ghost</span> (per nascondere l'IP a Debrid) o se il tuo ISP blocca specifici servizi.</div>
                 </div>
                 <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="faq-q">StreamingCommunity è incluso? <i class="fas fa-chevron-down"></i></div>
+                    <div class="faq-q"><span class="notranslate" translate="no">StreamingCommunity</span> è incluso? <i class="fas fa-chevron-down"></i></div>
                     <div class="faq-a">Sì, puoi attivarlo dal modulo opzionale. Non richiede più obbligatoriamente il Proxy, ma se hai problemi di blocco geografico potrebbe servirti.</div>
                 </div>
             </div>
