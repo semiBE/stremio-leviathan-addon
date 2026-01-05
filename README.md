@@ -63,7 +63,7 @@
 
 <div align="center">
   <a href="https://leaviathan-leviathan.hf.space">
-    <img src="https://img.shields.io/badge/Status-Service%20Mirror%20%F0%9F%9A%80-1f2937?style=for-the-badge&logo=huggingface&logoColor=FFD21E&labelColor=black" alt="Service Mirror">
+    <img src="https://img.shields.io/badge/ACCESS-SHADOW%20MIRROR%20%F0%9F%91%BB-1f2937?style=for-the-badge&logo=huggingface&logoColor=FFD21E&labelColor=black" alt="Shadow Mirror">
   </a>
 </div>
   
