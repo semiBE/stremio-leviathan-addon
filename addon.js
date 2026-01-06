@@ -832,7 +832,14 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
 // 🔥🔥🔥 FILTRI AGGIORNATI (Anno Strict + Logic Anti-Prefix) 🔥🔥🔥
 resultsRaw = resultsRaw.filter(item => {
     if (!item?.magnet) return false;
+    
     const source = (item.source || "").toLowerCase();
+    
+    //  NUOVO FILTRO: Escludi StremThru (Comet)
+    if (source.includes("comet") || source.includes("stremthru")) {
+        return false;
+    }
+
     const title = item.title;
     
     // Pulizia base
