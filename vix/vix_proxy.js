@@ -8,7 +8,7 @@ const HEADERS_VIX = {
 
 async function handleVixSynthetic(req, res) {
     const masterUrl = req.query.src;
-    const forceMax = req.query.max === "1";
+    const forceMax = req.query.max === "1"; 
 
     if (!masterUrl) return res.status(400).send("Missing src");
 
@@ -18,37 +18,67 @@ async function handleVixSynthetic(req, res) {
             timeout: 6000 
         });
 
-        let manifest = response.data;
+        const manifest = response.data;
         const lines = manifest.split("\n");
         let filteredLines = [];
-        let foundBestVariant = false;
 
+        // Inizio Ricostruzione Manifest
         filteredLines.push("#EXTM3U");
+        if (manifest.includes("#EXT-X-VERSION")) filteredLines.push("#EXT-X-VERSION:3");
 
-        // FIX AUDIO: Estraiamo le tracce audio e i sottotitoli
+        // 1. Preserviamo Audio e Sottotitoli
         for (let line of lines) {
             if (line.startsWith("#EXT-X-MEDIA:TYPE=AUDIO") || line.startsWith("#EXT-X-MEDIA:TYPE=SUBTITLES")) {
                 filteredLines.push(line);
             }
         }
 
-        if (forceMax) {
-            // Forza 1080p: isoliamo solo la prima variante video
-            for (let i = 0; i < lines.length; i++) {
-                if (lines[i].startsWith("#EXT-X-STREAM-INF") && !foundBestVariant) {
-                    filteredLines.push(lines[i]);
-                    filteredLines.push(lines[i + 1]);
-                    foundBestVariant = true;
+        // 2. Analizziamo le Varianti Video
+        let variants = [];
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].startsWith("#EXT-X-STREAM-INF")) {
+                const infoLine = lines[i];
+                const urlLine = lines[i + 1];
+                
+                let resolution = 0;
+                const resMatch = infoLine.match(/RESOLUTION=(\d+)x(\d+)/);
+                if (resMatch) resolution = parseInt(resMatch[1]) * parseInt(resMatch[2]); 
+
+                variants.push({ info: infoLine, url: urlLine, resolution: resolution || 0 });
+            }
+        }
+
+        // 3. Logica di Selezione e Ricostruzione
+        if (variants.length > 0) {
+            // Ordiniamo per qualità
+            variants.sort((a, b) => b.resolution - a.resolution);
+
+            let selected = null;
+
+            if (forceMax) {
+                // Selettore 1080p: Prendi il primo (il più alto)
+                selected = variants[0];
+            } else {
+                // Selettore 720p: Cerca risoluzione HD o fai fallback intelligente
+                const target720 = variants.find(v => v.resolution > 400000 && v.resolution < 2000000 && v.resolution !== variants[0].resolution);
+                
+                if (target720) {
+                    selected = target720;
+                } else if (variants.length > 1) {
+                    selected = variants[1];
+                } else {
+                    selected = variants[0];
                 }
+            }
+
+            if (selected) {
+                filteredLines.push(selected.info);
+                filteredLines.push(selected.url);
             }
         } else {
-            // 720p: manteniamo le varianti ma garantiamo l'audio
-            for (let i = 0; i < lines.length; i++) {
-                if (lines[i].startsWith("#EXT-X-STREAM-INF")) {
-                    filteredLines.push(lines[i]);
-                    filteredLines.push(lines[i + 1]);
-                }
-            }
+            // Fallback diretto se la playlist non ha varianti
+            const contentLines = lines.filter(l => !l.startsWith("#EXTM3U") && !l.startsWith("#EXT-X-VERSION"));
+            filteredLines.push(...contentLines);
         }
 
         res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
@@ -56,7 +86,6 @@ async function handleVixSynthetic(req, res) {
         res.send(filteredLines.join("\n"));
 
     } catch (error) {
-        console.error("❌ Error in VixProxy:", error.message);
         res.status(500).send("Vix Proxy Error");
     }
 }

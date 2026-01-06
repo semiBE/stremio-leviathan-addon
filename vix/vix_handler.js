@@ -2,40 +2,66 @@ const { requestHtml } = require("../engines");
 const { imdbToTmdb } = require("../id_converter");
 
 const VIX_BASE = "https://vixsrc.to"; 
-const ADDON_BASE = "https://leviathanaddon.dpdns.org"; //
+// NOTA: Assicurati che questo sia l'URL pubblico corretto del tuo addon
+const ADDON_BASE = "https://leviathanaddon.dpdns.org"; 
 
 const HEADERS_BASE = {
-    'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0',
     'Referer': `${VIX_BASE}/`, 
     'Origin': VIX_BASE
 };
 
-function ensureM3u8Extension(url) {
-    if (!url) return "";
-    if (url.includes(".m3u8")) return url;
-    if (url.includes("?")) {
-        const parts = url.split("?");
-        return `${parts[0]}.m3u8?${parts[1]}`;
+// Logica di estrazione dati (Kotlin-style)
+function extractDataKotlinStyle(html) {
+    try {
+        const scriptMatch = html.match(/<script[^>]*>([\s\S]*?window\.masterPlaylist[\s\S]*?)<\/script>/);
+        if (!scriptMatch) return null;
+        
+        const rawScript = scriptMatch[1].replace(/\n/g, "\t");
+        const parts = rawScript.split(/window\.(?:\w+)\s*=\s*/).slice(1); 
+        const keyRegex = /window\.(\w+)\s*=\s*/g;
+        const keys = [];
+        let m;
+        while ((m = keyRegex.exec(rawScript)) !== null) keys.push(m[1]);
+
+        if (!keys.length || keys.length !== parts.length) return null;
+
+        const jsonProps = [];
+        for (let i = 0; i < keys.length; i++) {
+            let cleaned = parts[i]
+                .replace(/;/g, '')
+                .replace(/(\{|\[|,)\s*(\w+)\s*:/g, '$1 "$2":')
+                .replace(/,(\s*[}\]])/g, '$1')
+                .replace(/'/g, '"')
+                .trim();
+            jsonProps.push(`"${keys[i]}": ${cleaned}`);
+        }
+
+        const aggregated = `{\n${jsonProps.join(',\n')}\n}`;
+        const parsed = JSON.parse(aggregated);
+        const mp = parsed.masterPlaylist;
+        if (!mp) return null;
+
+        const paramsObj = mp.params || {};
+        return {
+            baseUrl: mp.url,
+            token: paramsObj.token,
+            expires: paramsObj.expires,
+            canPlayFHD: parsed.canPlayFHD === true
+        };
+    } catch (e) {
+        return null;
     }
-    return `${url}.m3u8`;
 }
 
-function extractVixParams(html) {
-    try {
-        const token = html.match(/['"]token['"]\s*:\s*['"](\w+)['"]/)?.[1];
-        const expires = html.match(/['"]expires['"]\s*:\s*['"](\d+)['"]/)?.[1];
-        const serverUrl = html.match(/url:\s*['"]([^'"]+)['"]/)?.[1];
-        
-        if (token && expires && serverUrl) {
-            return {
-                token,
-                expires,
-                serverUrl,
-                canPlayFHD: html.includes("window.canPlayFHD = true") || /canPlayFHD\s*=\s*true/.test(html)
-            };
-        }
-    } catch (e) { return null; }
-    return null;
+function generateRichDescription(meta) {
+    const lines = [];
+    lines.push(`🎬 ${meta.title || "Video"}`); 
+    lines.push(`🇮🇹 ITA • 🔊 AAC`);
+    lines.push(`🎞️ HLS • Bitrate Variabile`);
+    lines.push(`☁️ Web Stream • ⚡ Instant`);
+    lines.push(`🌪️ StreamingCommunity`); // Emoji richiesta
+    return lines.join("\n");
 }
 
 async function searchVix(meta, config) {
@@ -54,45 +80,67 @@ async function searchVix(meta, config) {
             : `${VIX_BASE}/movie/${tmdbId}/`;
         
         const { data: html } = await requestHtml(targetUrl, { headers: HEADERS_BASE });
-        const params = extractVixParams(html);
+        const data = extractDataKotlinStyle(html);
 
-        if (params) {
+        if (data && data.baseUrl) {
             const streams = [];
-            let baseUrl = ensureM3u8Extension(params.serverUrl);
-            const separator = baseUrl.includes("?") ? "&" : "?";
-            const commonParams = `token=${params.token}&expires=${params.expires}`;
+            const richTitle = generateRichDescription(meta);
 
-            // Creiamo il Master URL 
-            let masterUrl = `${baseUrl}${separator}${commonParams}`;
-            if (params.canPlayFHD) masterUrl += "&h=1";
-            else masterUrl += "&b=1";
+            // Pulizia URL Base
+            let cleanBase = data.baseUrl;
+            cleanBase = cleanBase.replace(/[?&]b[:=]1/, '');
+            
+            const beforeQuery = cleanBase.split('?')[0];
+            if (!/\.m3u8$/i.test(beforeQuery)) {
+                 const partsF = cleanBase.split('?');
+                 cleanBase = beforeQuery.replace(/\/$/, '') + '.m3u8' + (partsF[1] ? '?' + partsF.slice(1).join('?') : '');
+            }
 
-            // 1. STREAM 1080p (SINTETICO)
-            if (params.canPlayFHD) {
-                // max=1 forza la risoluzione più alta (1080p)
-                const url1080 = `${ADDON_BASE}/vixsynthetic.m3u8?src=${encodeURIComponent(masterUrl)}&lang=it&max=1&multi=1`;
+            const separator = cleanBase.includes('?') ? '&' : '?';
+            const queryParams = `token=${encodeURIComponent(data.token)}&expires=${encodeURIComponent(data.expires)}`;
+            const masterSourceBase = `${cleanBase}${separator}${queryParams}`;
+
+            // PREPARAZIONE SORGENTE UNIVERSALE
+            // Usiamo la sorgente h=1 (FHD) per entrambi gli stream perché è su CDN permissivo
+            let universalSource = masterSourceBase;
+            if (!universalSource.includes('h=1')) universalSource += "&h=1";
+            universalSource = universalSource.replace(/[?&]b=1/, '');
+
+            // =================================================================
+            // STREAM 1: 720p (Backup / Auto)
+            // =================================================================
+            // max=0 -> Il Proxy ricostruisce il manifest selezionando la variante 720p
+            const synthetic720 = `${ADDON_BASE}/vixsynthetic.m3u8?src=${encodeURIComponent(universalSource)}&lang=it&max=0&multi=1`;
+
+            streams.push({
+                name: `🌪️ StreamingCommunity\n📺 720p`, 
+                title: richTitle,
+                url: synthetic720,
+                behaviorHints: { 
+                    notWebReady: false, 
+                    bingieGroup: "vix-synthetic-720" 
+                }
+            });
+
+            // =================================================================
+            // STREAM 2: 1080p (Force FHD)
+            // =================================================================
+            if (data.canPlayFHD) { 
+                // max=1 -> Il Proxy ricostruisce il manifest selezionando SOLO la variante 1080p
+                const synthetic1080 = `${ADDON_BASE}/vixsynthetic.m3u8?src=${encodeURIComponent(universalSource)}&lang=it&max=1&multi=1`;
+                
                 streams.push({
-                    url: url1080,
-                    name: "VixSRC 1080p 💎",
-                    description: "FHD Synthetic (Con Audio)",
-                    isFHD: true,
-                    behaviorHints: { proxyHeaders: { "request": HEADERS_BASE } }
+                    name: `🌪️ StreamingCommunity\n💎 1080p`,
+                    title: richTitle,
+                    url: synthetic1080,
+                    behaviorHints: { 
+                        notWebReady: false, 
+                        bingieGroup: "vix-synthetic-1080" 
+                    }
                 });
             }
 
-            // 2. STREAM 720p 
-            
-            const url720 = `${ADDON_BASE}/vixsynthetic.m3u8?src=${encodeURIComponent(masterUrl)}&lang=it&max=0&multi=1`;
-
-            streams.push({
-                url: url720,
-                name: "VixSRC 720p",
-                description: "HD Synthetic (Audio Fix)",
-                isFHD: false,
-                behaviorHints: { proxyHeaders: { "request": HEADERS_BASE } }
-            });
-
-            return streams;
+            return streams.reverse();
         }
         return [];
     } catch (e) { return []; }

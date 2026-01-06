@@ -2,7 +2,8 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="google" content="notranslate" /> 
     <title>LEVIATHAN - Deep Sea Protocol</title>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700;800&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -138,13 +139,37 @@
             animation: textGlow 3s infinite alternate;
         }
         @keyframes textGlow { 0% { filter: drop-shadow(0 0 25px rgba(0, 242, 255, 0.5)); } 100% { filter: drop-shadow(0 0 40px rgba(0, 242, 255, 0.7)); } }
+        
+        /* --- NUOVO SOTTOTITOLO FIGO --- */
         .brand-subtitle {
-            font-family: 'Rajdhani', sans-serif; letter-spacing: 10px; color: var(--primary);
-            font-weight: 600; font-size: 1.3rem; margin-top: 15px; text-transform: uppercase;
-            text-shadow: 0 0 15px var(--primary);
-            animation: subtitleFade 2s infinite alternate;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 8px;
+            color: var(--primary);
+            text-transform: uppercase;
+            margin-top: 15px;
+            font-weight: 700;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
+            animation: subtitleFloat 3s ease-in-out infinite alternate;
         }
-        @keyframes subtitleFade { 0% { opacity: 0.8; } 100% { opacity: 1; } }
+        /* Linee laterali fighissime */
+        .brand-subtitle::before, .brand-subtitle::after {
+            content: '';
+            display: block;
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary));
+            margin: 0 20px;
+            box-shadow: 0 0 10px var(--primary);
+            opacity: 0.8;
+        }
+        .brand-subtitle::after { transform: rotate(180deg); } /* Specchia la gradient */
+
+        @keyframes subtitleFloat { 0% { transform: translateY(0); opacity: 0.9; } 100% { transform: translateY(-3px); opacity: 1; text-shadow: 0 0 20px var(--primary); } }
        
         /* --- VETRO HI-TECH AVANZATO --- */
         .glass-panel {
@@ -257,12 +282,23 @@
             letter-spacing: 3px; font-size: 0.9rem; box-shadow: 0 0 20px rgba(112, 0, 255, 0.4);
             border-radius: 5px;
         }
-        .control-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.08); transition: background 0.3s; }
+        .control-row { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 18px 0; 
+            border-bottom: 1px solid rgba(255,255,255,0.08); 
+            transition: background 0.3s; 
+        }
         .control-row:hover { background: rgba(255,255,255,0.03); }
         .control-title { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.2rem; color: #fff; display: flex; align-items: center; gap: 12px; }
         .control-desc { display: block; font-size: 0.95rem; color: var(--text-dim); margin-top: 8px; font-weight: 300; line-height: 1.5; max-width: 90%; }
        
-        .control-info { flex: 1; padding-right: 20px; }
+        .control-info { 
+            flex: 1; 
+            padding-right: 20px; 
+            min-width: 0; /* IMPEDISCE OVERFLOW SU MOBILE */
+        }
        
         /* --- SWITCHES AVANZATI --- */
         .switch { position: relative; width: 60px; height: 30px; flex-shrink: 0; margin-left: 10px;}
@@ -278,6 +314,24 @@
         .mf-active .mf-group { opacity: 1; pointer-events: auto; filter: blur(0); }
         .mf-input { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.15); padding: 15px; color: #fff; width: 100%; border-radius: 10px; font-family: 'Outfit', sans-serif; transition: 0.3s; }
         .mf-input:focus { border-color: var(--secondary); outline: none; box-shadow: 0 0 15px rgba(112,0,255,0.3); }
+
+        /* --- SUB ROW (Nested Options) --- */
+        .sub-row {
+            display: none; /* Nascosto di default */
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 12px 15px 12px 25px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            animation: fadeInRow 0.3s ease;
+        }
+        @keyframes fadeInRow { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .sub-row .control-title { font-size: 1rem; color: var(--text-dim); }
+        .sub-row .control-desc { font-size: 0.85rem; }
+        .sub-indicator {
+            border-left: 2px solid var(--primary);
+            padding-left: 15px;
+        }
        
         /* --- FILTER GRID --- */
         .section-header {
@@ -381,37 +435,110 @@
         .m-go { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: #000; box-shadow: var(--glow-strong); }
         .m-go:hover { box-shadow: var(--glow-intense); transform: scale(1.05); }
        
-        @media (max-width: 600px) {
-            .brand-title { font-size: 4rem; }
-            .main-wrapper { margin: 20px 0; padding: 20px; }
-            .glass-panel { padding: 25px 20px; border-radius: 20px; }
-            .options-grid { grid-template-columns: 1fr; }
-            .info-grid { grid-template-columns: 1fr; }
-            .input-group { display: flex; flex-direction: column; gap: 15px; margin-bottom: 40px; }
-            .custom-input { padding-right: 22px !important; }
-            .input-action { position: static; width: 100%; justify-content: center; padding: 15px; margin-top: 10px; }
-            .error-msg { bottom: -30px; }
-            .service-tabs { flex-direction: column; gap: 10px; }
-            .advanced-unit { padding: 25px 20px; }
-            .modal-content { padding: 25px; }
-        }
-
-        /* --- PERFORMANCE FIX (Anti-Lag Mobile) --- */
+        /* --- MEDIA QUERY OPTIMIZED "THE BOMB" MOBILE --- */
         @media (max-width: 768px) {
-            /* Disabilita il filtro blur pesante */
+            /* Header più compatto */
+            header { margin-bottom: 30px; margin-top: 20px; }
+            .brand-title { font-size: 3.5rem; letter-spacing: -2px; }
+            /* Adattamento sottotitolo mobile */
+            .brand-subtitle { font-size: 0.9rem; letter-spacing: 4px; margin-top: 10px; }
+            .brand-subtitle::before, .brand-subtitle::after { width: 20px; margin: 0 10px; }
+            
+            .logo-container { width: 130px; height: 130px; margin-bottom: 15px; }
+            
+            /* Contenitore principale */
+            .main-wrapper { margin: 0; padding: 15px; width: 100%; }
+            .glass-panel { padding: 20px 15px; border-radius: 20px; margin-bottom: 25px; }
+
+            /* Griglia Info Sistemi di Bordo (2x2 invece di 1x4) */
+            .info-grid { 
+                grid-template-columns: 1fr 1fr; 
+                gap: 10px; 
+            }
+            .info-card { 
+                flex-direction: column; 
+                align-items: center; 
+                text-align: center; 
+                padding: 15px 10px; 
+                gap: 10px;
+                height: 100%;
+            }
+            .info-icon { font-size: 1.5rem; margin: 0; }
+            .info-text h4 { font-size: 0.9rem; margin-bottom: 0; line-height: 1.2; }
+            .info-text p { display: none; } /* Nasconde descrizione per pulizia su mobile */
+            
+            /* Tabs Servizi: Orizzontali anche su mobile */
+            .service-tabs { 
+                flex-direction: row; 
+                gap: 8px; 
+                padding: 5px; 
+                overflow-x: auto; /* Fallback per schermi minuscoli */
+            }
+            .service-tab { 
+                padding: 12px 5px; 
+                font-size: 0.85rem; 
+                min-width: 0; /* Permette shrinking */
+            }
+            .tab-icon { font-size: 1.4rem; margin-bottom: 5px; }
+
+            /* Input Key */
+            .input-group { 
+                margin-bottom: 35px; 
+                display: flex;
+                flex-direction: column;
+            }
+            .custom-input { 
+                padding: 18px; 
+                font-size: 1rem; 
+                text-align: center;
+                padding-bottom: 50px; /* Spazio per il bottone interno */
+            }
+            .input-action {
+                position: absolute;
+                bottom: 6px; 
+                left: 6px; 
+                right: 6px;
+                top: auto;
+                width: auto;
+                justify-content: center;
+                padding: 10px;
+                font-size: 0.9rem;
+                background: rgba(0, 242, 255, 0.1);
+                border: 1px solid rgba(0, 242, 255, 0.2);
+            }
+            .error-msg { bottom: -22px; text-align: center; width: 100%; left: 0; }
+
+            /* Griglia Filtri (Switches) 2 colonne */
+            .options-grid { 
+                grid-template-columns: 1fr 1fr; 
+                gap: 10px; 
+            }
+            .option-card { 
+                flex-direction: column; 
+                justify-content: center; 
+                text-align: center; 
+                gap: 12px; 
+                padding: 15px 5px;
+            }
+            .opt-label { font-size: 0.9rem; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+            .tooltip-wrapper { margin: 0; } /* Centra tooltip */
+
+            /* Advanced Unit Fix (StreamingCommunity/Proxy) */
+            .advanced-unit { padding: 20px 15px; margin-top: 30px; }
+            .unit-label { left: 50%; transform: translateX(-50%); width: max-content; }
+            
+            .control-row { padding: 15px 0; }
+            .control-title { font-size: 1rem; gap: 8px; } /* Meno gap tra icona e testo */
+            .control-info { padding-right: 5px; } /* Meno padding destro per dare spazio al testo */
+            
+            /* Performance */
             .glass-panel, .logo-container, .modal-backdrop {
                 backdrop-filter: none !important;
                 -webkit-backdrop-filter: none !important;
                 background: rgba(0, 5, 10, 0.98) !important;
-                box-shadow: 0 0 10px rgba(0, 242, 255, 0.2) !important;
-                border: 1px solid rgba(0, 242, 255, 0.3) !important;
             }
-            /* Nasconde animazioni di sfondo pesanti */
             .light-rays, .wave-container { display: none !important; }
-            /* Rimuove ombre costose dalle particelle */
             .particle { box-shadow: none !important; background: var(--primary); }
-            /* Forza l'accelerazione hardware sul contenitore */
-            .main-wrapper { transform: translateZ(0); will-change: transform; }
         }
     </style>
 </head>
@@ -429,8 +556,8 @@
             <div class="logo-container">
                 <img src="https://i.ibb.co/jvTQLbjb/Gemini-Generated-Image-51j2ce51j2ce51j2-1.png" alt="Leviathan Logo" class="logo-image">
             </div>
-            <h1 class="brand-title">LEVIATHAN</h1>
-            <div class="brand-subtitle">PROTOCOLLO ABISSO ATTIVO</div>
+            <h1 class="brand-title class="notranslate" translate="no"">LEVIATHAN</h1>
+            <div class="brand-subtitle class="notranslate" translate="no"">SOVRANO DEGLI ABISSI</div>
         </header>
         <div class="glass-panel">
             <div class="panel-header">
@@ -441,28 +568,28 @@
                 <div class="info-card">
                     <div class="info-icon"><i class="fas fa-bolt"></i></div>
                     <div class="info-text">
-                        <h4>Synapse Cache</h4>
+                        <h4 class="notranslate" translate="no">Synapse Cache</h4>
                         <p>Aggancio istantaneo ai flussi dati.</p>
                     </div>
                 </div>
                 <div class="info-card">
                     <div class="info-icon"><i class="fas fa-globe-europe"></i></div>
                     <div class="info-text">
-                        <h4>Sonar Italiano</h4>
+                        <h4 class="notranslate" translate="no">Sonar Italiano</h4>
                         <p>Scansione prioritaria audio ITA.</p>
                     </div>
                 </div>
                 <div class="info-card">
                     <div class="info-icon"><i class="fas fa-user-secret"></i></div>
                     <div class="info-text">
-                        <h4>Ghost Shell</h4>
+                        <h4 class="notranslate" translate="no">Ghost Shell</h4>
                         <p>Mimetizzazione IP attiva.</p>
                     </div>
                 </div>
                 <div class="info-card">
                     <div class="info-icon"><i class="fas fa-biohazard"></i></div>
                     <div class="info-text">
-                        <h4>Hybrid Core</h4>
+                        <h4 class="notranslate" translate="no">Hybrid Core</h4>
                         <p>Fusione Torrent + SC Stream.</p>
                     </div>
                 </div>
@@ -476,15 +603,15 @@
             <div class="service-tabs">
                 <div class="service-tab active" onclick="selectService('rd')">
                     <span class="tab-icon">🚀</span>
-                    <span class="tab-name">Real-Debrid</span>
+                    <span class="tab-name notranslate" translate="no">Real-Debrid</span>
                 </div>
                 <div class="service-tab" onclick="selectService('ad')">
                     <span class="tab-icon">🦅</span>
-                    <span class="tab-name">AllDebrid</span>
+                    <span class="tab-name notranslate" translate="no">AllDebrid</span>
                 </div>
                 <div class="service-tab" onclick="selectService('tb')">
                     <span class="tab-icon">📦</span>
-                    <span class="tab-name">TorBox</span>
+                    <span class="tab-name notranslate" translate="no">TorBox</span>
                 </div>
             </div>
             <div class="input-group">
@@ -495,26 +622,41 @@
                 <span class="error-msg">⚠️ Chiave mancante</span>
             </div>
             <div class="input-group">
-                <input type="text" id="tmdbKey" class="custom-input" placeholder="INSERIRE CHIAVE TMDB (OPZIONALE)..." oninput="clearError(this)">
+                <input type="text" id="tmdbKey" class="custom-input" placeholder="CHIAVE TMDB (OPZIONALE)" oninput="clearError(this)">
                 <a href="https://www.themoviedb.org/settings/api" target="_blank" class="input-action">
                     <i class="fas fa-database"></i> PRELEVA KEY
                 </a>
                 <span class="error-msg">⚠️ Chiave mancante</span>
             </div>
             <div class="advanced-unit" id="advUnit">
-                <div class="unit-label">MEDIAFLOW PROXY SYSTEM</div>
+                <div class="unit-label notranslate" translate="no">MEDIAFLOW PROXY SYSTEM</div>
                
                 <div class="control-row">
                     <div class="control-info">
-                        <div class="control-title">
+                        <div class="control-title notranslate" translate="no">
                             <i class="fas fa-play-circle" style="color: var(--secondary)"></i> StreamingCommunity
                         </div>
                         <span class="control-desc">
-                            Modulo extra opzionale. Attivalo solo se desideri i contenuti di SC oltre ai Torrent.
+                            Modulo extra opzionale. Attiva per SC.
                         </span>
                     </div>
                     <label class="switch mf-switch">
-                        <input type="checkbox" id="enableVix">
+                        <input type="checkbox" id="enableVix" onchange="toggleSCOptions()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="control-row sub-row" id="scPriorityRow">
+                    <div class="control-info sub-indicator">
+                        <div class="control-title">
+                            <i class="fas fa-sort-amount-down"></i> Priorità Bassa
+                        </div>
+                        <span class="control-desc">
+                            Risultati SC in fondo alla lista.
+                        </span>
+                    </div>
+                    <label class="switch mf-switch">
+                        <input type="checkbox" id="vixLast">
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -522,14 +664,14 @@
                 <div class="control-row">
                     <div class="control-info">
                         <div class="control-title">
-                            <i class="fas fa-user-shield" style="color: var(--secondary)"></i> Debrid Proxy Ghost
+                            <i class="fas fa-user-shield" style="color: var(--secondary)"></i> <span class="notranslate" translate="no">Debrid Proxy Ghost</span>
                             <div class="tooltip-wrapper">
                                 <span class="tooltip-icon">?</span>
-                                <div class="tooltip-content">Maschera il tuo IP al provider Debrid. Utile se il tuo ISP blocca i link diretti o se condividi l'account.</div>
+                                <div class="tooltip-content">Maschera il tuo IP al provider Debrid.</div>
                             </div>
                         </div>
                         <span class="control-desc">
-                            Incanala il traffico Debrid tramite MediaFlow Proxy.
+                            Traffico Debrid via MediaFlow.
                         </span>
                     </div>
                     <label class="switch mf-switch">
@@ -538,7 +680,7 @@
                     </label>
                 </div>
                 <div class="mf-group">
-                    <input type="text" id="mfUrl" class="mf-input" placeholder="URL MediaFlow Proxy (es: https://my-proxy.com)">
+                    <input type="text" id="mfUrl" class="mf-input" placeholder="URL MediaFlow Proxy">
                     <input type="password" id="mfPass" class="mf-input" style="margin-top: 10px;" placeholder="Password Proxy (Opzionale)">
                 </div>
             </div>
@@ -546,7 +688,7 @@
            
             <div class="options-grid">
                 <div class="option-card">
-                    <span class="opt-label" style="color:#ccc; font-weight:500;">Includi Audio ENG
+                    <span class="opt-label" style="color:#ccc; font-weight:500;">Audio ENG
                         <div class="tooltip-wrapper">
                             <span class="tooltip-icon">?</span>
                             <div class="tooltip-content">Oltre ai risultati ITA, cerca anche file in lingua originale/inglese.</div>
@@ -559,7 +701,7 @@
                     <label class="switch"><input type="checkbox" id="no4k"><span class="slider"></span></label>
                 </div>
                 <div class="option-card">
-                    <span class="opt-label" style="color:#ccc; font-weight:500;">Blocco Cam/Screener</span>
+                    <span class="opt-label" style="color:#ccc; font-weight:500;">No Cam/Screener</span>
                     <label class="switch"><input type="checkbox" id="noCam" checked><span class="slider"></span></label>
                 </div>
                 <div class="option-card">
@@ -570,7 +712,7 @@
                     <span class="opt-label" style="color:#ccc; font-weight:500;">Compatibilità AIO
                         <div class="tooltip-wrapper">
                             <span class="tooltip-icon">?</span>
-                            <div class="tooltip-content">Formato compatto (es: Leviathan RD⚡) ottimizzato per AIOStreams.</div>
+                            <div class="tooltip-content">Formato compatto (es: <span class="notranslate" translate="no">Leviathan RD⚡</span>) ottimizzato per AIOStreams.</div>
                         </div>
                     </span>
                     <label class="switch"><input type="checkbox" id="aiostreams_mode"><span class="slider"></span></label>
@@ -578,7 +720,7 @@
             </div>
             <div class="faq-area">
                 <button class="btn-faq" onclick="openFaqModal()">
-                    <i class="fas fa-book-medical"></i> ACCEDI AL DATABASE (FAQ)
+                    <i class="fas fa-book-medical"></i> FAQ DATABASE
                 </button>
             </div>
             <div class="action-area">
@@ -614,18 +756,18 @@
             <div id="faqList">
                 <div class="faq-item" onclick="toggleFaq(this)">
                     <div class="faq-q">Come funziona? <i class="fas fa-chevron-down"></i></div>
-                    <div class="faq-a">Leviathan scansiona le profondità del web per trovare Torrent (tramite Debrid) e flussi StreamingCommunity ad alta velocità.</div>
+                    <div class="faq-a"><span class="notranslate" translate="no">Leviathan</span> scansiona le profondità del web per trovare Torrent (tramite Debrid) e flussi <span class="notranslate" translate="no">StreamingCommunity</span> ad alta velocità.</div>
                 </div>
                 <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="faq-q">Cos'è Real-Debrid? <i class="fas fa-chevron-down"></i></div>
+                    <div class="faq-q">Cos'è <span class="notranslate" translate="no">Real-Debrid</span>? <i class="fas fa-chevron-down"></i></div>
                     <div class="faq-a">È il motore turbo. Scarica i file per te sui suoi server veloci per permetterti lo streaming istantaneo senza buffering.</div>
                 </div>
                 <div class="faq-item" onclick="toggleFaq(this)">
                     <div class="faq-q">Serve il Proxy? <i class="fas fa-chevron-down"></i></div>
-                    <div class="faq-a">Non è obbligatorio per l'uso base. Puoi abilitarlo se vuoi usare Debrid Proxy Ghost (per nascondere l'IP a Debrid) o se il tuo ISP blocca specifici servizi.</div>
+                    <div class="faq-a">Non è obbligatorio per l'uso base. Puoi abilitarlo se vuoi usare <span class="notranslate" translate="no">Debrid Proxy Ghost</span> (per nascondere l'IP a Debrid) o se il tuo ISP blocca specifici servizi.</div>
                 </div>
                 <div class="faq-item" onclick="toggleFaq(this)">
-                    <div class="faq-q">StreamingCommunity è incluso? <i class="fas fa-chevron-down"></i></div>
+                    <div class="faq-q"><span class="notranslate" translate="no">StreamingCommunity</span> è incluso? <i class="fas fa-chevron-down"></i></div>
                     <div class="faq-a">Sì, puoi attivarlo dal modulo opzionale. Non richiede più obbligatoriamente il Proxy, ma se hai problemi di blocco geografico potrebbe servirti.</div>
                 </div>
             </div>
@@ -660,6 +802,8 @@
 
         // --- LOGIC ---
         let currentService = 'rd';
+        
+        // Funzione per mostrare/nascondere opzioni Proxy
         function toggleMediaFlowGroup() {
             const ghost = document.getElementById('proxyDebrid').checked;
             const unit = document.getElementById('advUnit');
@@ -667,6 +811,18 @@
             if (ghost) unit.classList.add('mf-active');
             else unit.classList.remove('mf-active');
         }
+
+        // NUOVA FUNZIONE: Mostra opzioni SC solo se attivato
+        function toggleSCOptions() {
+            const scActive = document.getElementById('enableVix').checked;
+            const priorityRow = document.getElementById('scPriorityRow');
+            if (scActive) {
+                priorityRow.style.display = 'flex';
+            } else {
+                priorityRow.style.display = 'none';
+            }
+        }
+
         function clearError(input) { input.classList.remove('input-error'); }
         function toggleFaq(el) { el.classList.toggle('open'); }
         window.onload = function() {
@@ -692,9 +848,14 @@
                         document.getElementById('no4k').checked = config.filters.no4k || false;
                         document.getElementById('noCam').checked = config.filters.noCam || false;
                         document.getElementById('showFake').checked = config.filters.showFake || false;
+                        
+                        // Setta stato SC e Priorità
                         document.getElementById('enableVix').checked = config.filters.enableVix || false;
+                        document.getElementById('vixLast').checked = config.filters.vixLast || false;
                     }
+                    // Trigger per aggiornare la UI in base ai valori caricati
                     toggleMediaFlowGroup();
+                    toggleSCOptions(); 
                 }
             } catch (e) {}
         };
@@ -739,7 +900,8 @@
                     no4k: document.getElementById('no4k').checked,
                     noCam: document.getElementById('noCam').checked,
                     showFake: document.getElementById('showFake').checked,
-                    enableVix: document.getElementById('enableVix').checked
+                    enableVix: document.getElementById('enableVix').checked,
+                    vixLast: document.getElementById('vixLast').checked
                 }
             };
         }
@@ -755,10 +917,16 @@
             if(!validateInputs()) { document.querySelector('.main-wrapper').scrollIntoView({ behavior: 'smooth' }); return; }
             const c = getConfigObject();
             const list = document.getElementById('modalSummary');
+            
+            // Logica visualizzazione riassunto
+            let scText = c.filters.enableVix ? 'ATTIVO' : 'NO';
+            if (c.filters.enableVix && c.filters.vixLast) scText += ' (Priorità Bassa)';
+            else if (c.filters.enableVix) scText += ' (Priorità Alta)';
+
             list.innerHTML = `
                 <li>Servizio Debrid <span>${c.service.toUpperCase()}</span></li>
                 <li>Includi ENG <span>${c.filters.allowEng ? 'ATTIVO' : 'NO'}</span></li>
-                <li>StreamingCommunity <span>${c.filters.enableVix ? 'ATTIVO' : 'NO'}</span></li>
+                <li>StreamingCommunity <span>${scText}</span></li>
                 <li>Modalità AIOStreams <span>${c.aiostreams_mode ? 'ATTIVO' : 'NO'}</span></li>
                 <li>Proxy Ghost <span>${c.mediaflow.proxyDebrid ? 'ATTIVO' : 'NO'}</span></li>
             `;
