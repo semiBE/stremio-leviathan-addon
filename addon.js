@@ -64,7 +64,7 @@ dbHelper.initDatabase();
 
 // --- CONFIGURAZIONE CENTRALE ---
 const CONFIG = {
-  INDEXER_URL: process.env.INDEXER_URL || "http://185.229.239.195:8080",
+  INDEXER_URL: process.env.INDEXER_URL || "",
   CINEMETA_URL: "https://v3-cinemeta.strem.io",
   REAL_SIZE_FILTER: 80 * 1024 * 1024,
   MAX_RESULTS: 60,
@@ -951,6 +951,6 @@ app.listen(PORT, () => {
     console.log(`📡 LETTURA: Indexer Remoto (${CONFIG.INDEXER_URL})`);
     console.log(`💾 SCRITTURA: DB Locale (Auto-Learning attivo)`);
     console.log(`✅ FIX AGGRESSIVO: "Fallback" cancellato ovunque`);
-    console.log(`🛡️ FIX ANNO:`);
+    console.log(`🛡️ FIX ANNO: Frankenstein 1974 bloccato per 2025`);
     console.log(`-----------------------------------------------------`);
 });
