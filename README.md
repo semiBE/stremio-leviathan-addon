@@ -20,40 +20,54 @@
 
 
 
-  <br>
+<br>
 
-  <p>
-    <img src="https://img.shields.io/badge/Real_Debrid-NATIVE_SUPPORT-A2B9F0?style=for-the-badge&logo=realdebrid&logoColor=black" />
-    <img src="https://img.shields.io/badge/AllDebrid-MODULE_ACTIVE-F5A623?style=for-the-badge&logo=alldebrid&logoColor=white" />
-    <img src="https://img.shields.io/badge/TorBox-COMPATIBLE-7A4EE3?style=for-the-badge&logo=torbox&logoColor=white" />
-  </p>
+<!-- 🚀 Badge principali -->
+<p>
+  <img src="https://img.shields.io/badge/Real_Debrid-NATIVE_SUPPORT-A2B9F0?style=for-the-badge&logo=realdebrid&logoColor=black" />
+  <img src="https://img.shields.io/badge/AllDebrid-MODULE_ACTIVE-F5A623?style=for-the-badge&logo=alldebrid&logoColor=white" />
+  <img src="https://img.shields.io/badge/TorBox-COMPATIBLE-7A4EE3?style=for-the-badge&logo=torbox&logoColor=white" />
+  <img src="https://img.shields.io/badge/IO-Integration-00eaff?style=for-the-badge&logo=zapier&logoColor=white" />
+</p>
 
-  <p>
-    <img src="https://img.shields.io/badge/Node.js-v18_LTS-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" />
-    <img src="https://img.shields.io/badge/Architecture-HyperMode_v3.5-8A2BE2?style=for-the-badge&logo=dependabot&logoColor=white" />
-    <img src="https://img.shields.io/badge/Status-OPERATIONAL-success?style=for-the-badge&logo=githubactions&logoColor=white" />
-  </p>
+<!-- 💻 Stack e status -->
+<p>
+  <img src="https://img.shields.io/badge/Node.js-v18_LTS-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" />
+  <img src="https://img.shields.io/badge/Architecture-HyperMode_v3.5-8A2BE2?style=for-the-badge&logo=dependabot&logoColor=white" />
+  <img src="https://img.shields.io/badge/Status-OPERATIONAL-success?style=for-the-badge&logo=githubactions&logoColor=white" />
+  <img src="https://img.shields.io/badge/Automation-Smart_IO-00eaff?style=for-the-badge&logo=zapier&logoColor=white" />
+</p>
 
-  <br>
+<br>
 
-  <div style="background: #050a10; border: 1px solid rgba(0, 234, 255, 0.15); border-radius: 8px; padding: 25px; width: 85%; max-width: 800px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-    <strong style="font-size: 1.3rem; color: #00eaff; display: block; margin-bottom: 10px;">
-      🇮🇹 Engineered for Italian Content Precision
-    </strong>
-    <span style="color: #cbd5e1; line-height: 1.6; font-size: 1rem;">
-      Leviathan ridefinisce lo standard dei metamotori torrent attraverso un'architettura <b>Italy-First</b>.
-      Integra un sistema di validazione semantica dei titoli, gestione automatizzata delle challenge WAF e un algoritmo di routing a bassa latenza per garantire risultati pertinenti e immediati.
-    </span>
-  </div>
+<!-- 🟦 Box descrittivo -->
+<div style="background: #050a10; border: 1px solid rgba(0, 234, 255, 0.15); border-radius: 8px; padding: 25px; width: 85%; max-width: 800px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+  <strong style="font-size: 1.3rem; color: #00eaff; display: block; margin-bottom: 10px;">
+    🇮🇹 Engineered for Italian Content Precision
+  </strong>
+  <span style="color: #cbd5e1; line-height: 1.6; font-size: 1rem;">
+    Leviathan ridefinisce lo standard dei metamotori torrent con un'architettura <b>Italy-First</b>.  
+    Integra:
+    <ul style="margin: 10px 0 0 20px; padding: 0;">
+      <li>Sistema di validazione semantica dei titoli</li>
+      <li>Gestione automatizzata delle challenge WAF</li>
+      <li>Algoritmo di routing a bassa latenza per risultati immediati</li>
+      <li>Integrazione IO per automazioni, notifiche e sincronizzazioni</li>
+    </ul>
+  </span>
+</div>
 
-  <br>
+<br>
 
-  <p>
-    <img src="https://img.shields.io/badge/⚡_Adaptive-Latency_Scaling-000?style=for-the-badge&labelColor=00eaff" />
-    <img src="https://img.shields.io/badge/🔍_Smart-Query_Morphing-000?style=for-the-badge&labelColor=00eaff" />
-    <img src="https://img.shields.io/badge/🛡️_WAF-Bypass_Protocol-000?style=for-the-badge&labelColor=00eaff" />
-    <img src="https://img.shields.io/badge/🔗_Magnet-Fusion_Engine-000?style=for-the-badge&labelColor=00eaff" />
-  </p>
+<!-- ⚡ Funzionalità chiave -->
+<p>
+  <img src="https://img.shields.io/badge/⚡_Adaptive-Latency_Scaling-000?style=for-the-badge&labelColor=00eaff" />
+  <img src="https://img.shields.io/badge/🔍_Smart-Query_Morphing-000?style=for-the-badge&labelColor=00eaff" />
+  <img src="https://img.shields.io/badge/🛡️_WAF-Bypass_Protocol-000?style=for-the-badge&labelColor=00eaff" />
+  <img src="https://img.shields.io/badge/🔗_Magnet-Fusion_Engine-000?style=for-the-badge&labelColor=00eaff" />
+  <img src="https://img.shields.io/badge/🤖_IO-Automation_READY-000?style=for-the-badge&labelColor=00eaff" />
+</p>
+
 
 <div align="center">
   <a href="https://leviathanaddon.dpdns.org" target="_blank">
