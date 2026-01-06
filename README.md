@@ -57,46 +57,14 @@
   </p>
 
 
-<div align="center" style="margin: 40px 0;">
-  <div style="background: linear-gradient(145deg, #050a10 0%, #0a192f 100%); 
-              border: 1px solid #00eaff; 
-              border-radius: 15px; 
-              padding: 2px; 
-              width: 85%; 
-              max-width: 650px; 
-              box-shadow: 0 0 20px rgba(0, 234, 255, 0.2);
-              position: relative;
-              overflow: hidden;">
-    
-  <div style="position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #00eaff, transparent);"></div>
-    
-   <div style="padding: 25px; background: #050a10; border-radius: 13px;">
-      <strong style="color: #00eaff; font-size: 1.4rem; font-family: 'Segoe UI', Roboto, sans-serif; text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 10px; text-shadow: 0 0 10px rgba(0, 234, 255, 0.5);">
-        📡 Uplink Stabilito
-      </strong>
-      
-   <p style="color: #cbd5e1; font-size: 1rem; line-height: 1.5; margin-bottom: 20px; font-family: 'Courier New', monospace;">
-        Entra nel cuore dell'abisso. Feedback, segnalazioni bug o semplice networking sul canale ufficiale.
-      </p>
-      
-  <a href="https://t.me/Stremio_ITA/7153" target="_blank" style="text-decoration: none; transition: 0.3s;">
-        <div style="background: #00eaff; 
-                    color: #050a10; 
-                    padding: 12px 30px; 
-                    border-radius: 5px; 
-                    font-weight: 900; 
-                    display: inline-block; 
-                    letter-spacing: 1px;
-                    box-shadow: 0 4px 15px rgba(0, 234, 255, 0.4);
-                    text-transform: uppercase;">
-          ⚡ Inizia Trasmissione Telegram
-        </div>
-      </a>
-           <div style="margin-top: 15px; font-size: 0.75rem; color: #475569; text-transform: uppercase; letter-spacing: 3px;">
-        Protocollo: Encrypted | Status: Online
-      </div>
-    </div>
-  </div>
+<div style="background: rgba(0,136,204,0.1); border: 1px solid rgba(0,136,204,0.3); border-radius: 8px; padding: 15px; width: 80%; max-width: 600px; margin: 20px auto; text-align:center;">
+  <strong style="color: #0088CC; font-size: 1rem;">💬 Contattami direttamente su Telegram</strong>
+  <p style="color: #cbd5e1; font-size: 0.9rem; margin: 5px 0;">
+    Hai domande o vuoi parlarmi? Questo è il modo più veloce per raggiungermi.
+  </p>
+  <a href="https://t.me/Stremio_ITA/7153" target="_blank" style="text-decoration:none;">
+    <img src="https://img.shields.io/badge/📩_Telegram-Chat_Diretta-0088CC?style=for-the-badge&logo=telegram&logoColor=white" alt="Contattami Telegram">
+  </a>
 </div>
 
 
