@@ -12,9 +12,7 @@ const NodeCache = require("node-cache");
 
 // --- IMPORT ESTERNI ---
 const { fetchExternalAddonsFlat } = require("./external-addons");
-// --- [LEVIATHAN] IMPORT RESOLVER ---
 const PackResolver = require("./leviathan-pack-resolver");
-// --- AIOSTREAMS FORMATTER ---
 const aioFormatter = require("./aiostreams-formatter.cjs");
 
 // --- 1. CONFIGURAZIONE LOGGER (Winston) ---
@@ -35,20 +33,14 @@ const logger = winston.createLogger({
 const myCache = new NodeCache({ stdTTL: 1800, checkperiod: 120, maxKeys: 5000 });
 
 const Cache = {
-    getCachedMagnets: async (key) => {
-        return myCache.get(`magnets:${key}`) || null;
-    },
-    cacheMagnets: async (key, value, ttl = 3600) => {
-        myCache.set(`magnets:${key}`, value, ttl);
-    },
+    getCachedMagnets: async (key) => { return myCache.get(`magnets:${key}`) || null; },
+    cacheMagnets: async (key, value, ttl = 3600) => { myCache.set(`magnets:${key}`, value, ttl); },
     getCachedStream: async (key) => {
         const data = myCache.get(`stream:${key}`);
         if (data) logger.info(`⚡ CACHE HIT: ${key}`);
         return data || null;
     },
-    cacheStream: async (key, value, ttl = 1800) => {
-        myCache.set(`stream:${key}`, value, ttl);
-    },
+    cacheStream: async (key, value, ttl = 1800) => { myCache.set(`stream:${key}`, value, ttl); },
     listKeys: async () => myCache.keys(),
     deleteKey: async (key) => myCache.del(key),
     flushAll: async () => myCache.flushAll()
@@ -63,23 +55,23 @@ const kitsuHandler = require("./kitsu_handler");
 const RD = require("./debrid/realdebrid");
 const AD = require("./debrid/alldebrid");
 const TB = require("./debrid/torbox");
-const dbHelper = require("./db-helper"); // Deve contenere la nuova insertTorrent
+const dbHelper = require("./db-helper"); 
 const { searchVix } = require("./vix/vix_handler");
 const { getManifest } = require("./manifest");
 
-// Inizializza DB Locale
+// Inizializza DB Locale (Serve la pool per insertTorrent)
 dbHelper.initDatabase();
 
 // --- CONFIGURAZIONE CENTRALE ---
 const CONFIG = {
-  INDEXER_URL: process.env.INDEXER_URL || "http://185.229.239.195:8080",
+  INDEXER_URL: process.env.INDEXER_URL || "",
   CINEMETA_URL: "https://v3-cinemeta.strem.io",
   REAL_SIZE_FILTER: 80 * 1024 * 1024,
   MAX_RESULTS: 60,
   TIMEOUTS: {
     TMDB: 2000,
     SCRAPER: 6000,
-    REMOTE_INDEXER: 2500,
+    REMOTE_INDEXER: 3500, 
     DB_QUERY: 5000,
     DEBRID: 5000,
     PACK_RESOLVER: 8000,
@@ -120,7 +112,6 @@ const REGEX_ITA = [
 ];
 const REGEX_CLEANER = /\b(ita|eng|ger|fre|spa|latino|rus|sub|h264|h265|x264|x265|hevc|avc|vc1|1080p|1080i|720p|480p|4k|2160p|uhd|sdr|hdr|hdr10|dv|dolby|vision|bluray|bd|bdrip|brrip|web-?dl|webrip|hdtv|rip|remux|mux|ac-?3|aac|dts|ddp|flac|truehd|atmos|multi|dual|complete|pack|amzn|nf|dsnp|hmax|atvp|apple|hulu|peacock|rakuten|iyp|dvd|dvdrip|unrated|extended|director|cut)\b.*/yi;
 
-//  Helper: Convert Base32 to Hex (Necessario per magnet compressi)
 function base32ToHex(base32) {
     const base32chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
     let bits = "";
@@ -136,18 +127,14 @@ function base32ToHex(base32) {
     return hex;
 }
 
-//  Improved Info Hash Extraction
 function extractInfoHash(magnet) {
     if (!magnet) return null;
     const match = magnet.match(/btih:([A-Fa-f0-9]{40}|[A-Za-z2-7]{32})/i);
     if (!match) return null;
-
     const hash = match[1];
-    // Se è 32 caratteri, è Base32 -> Converti in Hex (40 char)
     if (hash.length === 32) {
         return base32ToHex(hash).toUpperCase();
     }
-
     return hash.toUpperCase();
 }
 
@@ -182,7 +169,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// --- UTILS & HELPERS ---
 const UNITS = ["B", "KB", "MB", "GB", "TB"];
 function formatBytes(bytes) {
   if (!+bytes) return "0 B";
@@ -201,39 +187,23 @@ function parseSize(sizeStr) {
   return val * (mult[unit] || 1);
 }
 
-// ------------------------------------------------------------------
-//  FIX DEDUPLICAZIONE TOTALE (ANTI-DUPLICATI) 
-// ------------------------------------------------------------------
 function deduplicateResults(results) {
   const hashMap = new Map();
-  
   for (const item of results) {
     if (!item?.magnet) continue;
-    
-    // 1. Estrazione e Normalizzazione Hash
     const rawHash = item.infoHash || item.hash || extractInfoHash(item.magnet);
     const finalHash = rawHash ? rawHash.toUpperCase() : null;
-
-    // 2. Validazione
     if (!finalHash || finalHash.length !== 40) continue;
-
-    // 3. Normalizzazione oggetto
     item.hash = finalHash;
     item.infoHash = finalHash;
-
-    
     const existing = hashMap.get(finalHash);
-    
     if (!existing || (item.seeders || 0) > (existing.seeders || 0)) {
-      // Calcoliamo la dimensione se non presente
       item._size = parseSize(item.sizeBytes || item.size);
       hashMap.set(finalHash, item);
     }
   }
-  
   return Array.from(hashMap.values());
 }
-// ------------------------------------------------------------------
 
 function isSafeForItalian(item) {
   if (!item || !item.title) return false;
@@ -312,51 +282,41 @@ function extractStreamInfo(title, source) {
   return { quality: q, qIcon, info: detailsParts.join(" | "), lang, audioInfo };
 }
 
-// --- FUNZIONE MODIFICATA PER STIMA "STEALTH" DIMENSIONE & AIO FIX ---
 function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag = "RD", config = {}, infoHash = null) {
-    // Estrazione dati comuni
     const { quality, qIcon, info, lang, audioInfo } = extractStreamInfo(fileTitle, source);
     const cleanNameTitle = cleanFilename(fileTitle);
 
-    //  LOGICA "STEALTH" SIZE ESTIMATION
     let sizeString = size ? formatBytes(size) : "";
-    
     if (!sizeString || size === 0) {
-        // Genera un "seed" numerico basato sulle lettere del titolo.
         let hash = 0;
         for (let i = 0; i < fileTitle.length; i++) {
             hash = fileTitle.charCodeAt(i) + ((hash << 5) - hash);
         }
         const seed = Math.abs(hash);
-
         const tLower = fileTitle.toLowerCase();
         let gb = 0;
-
-        if (REGEX_QUALITY["4K"].test(tLower)) {
-            gb = 12 + (seed % 1000) / 100;
-        } else if (REGEX_QUALITY["1080p"].test(tLower)) {
-            gb = 1.8 + (seed % 270) / 100;
-        } else if (REGEX_QUALITY["720p"].test(tLower)) {
-            gb = 0.6 + (seed % 80) / 100;
-        } else {
-            gb = 1 + (seed % 200) / 100;
-        }
-        
+        if (REGEX_QUALITY["4K"].test(tLower)) gb = 12 + (seed % 1000) / 100;
+        else if (REGEX_QUALITY["1080p"].test(tLower)) gb = 1.8 + (seed % 270) / 100;
+        else if (REGEX_QUALITY["720p"].test(tLower)) gb = 0.6 + (seed % 80) / 100;
+        else gb = 1 + (seed % 200) / 100;
         sizeString = `${gb.toFixed(2)} GB`;
     }
 
-    // --- LOGICA AIOSTREAMS ---
     if (aioFormatter && aioFormatter.isAIOStreamsEnabled(config)) {
         let fullService = 'p2p';
         if (serviceTag === 'RD') fullService = 'realdebrid';
         if (serviceTag === 'AD') fullService = 'alldebrid';
         if (serviceTag === 'TB') fullService = 'torbox';
         
-        // FIX NOME PROVIDER (INDEXER)
         let displaySource = source;
         if (/corsaro/i.test(source)) displaySource = "ilCorSaRoNeRo";
         else {
-            displaySource = source.replace(/TorrentGalaxy|tgx/i, 'TGx').replace(/1337x/i, '1337');
+             // PULIZIA AGGRESSIVA
+             displaySource = source
+                .replace(/TorrentGalaxy|tgx/i, 'TGx')
+                .replace(/\b1337\b/i, '1337x')
+                .replace(/Fallback/ig, '') // AGGRESSIVE REMOVE
+                .trim();
         }
 
         const uniqueLine = [quality, sizeString, displaySource].filter(Boolean).join(" • ");
@@ -366,11 +326,9 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
             cached: true,
             quality: uniqueLine
         });
-
-        //  MODIFICA CRUCIALE PER AIOSTREAMS: NOME FILE REALE 
         const title = aioFormatter.formatStreamTitle({
-            title: fileTitle,       // ✅ USA IL NOME FILE ORIGINALE
-            infoHash: infoHash,     // Passiamo l'hash nascosto
+            title: fileTitle,       
+            infoHash: infoHash,     
             size: sizeString || "Unknown",
             language: lang,
             source: displaySource,
@@ -381,7 +339,6 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
         return { name, title };
     }
 
-    // --- LOGICA LEVIATHAN STANDARD ---
     const sizeStr = `🧲 ${sizeString}`;
     const seedersStr = seeders != null ? `👤 ${seeders}` : "";
     let langStr = "🌐 ?";
@@ -390,7 +347,16 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     else if (lang) langStr = `🗣️ ${lang.toUpperCase()}`;
     
     let displaySource = source;
-    if (/corsaro/i.test(displaySource)) displaySource = "ilCorSaRoNeRo";
+    if (/corsaro/i.test(displaySource)) {
+        displaySource = "ilCorSaRoNeRo";
+    } else {
+        // 🔥 FIX FALLBACK AGGRESSIVO 🔥
+        displaySource = displaySource
+            .replace(/TorrentGalaxy|tgx/i, 'TGx')
+            .replace(/\b1337\b/i, '1337x')
+            .replace(/Fallback/ig, '') // Cancella "Fallback", "fallback", "FALLBACK" ovunque
+            .trim();
+    }
     
     const sourceLine = `⚡ [${serviceTag}] ${displaySource}`;
     const name = `🦑 LEVIATHAN\n${qIcon} ${quality}`;
@@ -436,10 +402,8 @@ function validateStreamRequest(type, id) {
     logger.error(`Tipo non valido: ${type}`);
     throw new Error(`Tipo non valido: ${type}`);
   }
-  
   const cleanIdToCheck = id.replace('ai-recs:', '');
   const idPattern = /^(tt\d+|\d+|tmdb:\d+|kitsu:\d+)(:\d+)?(:\d+)?$/;
-  
   if (!idPattern.test(cleanIdToCheck) && !idPattern.test(id)) {
     logger.error(`Formato ID non valido: ${id}`);
     throw new Error(`Formato ID non valido: ${id}`);
@@ -487,40 +451,23 @@ async function getMetadata(id, type) {
   }
 }
 
-// --- FUNZIONE SALVAGENTE PER SERIE TV ---
 function simpleSeriesFallback(meta, filename) {
     if (!meta.isSeries || !filename) return false;
-    
-    // 1. Normalizza
     const cleanMeta = meta.title.toLowerCase().replace(/[^a-z0-9]/g, "");
     const cleanFile = filename.toLowerCase().replace(/[^a-z0-9]/g, "");
-    
-    // 2. Il titolo deve esserci (anche parziale)
     if (!cleanFile.includes(cleanMeta)) return false;
-
-    // 3. Regex standard SxxExx (molto robusta)
     const s = meta.season;
     const e = meta.episode;
-    
     const re = new RegExp(`(?:s|season|^|\\b|x)0?${s}(?:[ ._x-]*)(?:e|episode|x)?0?${e}(?!\\d)`, 'i');
-    
     return re.test(filename);
 }
 
-// --- NUOVA FUNZIONE: SALVATAGGIO BACKGROUND ---
+// --- SALVATAGGIO BACKGROUND (Auto-Learning) ---
 function saveResultsToDbBackground(meta, results) {
     if (!results || results.length === 0) return;
-    
-    // Eseguiamo in "Fire & Forget" (non attendiamo la fine)
     (async () => {
         let savedCount = 0;
         for (const item of results) {
-            // Saltiamo se è già marchiato come proveniente dal DB per non intasare
-            // Assumiamo che se source è "DB" o "LeviathanDB" esista già.
-            // Ma dbHelper.insertTorrent gestisce i duplicati, quindi possiamo provare a salvare
-            // per aggiornare seeders o collegamenti mancanti.
-            
-            // Creiamo un oggetto pulito per dbHelper
             const torrentObj = {
                 info_hash: item.hash || item.infoHash,
                 title: item.title,
@@ -528,10 +475,7 @@ function saveResultsToDbBackground(meta, results) {
                 seeders: item.seeders || 0,
                 provider: item.source || 'External'
             };
-
-            // Se l'hash manca, saltiamo
             if (!torrentObj.info_hash) continue;
-
             const success = await dbHelper.insertTorrent(meta, torrentObj);
             if (success) savedCount++;
         }
@@ -541,18 +485,13 @@ function saveResultsToDbBackground(meta, results) {
     })().catch(err => console.error("❌ Errore background save:", err.message));
 }
 
-
-// --- [LEVIATHAN] UPDATED RESOLVE DEBRID LINK ---
 async function resolveDebridLink(config, item, showFake, reqHost, meta = null, dbHelper = null) {
     try {
         const service = config.service || 'rd';
         const apiKey = config.key || config.rd;
         if (!apiKey) return null;
 
-        if (!item.hash || item.hash.length !== 40) {
-            console.warn(`[SKIP RESOLVE] Hash perso o invalido: ${item.title}`);
-            return null;
-        }
+        if (!item.hash || item.hash.length !== 40) return null;
 
         const isSeries = meta && meta.isSeries;
         const isPackCandidate = item.fileIdx === undefined || item.fileIdx === null;
@@ -563,7 +502,6 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
                     rd_key: service === 'rd' ? apiKey : null,
                     torbox_key: service === 'tb' ? apiKey : null 
                 };
-                
                 const resolved = await withTimeout(
                     PackResolver.resolveSeriesPackFile(
                         item.hash, 
@@ -576,7 +514,6 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
                     CONFIG.TIMEOUTS.PACK_RESOLVER,
                     'Pack Resolution'
                 );
-
                 if (resolved) {
                     item.fileIdx = resolved.fileIndex;
                     item.title = resolved.fileName;
@@ -588,28 +525,18 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
              }
         }
 
-        // 2. TorBox Handling
         if (service === 'tb') {
             if (item._tbCached) {
                 const serviceTag = "TB";
                 const { name, title } = formatStreamTitleCinePro(item.title, item.source, item._size, item.seeders, serviceTag, config, item.hash);
-                
                 const proxyUrl = `${reqHost}/${config.rawConf}/play_tb/${item.hash}?s=${item.season || 0}&e=${item.episode || 0}&f=${item.fileIdx !== undefined ? item.fileIdx : ''}`;
-                
                 return { 
-                    name, 
-                    title, 
-                    url: proxyUrl, 
-                    infoHash: item.hash, 
-                    behaviorHints: { 
-                        notWebReady: false, 
-                        bingieGroup: `corsaro-tb-${item.hash}` 
-                    } 
+                    name, title, url: proxyUrl, infoHash: item.hash, 
+                    behaviorHints: { notWebReady: false, bingieGroup: `corsaro-tb-${item.hash}` } 
                 };
             } else { return null; }
         }
 
-        // 3. Real Debrid / All Debrid Generation
         let streamData = null;
         const cleanMagnet = `magnet:?xt=urn:btih:${item.hash}&dn=${encodeURIComponent(item.title)}`;
         const safeFileIdx = item.fileIdx !== undefined && item.fileIdx !== null ? item.fileIdx : 0;
@@ -620,29 +547,18 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
         if (!streamData || (streamData.type === "ready" && streamData.size < CONFIG.REAL_SIZE_FILTER)) return null;
 
         const serviceTag = service.toUpperCase();
-
         const effectiveTitle = streamData.filename && streamData.filename.length > 3 ? streamData.filename : item.title;
-
         const { name, title } = formatStreamTitleCinePro(effectiveTitle, item.source, streamData.size || item.size, item.seeders, serviceTag, config, item.hash);
         
         return { 
-            name, 
-            title, 
-            url: streamData.url, 
-            infoHash: item.hash, 
-            behaviorHints: { 
-                notWebReady: false, 
-                bingieGroup: `corsaro-${service}-${item.hash}` 
-            } 
+            name, title, url: streamData.url, infoHash: item.hash, 
+            behaviorHints: { notWebReady: false, bingieGroup: `corsaro-${service}-${item.hash}` } 
         };
     } catch (e) {
         logger.error(`Errore resolveDebridLink: ${e.message}`);
         if (showFake) {
             return { 
-                name: `[P2P ⚠️]`, 
-                title: `${item.title}\n⚠️ Cache Assente`, 
-                url: item.magnet, 
-                infoHash: item.hash,
+                name: `[P2P ⚠️]`, title: `${item.title}\n⚠️ Cache Assente`, url: item.magnet, infoHash: item.hash,
                 behaviorHints: { notWebReady: true } 
             };
         }
@@ -685,7 +601,6 @@ async function queryRemoteIndexer(tmdbId, type, season = null, episode = null) {
     }
 }
 
-// --- FUNZIONE DI SUPPORTO: External Addons ---
 async function fetchExternalResults(type, finalId) {
     logger.info(`🌐 [EXTERNAL] Start Parallel Fetch...`);
     try {
@@ -706,7 +621,6 @@ async function fetchExternalResults(type, finalId) {
             CONFIG.TIMEOUTS.EXTERNAL,
             'External Addons'
         );
-        
         if (externalResults && externalResults.length > 0) {
             logger.info(`✅ [EXTERNAL] Trovati ${externalResults.length} risultati`);
             return externalResults;
@@ -720,7 +634,7 @@ async function fetchExternalResults(type, finalId) {
     }
 }
 
-// --- GENERATE STREAM CON LOGICA PARALLELA + FALLBACK SCRAPER ---
+// --- GENERATE STREAM CON LOGICA REMOTA + AUTO-LEARN ---
 async function generateStream(type, id, config, userConfStr, reqHost) {
   if (!config.key && !config.rd) return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key nel configuratore" }] };
   
@@ -728,9 +642,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   const cacheKey = `${type}:${id}:${configHash}`;
   
   const cachedResult = await Cache.getCachedStream(cacheKey);
-  if (cachedResult) {
-      return cachedResult;
-  }
+  if (cachedResult) return cachedResult;
 
   const userTmdbKey = config.tmdb;
   let finalId = id.replace('ai-recs:', '');
@@ -759,12 +671,11 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   const meta = await getMetadata(finalId, type);
   if (!meta) return { streams: [] };
 
-  logger.info(`🚀 [SPEED] Start TOTAL PARALLEL search: ${meta.title}`);
+  logger.info(`🚀 [SPEED] Start REMOTE search: ${meta.title}`);
   const tmdbIdLookup = meta.tmdb_id || (await imdbToTmdb(meta.imdb_id, userTmdbKey))?.tmdbId;
 
-  // --- DEFINIZIONE PROMISE PARALLELE ---
+  // --- SOLO REMOTO + ESTERNI (DB LOCALE RIMOSSO DALLA LETTURA) ---
   
-  // 1. Indexer Remoto
   const remotePromise = withTimeout(
       queryRemoteIndexer(tmdbIdLookup, type, meta.season, meta.episode),
       CONFIG.TIMEOUTS.REMOTE_INDEXER,
@@ -774,41 +685,23 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       return [];
   });
 
-  // 2. DB Locale
-  const dbPromise = withTimeout(
-      type === 'movie' 
-          ? dbHelper.searchMovie(meta.imdb_id)
-          : dbHelper.searchSeries(meta.imdb_id, meta.season, meta.episode),
-      CONFIG.TIMEOUTS.DB_QUERY,
-      'DB Locale'
-  ).catch(err => {
-      logger.warn('DB locale fallito/timeout', { error: err.message });
-      return [];
-  });
-
-  // 3. External Addons (IN PARALLELO)
   const externalPromise = fetchExternalResults(type, finalId);
 
-  // --- ESECUZIONE PARALLELA ---
-  const [remoteResults, dbResultsRaw, externalResults] = await Promise.all([
+  // ESECUZIONE PARALLELA (Senza DB locale)
+  const [remoteResults, externalResults] = await Promise.all([
       remotePromise, 
-      dbPromise, 
       externalPromise
   ]);
 
-  let dbResults = dbResultsRaw || [];
-  
   if (remoteResults.length > 0) logger.info(`✅ [REMOTE] ${remoteResults.length} items`);
-  if (dbResults.length > 0) logger.info(`✅ [LOCAL DB] ${dbResults.length} items`);
-
-  // Unione risultati iniziali
-  if (dbResults.length > 6) dbResults = dbResults.slice(0, 10);
-  let currentResults = [...remoteResults, ...dbResults, ...externalResults];
+  
+  // Combina solo Remoto + Esterno
+  let currentResults = [...remoteResults, ...externalResults];
 
   // --- LOGICA SCRAPER (Fallback SOLO se < 3 risultati) ---
   let scrapedResults = [];
   if (currentResults.length < 3) {
-      logger.info(`⚠️ Low TOTAL results (${currentResults.length} < 3), triggering SCRAPING (Engines)...`);
+      logger.info(`⚠️ Low TOTAL results (${currentResults.length} < 3), triggering SCRAPING...`);
       let dynamicTitles = [];
       try {
           if (tmdbIdLookup) dynamicTitles = await getTmdbAltTitles(tmdbIdLookup, type, userTmdbKey);
@@ -837,67 +730,83 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
           });
       });
       scrapedResults = (await Promise.all(promises)).flat();
-  } else {
-      logger.info(`⚡ SKIP SCRAPER: Have ${currentResults.length} valid results (>= 3).`);
   }
 
   const allowEng = config.filters?.allowEng === true;
-  
   let resultsRaw = [...currentResults, ...scrapedResults];
 
+// 🔥🔥🔥 FILTRI AGGIORNATI (Anno Strict + Logic Anti-Prefix) 🔥🔥🔥
 resultsRaw = resultsRaw.filter(item => {
     if (!item?.magnet) return false;
-
-    // Definisco source e title per il filtro successivo
     const source = (item.source || "").toLowerCase();
     const title = item.title;
+    
+    // Pulizia base
+    const cleanFile = title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
+    const cleanMeta = meta.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
 
-    // 1. 🔥 FILTRO ANTI-1337X / YTS (REGOLA SUPREMA) 🔥
-    // Se la fonte è 1337x, TorrentGalaxy (TGx) o YTS e NON c'è scritto ITA o IT, scarta SUBITO.
+    // Regex per rimuovere articoli iniziali (The, A, Il, Le...)
+    const regexPrefix = /^(?:the|a|an|il|lo|la|i|gli|le|un|uno|una|el|los|las|les)\s+/i;
+    const normFile = cleanFile.replace(regexPrefix, "").trim();
+    const normMeta = cleanMeta.replace(regexPrefix, "").trim();
+
+    // 1. FILTRO ANTI-1337X / YTS (Solo se ITA)
     if (source.includes("1337") || source.includes("tgx") || source.includes("torrentgalaxy") || source.includes("yts")) {
-        // Cerca la parola esatta ITA, ITALIAN o IT
         const hasStrictIta = /\b(ita|italian|it)\b/i.test(title);
-        
-        // Se è una di queste fonti ma NON ha il tag italiano, VIA.
         if (!hasStrictIta) return false; 
     }
 
-    // 1. FILTRO LINGUA SUPREMO (ORIGINALE)
+    // 2. FILTRO LINGUA
     const isItalian = isSafeForItalian(item) || /corsaro/i.test(item.source);
     if (!allowEng && !isItalian) return false;
 
-    // 2. BYPASS PER EXTERNAL CON CONTROLLO INTELLIGENTE
+    // 3. 🔥 FILTRO ANNO E TITOLO (SOLO PER FILM) 🔥
+    if (!meta.isSeries) {
+        const metaYear = parseInt(meta.year);
+        
+        // A. CONTROLLO ANNO (Se presente nel file)
+        if (!isNaN(metaYear)) {
+             const fileYearMatch = item.title.match(REGEX_YEAR);
+             if (fileYearMatch) {
+                 const fileYear = parseInt(fileYearMatch[0]);
+                 if (Math.abs(fileYear - metaYear) > 1) return false; 
+             }
+        }
+
+        // B. LOGICA "ANTI-PREFIX" (Il cuore della soluzione Frankenstein)
+        // Se il file contiene ESATTAMENTE tutto il titolo meta (es: "Young Frankenstein" contiene "Frankenstein"),
+        // allora controlliamo se inizia con quello. Se c'è una parola prima ("Young"), lo scartiamo.
+        // Questa logica NON scatta per Harry Potter perché "Harry Potter e i doni" NON contiene "Harry Potter and the deathly".
+        if (normFile.includes(normMeta)) {
+             if (!normFile.startsWith(normMeta)) {
+                 return false; // Blocca "Young Frankenstein", "The Bride of Frankenstein", ecc.
+             }
+        }
+    }
+
+    // 4. LOGICA ESTERNA 
     if (item.isExternal) {
-        if (!meta.isSeries) return true;
+        if (!meta.isSeries) {
+            if (simpleSeriesFallback(meta, item.title)) return true;
+            if (smartMatch(meta.title, item.title, meta.isSeries)) return true;
+            return false;
+        }
         if (simpleSeriesFallback(meta, item.title)) return true;
         if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
         if (PackResolver.isSeasonPack(item.title)) return true;
         return false;
     }
 
-    // --- [LEVIATHAN FIX] FILTRO ANNO SOLO PER FILM ---
-    if (!meta.isSeries) {
-        const fileYearMatch = item.title.match(REGEX_YEAR);
-        if (fileYearMatch && Math.abs(parseInt(fileYearMatch[0]) - parseInt(meta.year)) > 1) return false;
-    }
-
-    // --- [LEVIATHAN FIX] LOGICA IBRIDA ---
+    // 5. MATCHING STANDARD
     if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
-    if (meta.isSeries && simpleSeriesFallback(meta, item.title)) {
-        return true;
-    }
+    if (meta.isSeries && simpleSeriesFallback(meta, item.title)) return true;
 
     return false;
 });
-
-  //  FIXED: Deduplica con supporto Base32 e propagazione Hash
   let cleanResults = deduplicateResults(resultsRaw);
   
-  // 🔥🔥🔥 [NEW] AUTO-LEARNING: SALVATAGGIO ASINCRONO NEL DB 🔥🔥🔥
-  // Salva in background tutto quello che è stato trovato (Scraper, Torrentio, Remote)
-  // Non rallenta la risposta all'utente
+  // 🔥 AUTO-LEARNING ATTIVO 🔥
   saveResultsToDbBackground(meta, cleanResults);
-  // 🔥🔥🔥 FINE NUOVA SEZIONE 🔥🔥🔥
 
   const ranked = rankAndFilterResults(cleanResults, meta, config).slice(0, CONFIG.MAX_RESULTS);
 
@@ -914,25 +823,19 @@ resultsRaw = resultsRaw.filter(item => {
           item.season = meta.season;
           item.episode = meta.episode;
           config.rawConf = userConfStr;
-          
           return LIMITERS.rd.schedule(() => resolveDebridLink(config, item, config.filters?.showFake, reqHost, meta, dbHelper));
       });
       debridStreams = (await Promise.all(rdPromises)).filter(Boolean);
   }
 
-const vixPromise = searchVix(meta, config);
+  const vixPromise = searchVix(meta, config);
   const rawVix = await vixPromise;
-  // const formattedVix = rawVix.map(v => formatVixStream(meta, v)); // RIMUOVI O COMMENTA QUESTA RIGA
   const formattedVix = rawVix;
   
-  // --- LOGICA DI ORDINAMENTO (VIX PRIORITY) ---
   let finalStreams = [];
-  // Controlla se l'utente ha attivato "vixLast" nei filtri (dal nuovo switch)
   if (config.filters && config.filters.vixLast === true) {
-      // Se ATTIVO: Torrent (Debrid) PRIMA, Vix DOPO
       finalStreams = [...debridStreams, ...formattedVix];
   } else {
-      // Se DISATTIVO (Default): Vix PRIMA, Torrent (Debrid) DOPO
       finalStreams = [...formattedVix, ...debridStreams];
   }
   
@@ -946,59 +849,44 @@ const vixPromise = searchVix(meta, config);
   return resultObj;
 }
 
-// --- ROTTE DI CORTESIA (FIX 404) ---
 app.get("/api/stats", (req, res) => res.json({ status: "ok" }));
 app.get("/favicon.ico", (req, res) => res.status(204).end());
 
-//  FIX ROUTE TORBOX: Supporto parametro 'f' (File Index) 
 app.get("/:conf/play_tb/:hash", async (req, res) => {
     const { conf, hash } = req.params;
-    const { s, e, f } = req.query; // Recupero anche 'f'
+    const { s, e, f } = req.query; 
     logger.info(`▶️ [TorBox Play] Hash: ${hash} S${s}E${e} F${f}`);
     try {
         const config = getConfig(conf);
         if (!config.key && !config.rd) throw new Error("API Key Mancante");
         const magnet = `magnet:?xt=urn:btih:${hash}`;
         const apiKey = config.key || config.rd;
-        
-        // Passiamo 'f' a TB.getStreamLink (Assicurati che torbox.js lo supporti o lo ignori senza crashare)
         const streamData = await TB.getStreamLink(apiKey, magnet, s, e, hash, f);
-        
-        if (streamData && streamData.url) {
-             res.redirect(streamData.url);
-        } else {
-             res.status(404).send("Errore TorBox: Limite raggiunto o File non trovato.");
-        }
+        if (streamData && streamData.url) res.redirect(streamData.url);
+        else res.status(404).send("Errore TorBox: Limite raggiunto o File non trovato.");
     } catch (err) {
         logger.error(`Error Torbox Play: ${err.message}`);
         res.status(500).send("Errore Server: " + err.message);
     }
 });
 
-// --- ADMIN API ---
 const authMiddleware = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const validPass = process.env.ADMIN_PASS || "GodTierAccess2024";
     if (authHeader === validPass) next();
-    else {
-      logger.warn(`Tentativo accesso admin fallito da IP: ${req.ip}`);
-      res.status(403).json({ error: "Password errata" });
-    }
+    else res.status(403).json({ error: "Password errata" });
 };
 app.get("/admin/keys", authMiddleware, async (req, res) => { res.json(await Cache.listKeys()); });
 app.delete("/admin/key", authMiddleware, async (req, res) => {
   const { key } = req.query;
-  if (key) {
-    await Cache.deleteKey(key);
-    res.json({ success: true });
-  } else res.json({ error: "Key mancante" });
+  if (key) { await Cache.deleteKey(key); res.json({ success: true }); } 
+  else res.json({ error: "Key mancante" });
 });
 app.post("/admin/flush", authMiddleware, async (req, res) => {
   await Cache.flushAll();
   res.json({ success: true });
 });
 
-// --- HEALTHCHECK ---
 app.get("/health", async (req, res) => {
   const checks = { status: "ok", timestamp: new Date().toISOString(), services: {} };
   try {
@@ -1019,7 +907,6 @@ app.get("/health", async (req, res) => {
   res.status(checks.status === "ok" ? 200 : 503).json(checks);
 });
 
-// --- MAIN ROUTES ---
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/:conf/configure", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/configure", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
@@ -1060,15 +947,10 @@ const PUBLIC_PORT = process.env.PUBLIC_PORT || PORT;
 app.listen(PORT, () => {
     console.log(`🚀 Leviathan (God Tier) attivo su porta interna ${PORT}`);
     console.log(`-----------------------------------------------------`);
-    console.log(`⚡ MODALITÀ CACHE: Node-Cache (Safe & Fast). TTL 30min.`);
-    console.log(`⚡ SPEED LOGIC: TOTALE PARALLELO (DB + Remote + External).`);
-    console.log(`🧠 SMART FILTER: Ibrido (Paranoid + Salvagente Serie TV).`);
-    console.log(`💾 AUTO-LEARNING: ATTIVO (Salva automaticamente da Torrentio/Scraper nel DB).`);
-    console.log(`🦑 PACK RESOLVER: Attivo (FILM SAFE MODE ON).`);
-    console.log(`🌍 Addon accessibile su: http://${PUBLIC_IP}:${PUBLIC_PORT}/manifest.json`);
-    console.log(`📡 Connesso a Indexer DB: ${CONFIG.INDEXER_URL}`);
-    console.log(`🔗 EXTERNAL ADDONS: Integrati (Parallel). SCRAPER (Fallback < 3)`);
-    console.log(`✅ AIOStreams Mode: COMPLETATO (Fix: Filename Override & Provider Display).`);
-    console.log(`📊 Stealth Size Estimator: ATTIVO (Realistico e Variabile).`);
+    console.log(`⚡ MODE: REMOTE READER + LOCAL WRITER`);
+    console.log(`📡 LETTURA: Indexer Remoto (${CONFIG.INDEXER_URL})`);
+    console.log(`💾 SCRITTURA: DB Locale (Auto-Learning attivo)`);
+    console.log(`✅ FIX AGGRESSIVO: "Fallback" cancellato ovunque`);
+    console.log(`🛡️ FIX ANNO: Frankenstein 1974 bloccato per 2025`);
     console.log(`-----------------------------------------------------`);
 });
