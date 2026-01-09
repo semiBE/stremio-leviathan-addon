@@ -271,11 +271,14 @@ function extractStreamInfo(title, source) {
   if (/dolby|vision|\bdv\b/.test(t)) videoTags.push("DV");
   if (/imax/.test(t)) videoTags.push("IMAX");
   if (/x265|h265|hevc/.test(t)) videoTags.push("HEVC");
+  
+  // MODIFICA PER KNABEN: Aggiunto "knaben" al regex
   let lang = "🇬🇧 ENG";
-  if (/corsaro/i.test(source) || isSafeForItalian({ title })) {
+  if (/corsaro|knaben/i.test(source) || isSafeForItalian({ title })) {
       lang = "🇮🇹 ITA";
       if (/multi|mui/i.test(t)) lang = "🇮🇹 MULTI";
   }
+  
   const audioInfo = extractAudioInfo(title);
   let detailsParts = [];
   if (videoTags.length) detailsParts.push(`🖥️ ${videoTags.join(" ")}`);
@@ -346,9 +349,13 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
 
     const sizeStr = `🧲 ${sizeString}`;
     const seedersStr = seeders != null ? `👤 ${seeders}` : "";
+
+    // MODIFICA BANDIERINE (MULTI, ITA, ENG)
     let langStr = "🌐 ?";
-    if (/ita|it\b|italiano/i.test(lang || "")) langStr = "🗣️ ITA";
-    else if (/multi/i.test(lang || "")) langStr = "🗣️ MULTI";
+    // Controllo Multi per primo (contiene spesso anche ITA)
+    if (/multi/i.test(lang || "")) langStr = "🌐 MULTI"; 
+    else if (/ita|it\b|italiano/i.test(lang || "")) langStr = "🇮🇹 ITA";
+    else if (/eng|en\b|english/i.test(lang || "")) langStr = "🇬🇧 ENG";
     else if (lang) langStr = `🗣️ ${lang.toUpperCase()}`;
     
 let displaySource = source || "P2P";
