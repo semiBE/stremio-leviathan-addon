@@ -64,7 +64,7 @@ dbHelper.initDatabase();
 
 // --- CONFIGURAZIONE CENTRALE ---
 const CONFIG = {
-  // 🔥 PUNTO CRITICO: Legge l'URL dal file .env come richiesto
+  //  Legge l'URL dal file .env come richiesto
   INDEXER_URL: process.env.INDEXER_URL || "", 
   CINEMETA_URL: "https://v3-cinemeta.strem.io",
   REAL_SIZE_FILTER: 80 * 1024 * 1024,
@@ -74,9 +74,7 @@ const CONFIG = {
     SCRAPER: 6000,
     REMOTE_INDEXER: 3500, 
     DB_QUERY: 3000,
-    // MODIFICA LEVIATHAN: Timeout aumentato drasticamente per gestire Add+Check
     DEBRID: 10000, 
-    // MODIFICA LEVIATHAN: Aumentato per sicurezza
     PACK_RESOLVER: 7000,
     EXTERNAL: 4500
   }
@@ -143,7 +141,6 @@ function extractInfoHash(magnet) {
 
 const LIMITERS = {
   scraper: new Bottleneck({ maxConcurrent: 40, minTime: 10 }),
-  // MODIFICA LEVIATHAN: Ridotto maxConcurrent a 8 per evitare errori 429 con RD
   rd: new Bottleneck({ maxConcurrent: 15, minTime: 200 }),
 };
 
@@ -209,7 +206,7 @@ function deduplicateResults(results) {
   return Array.from(hashMap.values());
 }
 
-// --- NUOVA FUNZIONE: FILTRO PER QUALITÀ ---
+// --- FILTRO PER QUALITÀ ---
 function filterByQualityLimit(results, limit) {
     if (!limit || limit === 0 || limit === "0") return results;
     
@@ -474,7 +471,7 @@ async function withTimeout(promise, ms, operation = 'Operation') {
   }
 }
 
-// --- HELPER TMDB METADATA (NOVITÀ) ---
+// --- HELPER TMDB METADATA ---
 async function fetchTmdbMeta(tmdbId, type, userApiKey) {
     if (!tmdbId) return null;
     const apiKey = (userApiKey && userApiKey.length > 1) ? userApiKey : "4b9dfb8b1c9f1720b5cd1d7efea1d845";
@@ -659,7 +656,7 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
 
         if (!streamData || (streamData.type === "ready" && streamData.size < CONFIG.REAL_SIZE_FILTER)) return null;
 
-        // 🔥🔥🔥 MODIFICA PER SUPPORTARE IL TUO INDEX.HTML (GHOST PROXY) 🔥🔥🔥
+        
         let finalUrl = streamData.url;
 
         // Verifica la struttura esatta generata dal tuo index.html
@@ -680,7 +677,7 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
                 logger.error(`❌ Errore MediaFlow: ${err.message}`);
             }
         }
-        // 🔥🔥🔥 FINE MODIFICA 🔥🔥🔥
+       
 
         const serviceTag = service.toUpperCase();
         const effectiveTitle = streamData.filename && streamData.filename.length > 3 ? streamData.filename : item.title;
@@ -824,14 +821,14 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   });
 
   // --- LOGICA "SOLO DATABASE" ---
-  const dbOnlyMode = config.filters?.dbOnly === true; // Flag dal frontend
+  const dbOnlyMode = config.filters?.dbOnly === true; 
   
   let externalPromise = Promise.resolve([]);
   let scraperPromise = Promise.resolve([]);
 
   if (dbOnlyMode) {
       logger.info(`⚡ [MODE] SOLO DATABASE ATTIVO - Interrogo SOLO: ${CONFIG.INDEXER_URL}`);
-      // External e Scraper rimangono Promise vuote
+      
   } else {
       // --- 2. EXTERNAL ADDONS ---
       externalPromise = fetchExternalResults(type, finalId);
@@ -955,7 +952,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   // 1. Esegui il ranking normale (ordina per seeders, lingua, ecc.)
   let rankedList = rankAndFilterResults(cleanResults, meta, config);
 
-  // 2. NUOVO: Applica il limite per qualità se configurato dall'utente
+  // 2.  Applica il limite per qualità se configurato dall'utente
   if (config.filters && config.filters.maxPerQuality) {
       rankedList = filterByQualityLimit(rankedList, config.filters.maxPerQuality);
   }
