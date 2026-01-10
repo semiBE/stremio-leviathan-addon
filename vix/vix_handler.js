@@ -2,7 +2,6 @@ const { requestHtml } = require("../engines");
 const { imdbToTmdb } = require("../id_converter");
 
 const VIX_BASE = "https://vixsrc.to"; 
-// NOTA: Assicurati che questo sia l'URL pubblico corretto del tuo addon
 const ADDON_BASE = "https://leviathanaddon.dpdns.org"; 
 
 const HEADERS_BASE = {
@@ -60,11 +59,12 @@ function generateRichDescription(meta) {
     lines.push(`🇮🇹 ITA • 🔊 AAC`);
     lines.push(`🎞️ HLS • Bitrate Variabile`);
     lines.push(`☁️ Web Stream • ⚡ Instant`);
-    lines.push(`🌪️ StreamingCommunity`); // Emoji richiesta
+    lines.push(`🌪️ StreamingCommunity`); 
     return lines.join("\n");
 }
 
 async function searchVix(meta, config) {
+    // Controllo se Vix o SC sono abilitati
     if (!config.filters || (!config.filters.enableVix && !config.filters.enableSC)) return [];
 
     try {
@@ -101,32 +101,39 @@ async function searchVix(meta, config) {
             const masterSourceBase = `${cleanBase}${separator}${queryParams}`;
 
             // PREPARAZIONE SORGENTE UNIVERSALE
-            // Usiamo la sorgente h=1 (FHD) per entrambi gli stream perché è su CDN permissivo
             let universalSource = masterSourceBase;
             if (!universalSource.includes('h=1')) universalSource += "&h=1";
             universalSource = universalSource.replace(/[?&]b=1/, '');
 
+            // --- NUOVA LOGICA DI FILTRO 3-VIE ---
+            // Recupera la preferenza dall'index.html (all, 1080, 720)
+            // Se non esiste, default a 'all'
+            const qualityMode = config.filters.scQuality || 'all'; 
+
+            const allow720 = qualityMode === 'all' || qualityMode === '720';
+            const allow1080 = qualityMode === 'all' || qualityMode === '1080';
+
             // =================================================================
             // STREAM 1: 720p (Backup / Auto)
             // =================================================================
-            // max=0 -> Il Proxy ricostruisce il manifest selezionando la variante 720p
-            const synthetic720 = `${ADDON_BASE}/vixsynthetic.m3u8?src=${encodeURIComponent(universalSource)}&lang=it&max=0&multi=1`;
+            if (allow720) {
+                const synthetic720 = `${ADDON_BASE}/vixsynthetic.m3u8?src=${encodeURIComponent(universalSource)}&lang=it&max=0&multi=1`;
 
-            streams.push({
-                name: `🌪️ StreamingCommunity\n📺 720p`, 
-                title: richTitle,
-                url: synthetic720,
-                behaviorHints: { 
-                    notWebReady: false, 
-                    bingieGroup: "vix-synthetic-720" 
-                }
-            });
+                streams.push({
+                    name: `🌪️ StreamingCommunity\n📺 720p`, 
+                    title: richTitle,
+                    url: synthetic720,
+                    behaviorHints: { 
+                        notWebReady: false, 
+                        bingieGroup: "vix-synthetic-720" 
+                    }
+                });
+            }
 
             // =================================================================
             // STREAM 2: 1080p (Force FHD)
             // =================================================================
-            if (data.canPlayFHD) { 
-                // max=1 -> Il Proxy ricostruisce il manifest selezionando SOLO la variante 1080p
+            if (data.canPlayFHD && allow1080) { 
                 const synthetic1080 = `${ADDON_BASE}/vixsynthetic.m3u8?src=${encodeURIComponent(universalSource)}&lang=it&max=1&multi=1`;
                 
                 streams.push({
@@ -140,6 +147,8 @@ async function searchVix(meta, config) {
                 });
             }
 
+            // Invertiamo l'ordine solo se entrambi sono presenti e vogliamo il 1080p in alto
+            // Se ne è rimasto solo uno a causa del filtro, l'ordine non importa
             return streams.reverse();
         }
         return [];

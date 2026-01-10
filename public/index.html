@@ -358,6 +358,63 @@
             padding-left: 15px;
         }
 
+        /* --- SC QUALITY SELECTOR STYLES --- */
+        .sc-quality-container {
+            display: none; /* Hidden by default */
+            padding: 10px 15px 20px 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 0 0 15px 15px;
+            margin-top: -10px;
+            margin-bottom: 15px;
+            border-left: 2px solid var(--secondary);
+            border-right: 2px solid var(--secondary);
+            border-bottom: 2px solid rgba(112,0,255,0.3);
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+
+        .quality-label {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+        
+        .quality-grid {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .q-btn {
+            flex: 1;
+            padding: 12px 5px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-dim);
+            text-align: center;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: 0.3s ease;
+            text-transform: uppercase;
+        }
+        
+        .q-btn:hover { background: rgba(255,255,255,0.1); }
+        
+        .q-btn.active {
+            background: rgba(112, 0, 255, 0.2);
+            border-color: var(--secondary);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(112, 0, 255, 0.3);
+            text-shadow: 0 0 5px var(--secondary);
+        }
+
         /* --- LEVIATHAN CORE / DB SECTION --- */
         .db-section-wrapper {
             margin: 40px 0 20px;
@@ -841,6 +898,15 @@
                     </label>
                 </div>
 
+                <div class="sc-quality-container" id="scQualityContainer">
+                    <div class="quality-label">Seleziona Qualità Flusso</div>
+                    <div class="quality-grid">
+                        <div class="q-btn active" id="btnQ_all" onclick="setSCQuality('all')">Hybrid (Tutto)</div>
+                        <div class="q-btn" id="btnQ_1080" onclick="setSCQuality('1080')">Solo 1080p</div>
+                        <div class="q-btn" id="btnQ_720" onclick="setSCQuality('720')">Solo 720p</div>
+                    </div>
+                </div>
+
                 <div class="control-row sub-row" id="scPriorityRow">
                     <div class="control-info sub-indicator">
                         <div class="control-title">
@@ -890,7 +956,9 @@
                                 <span class="db-title">DATABASE OVERDRIVE</span>
                             </div>
                             <p class="db-desc">
-                                Bypassa gli scraper esterni. Interrogazione diretta al Core.
+                                <strong>ATTENZIONE:</strong> Disabilita la ricerca esterna e gli scraper. 
+                                Viene interrogato <u>ESCLUSIVAMENTE</u> il Database interno di Leviathan. 
+                                Velocità massima, ma risultati limitati all'indice centrale.
                                 <span class="db-status" id="dbStatusText">STANDBY</span>
                             </p>
                         </div>
@@ -1039,7 +1107,8 @@
         }
 
         let currentService = 'rd';
-        
+        let currentSCQuality = 'all'; // Default: Hybrid/All
+
         function toggleMediaFlowGroup() {
             const ghost = document.getElementById('proxyDebrid').checked;
             const unit = document.getElementById('advUnit');
@@ -1050,7 +1119,19 @@
         function toggleSCOptions() {
             const scActive = document.getElementById('enableVix').checked;
             const priorityRow = document.getElementById('scPriorityRow');
-            priorityRow.style.display = scActive ? 'flex' : 'none';
+            const qualityContainer = document.getElementById('scQualityContainer');
+            
+            // Show/Hide quality container and priority row
+            if(priorityRow) priorityRow.style.display = scActive ? 'flex' : 'none';
+            if(qualityContainer) qualityContainer.style.display = scActive ? 'block' : 'none';
+        }
+
+        // --- NEW FUNCTION: Manage SC Quality Buttons ---
+        function setSCQuality(val) {
+            currentSCQuality = val;
+            // Update UI classes
+            document.querySelectorAll('.q-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('btnQ_' + val).classList.add('active');
         }
 
         function toggleDbCard() {
@@ -1067,7 +1148,6 @@
             }
         }
 
-        // --- NEW GATE FUNCTIONS ---
         function toggleGate() {
             const active = document.getElementById('gateActive').checked;
             const card = document.getElementById('gateCard');
@@ -1115,11 +1195,19 @@
                         document.getElementById('vixLast').checked = config.filters.vixLast || false;
                         document.getElementById('dbOnly').checked = config.filters.dbOnly || false;
                         
+                        // Load SC Quality
+                        if(config.filters.scQuality) {
+                            setSCQuality(config.filters.scQuality);
+                        } else {
+                            // Backwards compatibility or default
+                            setSCQuality('all');
+                        }
+                        
                         // Load Gate State
                         if (config.filters.maxPerQuality && config.filters.maxPerQuality > 0) {
                             document.getElementById('gateActive').checked = true;
                             document.getElementById('gateSlider').value = config.filters.maxPerQuality;
-                            toggleGate(); // Update visuals
+                            toggleGate(); 
                         }
                         
                         toggleDbCard();
@@ -1160,11 +1248,16 @@
         }
 
         function getConfigObject() {
-            // Logic for Gate
             const gateActive = document.getElementById('gateActive').checked;
             const gateVal = parseInt(document.getElementById('gateSlider').value);
             const finalMaxQuality = gateActive ? gateVal : 0;
 
+            // Map quality to legacy flags if needed by backend, or just send new prop
+            // Assuming backend will read scQuality string OR scForce1080 flags.
+            // For now, let's keep it simple and send scQuality string.
+            // If you need legacy flags:
+            // const is1080Only = currentSCQuality === '1080';
+            
             return {
                 service: currentService,
                 key: document.getElementById('apiKey').value.trim(),
@@ -1181,8 +1274,9 @@
                     noCam: document.getElementById('noCam').checked,
                     enableVix: document.getElementById('enableVix').checked,
                     vixLast: document.getElementById('vixLast').checked,
+                    scQuality: currentSCQuality, // 'all', '1080', '720'
                     dbOnly: document.getElementById('dbOnly').checked,
-                    maxPerQuality: finalMaxQuality // New config
+                    maxPerQuality: finalMaxQuality
                 }
             };
         }
@@ -1203,12 +1297,16 @@
             const list = document.getElementById('modalSummary');
             
             let scText = c.filters.enableVix ? 'ATTIVO' : 'NO';
-            if (c.filters.enableVix && c.filters.vixLast) scText += ' (Priorità Bassa)';
-            else if (c.filters.enableVix) scText += ' (Priorità Alta)';
+            if (c.filters.enableVix) {
+                if (c.filters.scQuality === '1080') scText += ' (Solo 1080p)';
+                else if (c.filters.scQuality === '720') scText += ' (Solo 720p)';
+                else scText += ' (Hybrid/All)';
+                
+                if (c.filters.vixLast) scText += ' + Priorità Bassa';
+            }
 
             let gateText = c.filters.maxPerQuality > 0 ? `MAX ${c.filters.maxPerQuality} x Q` : 'ILLIMITATO';
 
-            // Updated Summary with new DB visual text
             list.innerHTML = `
                 <li>Servizio Debrid <span>${c.service.toUpperCase()}</span></li>
                 <li>Database Core <span>${c.filters.dbOnly ? 'OVERDRIVE ⚡' : 'STANDARD'}</span></li>
