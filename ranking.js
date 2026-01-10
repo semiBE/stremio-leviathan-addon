@@ -1,39 +1,37 @@
 /**
  * ranking.js
- * Corsaro Brain — Ranking Ultra-Intelligente (Optimized for Quality First)
+ * Corsaro Brain — Ranking Ultra-Intelligente (Fix Knaben & 4K Logic)
  */
 
 const DEFAULT_CONFIG = {
   weights: {
     // 🔥 PRIORITÀ ASSOLUTA ALLA LINGUA
-    // I valori sono altissimi per garantire che l'ITA vinca sempre
     languageITA: 50000,      
     languageMULTI: 25000,
     
     // 🔥 TIER QUALITÀ (GERARCHIA RIGIDA)
-    // Lo scarto di 5000 punti tra una risoluzione e l'altra è incolmabile dai seeders
     quality4K: 15000,
     quality1080p: 10000,
     quality720p: 5000,
     
     // Bonus Qualità Aggiuntivi
-    hevcBonus: 1500,          // Premia x265/HEVC (miglior rapporto qualità/peso)
-    hdrBonus: 1000,           // Premia HDR/Dolby Vision
+    hevcBonus: 1500,          
+    hdrBonus: 1000,           
     
     // Episodi e Pack
-    exactEpisodeBoost: 20000, // Fondamentale per trovare l'episodio giusto
-    seasonPackBonus: 10000,   // Bonus per i pack di stagione
+    exactEpisodeBoost: 20000, 
+    seasonPackBonus: 10000,   
     
     // Penalità
-    camPenalty: -100000,      // CAM/TS vengono affossati
+    camPenalty: -100000,      
     sizeMismatchPenalty: -5000,
     
-    // 🔥 SEEDERS DEPOTENZIATI (SOLO SPAREGGIO)
-    sourceCorsaroBonus: 2000,
-    seedersFactor: 0.1,       // Fattore ridotto drasticamente (era 2.0)
+    // 🔥 SEEDERS E FONTI
+    sourceCorsaroBonus: 2000, // Bonus extra per le fonti fidate
+    seedersFactor: 0.1,       
     seedersTrustBoost: 100,
     
-    // Età (Impatto minimo)
+    // Età
     ageDecayPerDay: -0.1,    
     
     // Varie
@@ -45,7 +43,7 @@ const DEFAULT_CONFIG = {
     
     packRegex: /\b(pack|complete|tutta|tutte|full ?season|season ?pack|stagione ?(completa)?)\b/i,
     
-    // Regex potente per rilevare l'italiano
+    // Regex per rilevare l'italiano nel titolo
     itaPatterns: [
       /\b(ITA(LIANO)?|MULTI|DUAL|MD|SUB\.?ITA|SUB-?ITA|ITALUB|FORCED|AC3\.?ITA|DTS\.?ITA|AUDIO\.?ITA|ITA\.?AC3|ITA\.?HD|BDMUX|DVDRIP\.?ITA|CiNEFiLE|NovaRip|MeM|robbyrs|iDN_CreW|SPEEDVIDEO|WMS|TRIDIM)\b/i
     ],
@@ -57,6 +55,7 @@ const DEFAULT_CONFIG = {
   trust: {
     sourceTrust: {
       "Corsaro": 1.0,
+      "Knaben": 1.0,      // <--- ORA KNABEN È "TIER 1"
       "TorrentBay": 0.9,
       "1337x": 0.7,
       "ThePirateBay": 0.6
@@ -108,8 +107,18 @@ function isPack(title, config) {
   return config.heuristics.packRegex.test(title || "");
 }
 
-function languageScoreFromTitle(title, config) {
-  if (!title) return 0;
+// 🔥 NUOVA FUNZIONE LINGUA: Controlla la FONTE prima del TITOLO
+function languageScore(item, config) {
+  const title = item.title || "";
+  const source = (item.source || "").toLowerCase();
+
+  // 1. SE LA FONTE È FIDATA (Corsaro o Knaben), ASSEGNA ITA AUTOMATICAMENTE
+  // Questo risolve il problema dei titoli "puliti" senza la scritta ITA
+  if (/corsaro|knaben/i.test(source)) {
+      return config.weights.languageITA;
+  }
+
+  // 2. Altrimenti controlla il titolo con le Regex
   for (const p of config.heuristics.itaPatterns) {
     if (p.test(title)) return config.weights.languageITA;
   }
@@ -119,7 +128,6 @@ function languageScoreFromTitle(title, config) {
   return 0;
 }
 
-// 🔥 CALCOLO QUALITÀ AGGIORNATO (Supporto HDR/DV)
 function qualityScoreFromTitle(title, config) {
   const t = (title || "").toLowerCase();
   let score = 0;
@@ -132,7 +140,7 @@ function qualityScoreFromTitle(title, config) {
   // 2. Codec (Bonus)
   if (/(x265|h265|hevc)/i.test(t)) score += config.weights.hevcBonus;
 
-  // 3. HDR / Dolby Vision (Nuovo Bonus)
+  // 3. HDR / Dolby Vision
   if (/(hdr|dolby|vision|\bdv\b)/i.test(t)) score += config.weights.hdrBonus;
 
   return score;
@@ -145,16 +153,11 @@ function sizeConsistencyPenalty(item, meta, config) {
   return 0;
 }
 
-// 🔥 CALCOLO SEEDERS AGGIORNATO (Depotenziato)
 function seedersScore(item, config) {
   const s = normalizeNumber(item.seeders);
   if (s <= 0) return 0;
   
-  // Logica appiattita: i seeders sono solo uno spareggio (max ~200-300 punti).
-  // Non possono mai colmare il divario di 5000 punti tra le risoluzioni.
   let base = Math.log10(s + 1) * config.weights.seedersFactor * 100;
-  
-  // Piccolo boost se ci sono molti seeders (segno di salute), ma sempre contenuto
   if (s > 50) base += config.weights.seedersTrustBoost;
   
   return Math.round(base);
@@ -214,18 +217,19 @@ function computeScore(item, meta, config, knownHashesSet) {
   const reasons = [];
 
   // 1. Lingua (Peso Massimo - Intoccabile)
-  const langScore = languageScoreFromTitle(item.title, config);
+  // ORA USIAMO LA NUOVA FUNZIONE CHE GUARDA ANCHE LA SORGENTE
+  const langScore = languageScore(item, config);
   if (langScore) { score += langScore; reasons.push(`lang:${langScore}`); }
 
-  // 2. Episodio o Pack (Critico per le serie)
+  // 2. Episodio o Pack
   const epBoost = exactEpisodeBoost(item, meta, config);
   if (epBoost) { score += epBoost; reasons.push(`ep/pack:${epBoost}`); }
 
-  // 3. Qualità (Determinante per l'ordinamento visivo)
+  // 3. Qualità
   const qScore = qualityScoreFromTitle(item.title, config);
   if (qScore) { score += qScore; reasons.push(`quality:${qScore}`); }
 
-  // 4. Seeders (Solo Spareggio)
+  // 4. Seeders
   const sScore = seedersScore(item, config);
   score += sScore; reasons.push(`seeders:${sScore}`);
 
