@@ -1,8 +1,3 @@
-/**
- * ranking.js
- * Corsaro Brain — Ranking Ultra-Intelligente (Fix Knaben & 4K Logic)
- */
-
 const DEFAULT_CONFIG = {
   weights: {
     // 🔥 PRIORITÀ ASSOLUTA ALLA LINGUA
@@ -55,7 +50,7 @@ const DEFAULT_CONFIG = {
   trust: {
     sourceTrust: {
       "Corsaro": 1.0,
-      "Knaben": 1.0,      // <--- ORA KNABEN È "TIER 1"
+      "Knaben": 1.0,      
       "TorrentBay": 0.9,
       "1337x": 0.7,
       "ThePirateBay": 0.6
@@ -107,13 +102,12 @@ function isPack(title, config) {
   return config.heuristics.packRegex.test(title || "");
 }
 
-// 🔥 NUOVA FUNZIONE LINGUA: Controlla la FONTE prima del TITOLO
+// NUOVA FUNZIONE LINGUA: Controlla la FONTE prima del TITOLO
 function languageScore(item, config) {
   const title = item.title || "";
   const source = (item.source || "").toLowerCase();
 
   // 1. SE LA FONTE È FIDATA (Corsaro o Knaben), ASSEGNA ITA AUTOMATICAMENTE
-  // Questo risolve il problema dei titoli "puliti" senza la scritta ITA
   if (/corsaro|knaben/i.test(source)) {
       return config.weights.languageITA;
   }
@@ -217,7 +211,6 @@ function computeScore(item, meta, config, knownHashesSet) {
   const reasons = [];
 
   // 1. Lingua (Peso Massimo - Intoccabile)
-  // ORA USIAMO LA NUOVA FUNZIONE CHE GUARDA ANCHE LA SORGENTE
   const langScore = languageScore(item, config);
   if (langScore) { score += langScore; reasons.push(`lang:${langScore}`); }
 
