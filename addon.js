@@ -883,17 +883,29 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   let resultsRaw = [...remoteResults, ...externalResults, ...scrapedResults];
 
   // FILTRI AGGRESSIVI (Anno Strict + Anti-Prefix)
+// FILTRI AGGRESSIVI (Anno Strict + Anti-Prefix)
   resultsRaw = resultsRaw.filter(item => {
     if (!item?.magnet) return false;
     
     const source = (item.source || "").toLowerCase();
     
+    // Blocca provider non desiderati
     if (source.includes("comet") || source.includes("stremthru")) {
         return false;
     }
 
     const title = item.title;
-    
+    const isItalian = isSafeForItalian(item) || /corsaro/i.test(item.source);
+
+    // --- FIX PER TITOLI INGLESI (TORRENTIO) ---
+    // Se il risultato è esterno (Torrentio) ed è sicuramente ITA, lo accettiamo
+    // indipendentemente dal titolo (es. "His and Hers" vs "La sua verità").
+    // Torrentio cerca per ID, quindi ci fidiamo che il file sia quello giusto.
+    if (item.isExternal && isItalian) {
+        return true; 
+    }
+    // ------------------------------------------
+
     const cleanFile = title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
     const cleanMeta = meta.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
 
@@ -901,14 +913,15 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
     const normFile = cleanFile.replace(regexPrefix, "").trim();
     const normMeta = cleanMeta.replace(regexPrefix, "").trim();
 
+    // Filtro per provider che richiedono strict ITA se non siamo External
     if (source.includes("1337") || source.includes("tgx") || source.includes("torrentgalaxy") || source.includes("yts")) {
         const hasStrictIta = /\b(ita|italian|it)\b/i.test(title);
         if (!hasStrictIta) return false; 
     }
 
-    const isItalian = isSafeForItalian(item) || /corsaro/i.test(item.source);
     if (!config.filters?.allowEng && !isItalian) return false;
 
+    // Logica standard per risultati NON esterni (Scraper/DB)
     if (!meta.isSeries) {
         const metaYear = parseInt(meta.year);
         if (!isNaN(metaYear)) {
@@ -925,6 +938,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
         }
     }
 
+    // Fallback per risultati esterni che NON sono ITA (es. risultati ENG se abilitati)
     if (item.isExternal) {
         if (!meta.isSeries) {
             if (simpleSeriesFallback(meta, item.title)) return true;
