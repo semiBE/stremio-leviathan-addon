@@ -9,12 +9,19 @@ const HEADERS_VIX = {
 async function handleVixSynthetic(req, res) {
     const masterUrl = req.query.src;
     const forceMax = req.query.max === "1"; 
+    const customReferer = req.query.referer; 
 
     if (!masterUrl) return res.status(400).send("Missing src");
 
     try {
+        
+        const requestHeaders = { ...HEADERS_VIX };
+        if (customReferer) {
+            requestHeaders['Referer'] = customReferer;
+        }
+
         const response = await axios.get(masterUrl, { 
-            headers: HEADERS_VIX,
+            headers: requestHeaders,
             timeout: 6000 
         });
 
@@ -86,6 +93,8 @@ async function handleVixSynthetic(req, res) {
         res.send(filteredLines.join("\n"));
 
     } catch (error) {
+        // Loggare l'errore aiuta a capire se è un 403 (Forbidden)
+        console.error("Vix Proxy Error:", error.message);
         res.status(500).send("Vix Proxy Error");
     }
 }
