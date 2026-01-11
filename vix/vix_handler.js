@@ -95,7 +95,8 @@ function generateRichDescription(meta) {
 async function searchVix(meta, config, reqHost) {
     if (!config.filters || (!config.filters.enableVix && !config.filters.enableSC)) return [];
 
-    const currentHost = reqHost || "https://leviathanaddon.dpdns.org";
+    const envUrl = process.env.ADDON_URL || (process.env.SPACE_HOST ? `https://${process.env.SPACE_HOST}` : null);
+    const currentHost = envUrl || reqHost || "https://leviathan.stremioluca.dpdns.org";
 
     try {
         let tmdbId = meta.imdb_id;
