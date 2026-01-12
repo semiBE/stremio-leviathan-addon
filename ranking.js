@@ -1,301 +1,144 @@
 const DEFAULT_CONFIG = {
   weights: {
-    //  PRIORITÀ ASSOLUTA ALLA LINGUA
-    languageITA: 50000,      
-    languageMULTI: 25000,
+    // --- PESI "NUCLEARI" (Gap Incolmabile) ---
+    // 1080p = 20 Milioni | 720p = 100 punti
+    // Nessun bonus lingua o fonte può colmare questa differenza.
+    quality4K: 50000000,      // 50 Milioni
+    quality1080p: 20000000,   // 20 Milioni
+    quality720p: 100,         // 100 punti
+    qualitySD: 0,
+
+    // Lingua (Vince a PARITÀ di risoluzione)
+    languageITA: 500000,      // 500k
+    languageMULTI: 250000,
     
-    //  TIER QUALITÀ (GERARCHIA RIGIDA)
-    quality4K: 15000,
-    quality1080p: 10000,
-    quality720p: 5000,
-    
-    // Bonus Qualità Aggiuntivi
-    hevcBonus: 1500,          
-    hdrBonus: 1000,           
-    
-    // Episodi e Pack
+    // Bonus extra (briciole in confronto ai milioni)
+    hevcBonus: 5000,          
+    hdrBonus: 5000,           
     exactEpisodeBoost: 20000, 
     seasonPackBonus: 10000,   
     
     // Penalità
-    camPenalty: -100000,      
+    camPenalty: -100000000,   // Penalità devastante per i CAM
     sizeMismatchPenalty: -5000,
     
-    //  SEEDERS E FONTI
-    sourceCorsaroBonus: 2000, // Bonus extra per le fonti fidate
-    seedersFactor: 0.1,       
+    // Fonti & Seeders (Ora ininfluenti sulla posizione verticale)
+    sourceCorsaroBonus: 5000, 
+    seedersFactor: 1,       
     seedersTrustBoost: 100,
     
-    // Età
-    ageDecayPerDay: -0.1,    
-    
-    // Varie
+    ageDecayPerDay: -1,
     hashKnownBonus: 2000,
-    groupReputationFactor: 0.5,
   },
   heuristics: {
     camRegex: /\b(cam|ts|telecine|telesync|camrip|cam\.|hdcam|hdtc)\b/i,
-    
     packRegex: /\b(pack|complete|tutta|tutte|full ?season|season ?pack|stagione ?(completa)?)\b/i,
     
-    // Regex per rilevare l'italiano nel titolo
+    // --- REGEX UNIFICATE CON ADDON.JS ---
+    // Ora il Ranking usa le stesse identiche regole dell'interfaccia.
+    // Se c'è la bandierina ITA, prende i punti ITA.
     itaPatterns: [
-      /\b(ITA(LIANO)?|MULTI|DUAL|MD|SUB\.?ITA|SUB-?ITA|ITALUB|FORCED|AC3\.?ITA|DTS\.?ITA|AUDIO\.?ITA|ITA\.?AC3|ITA\.?HD|BDMUX|DVDRIP\.?ITA|CiNEFiLE|NovaRip|MeM|robbyrs|iDN_CreW|SPEEDVIDEO|WMS|TRIDIM)\b/i
+      /\b(ITA|ITALIAN|ITALY)\b/i,
+      /\b(AUDIO|LINGUA)\s*[:\-]?\s*(ITA|IT)\b/i,
+      /\b(AC-?3|AAC|DDP?|DTS|PCM|TRUEHD|ATMOS|MP3|WMA|FLAC).*(ITA|IT)\b/i,
+      /\b(DD|DDP|AAC|DTS)\s*5\.1\s*(ITA|IT)\b/i,
+      /\b(MULTI|DUAL|TRIPLE).*(ITA|IT)\b/i,
+      /\b(SUB|SUBS|SOTTOTITOLI|SUB\.?ITA|SUB-?ITA)\b/i,
+      /\b(H\.?264|H\.?265|X264|X265|HEVC|AVC|DIVX|XVID).*(ITA|IT)\b/i,
+      /\b(iDN_CreW|CORSARO|MUX|WMS|TRIDIM|SPEEDVIDEO|EAGLE|TRL|MEA|LUX|DNA|LEST|GHIZZO|USAbit|Bric|Dtone|Gaiage|BlackBit|Pantry|Vics|Papeete)\b/i,
+      /\b(STAGIONE|EPISODIO|SERIE COMPLETA|STAGIONE COMPLETA)\b/i
     ],
     
     multiPatterns: [/\b(MULTI|MULTILANG|MULTILANGUAGE|ITA.ENG|ITA-ENG)\b/i],
-    sizeToleranceRatio: 0.25,
-    minimalSizeBytes: 150 * 1024 * 1024 // 150MB minimo
+    minimalSizeBytes: 150 * 1024 * 1024 
   },
   trust: {
-    sourceTrust: {
-      "Corsaro": 1.0,
-      "Knaben": 1.0,      
-      "TorrentBay": 0.9,
-      "1337x": 0.7,
-      "ThePirateBay": 0.6
-    },
-    groupReputation: {
-      "YTS": 0.8,
-      "RARBG": 0.9,
-      "eztv": 0.8,
-      "FAKEGRP": -1.0
-    }
+    sourceTrust: { "Corsaro": 1.0, "Knaben": 1.0 }, 
+    groupReputation: { "FAKEGRP": -1.0 }
   },
   userReportsDB: {},
-  misc: {
-    nowTimestamp: () => Date.now()
-  }
+  misc: { nowTimestamp: () => Date.now() }
 };
 
-function normalizeNumber(n) {
-  const x = parseFloat(n);
-  return isNaN(x) ? 0 : x;
-}
+function normalizeNumber(n) { return parseFloat(n) || 0; }
 
 function parseSizeToBytes(v) {
   if (!v) return 0;
   if (typeof v === "number") return v;
-  const s = String(v).trim();
-  const m = s.match(/([\d,.]+)\s*(B|KB|MB|GB|TB)/i);
-  if (!m) {
-    const num = parseFloat(s.replace(/[^\d.]/g, ""));
-    return isNaN(num) ? 0 : num;
-  }
-  const val = parseFloat(m[1].replace(",", "."));
-  const unit = m[2].toUpperCase();
-  const mult = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3, TB: 1024 ** 4 };
-  return Math.round((mult[unit] || 1) * val);
+  const match = String(v).match(/([\d,.]+)\s*(B|KB|MB|GB|TB)/i);
+  if (!match) return 0;
+  const val = parseFloat(match[1].replace(",", "."));
+  const unit = match[2].toUpperCase();
+  const mult = { B: 1, KB: 1024, MB: 1024**2, GB: 1024**3, TB: 1024**4 };
+  return Math.round(val * (mult[unit] || 1));
 }
 
-function extractHashFromMagnet(magnet) {
-  if (!magnet) return null;
-  const m = magnet.match(/btih:([a-f0-9]{40})/i);
-  return m ? m[1].toUpperCase() : null;
-}
-
-function isLikelyCam(title, config) {
-  return config.heuristics.camRegex.test(title || "");
-}
-
-function isPack(title, config) {
-  return config.heuristics.packRegex.test(title || "");
-}
-
-// NUOVA FUNZIONE LINGUA: Controlla la FONTE prima del TITOLO
-function languageScore(item, config) {
-  const title = item.title || "";
-  const source = (item.source || "").toLowerCase();
-
-  // 1. SE LA FONTE È FIDATA (Corsaro o Knaben), ASSEGNA ITA AUTOMATICAMENTE
-  if (/corsaro|knaben/i.test(source)) {
-      return config.weights.languageITA;
-  }
-
-  // 2. Altrimenti controlla il titolo con le Regex
-  for (const p of config.heuristics.itaPatterns) {
-    if (p.test(title)) return config.weights.languageITA;
-  }
-  for (const p of config.heuristics.multiPatterns) {
-    if (p.test(title)) return config.weights.languageMULTI;
-  }
-  return 0;
-}
-
-function qualityScoreFromTitle(title, config) {
-  const t = (title || "").toLowerCase();
+function computeScore(item, meta, config) {
   let score = 0;
-  
-  // 1. Risoluzione (Base del Tier)
-  if (/(2160p|4k|uhd)/i.test(t)) score += config.weights.quality4K;
-  else if (/1080p/i.test(t)) score += config.weights.quality1080p;
-  else if (/720p/i.test(t)) score += config.weights.quality720p;
+  const title = (item.title || "").toLowerCase();
+  // Usa source o provider se disponibile
+  const source = (item.source || item.provider || "").toLowerCase(); 
+  const reasons = [];
 
-  // 2. Codec (Bonus)
-  if (/(x265|h265|hevc)/i.test(t)) score += config.weights.hevcBonus;
+  // 1. Risoluzione (IL FATTORE DOMINANTE)
+  if (/(2160p|4k|uhd)/i.test(title)) { score += config.weights.quality4K; reasons.push("4K"); }
+  else if (/1080p/i.test(title)) { score += config.weights.quality1080p; reasons.push("1080p"); }
+  else if (/720p/i.test(title)) { score += config.weights.quality720p; reasons.push("720p"); }
+  else { score += config.weights.qualitySD; reasons.push("SD"); }
 
-  // 3. HDR / Dolby Vision
-  if (/(hdr|dolby|vision|\bdv\b)/i.test(t)) score += config.weights.hdrBonus;
-
-  return score;
-}
-
-function sizeConsistencyPenalty(item, meta, config) {
-  const sizeBytes = parseSizeToBytes(item.size || item.sizeBytes || 0);
-  if (!sizeBytes) return 0;
-  if (sizeBytes < config.heuristics.minimalSizeBytes) return config.weights.sizeMismatchPenalty;
-  return 0;
-}
-
-function seedersScore(item, config) {
-  const s = normalizeNumber(item.seeders);
-  if (s <= 0) return 0;
-  
-  let base = Math.log10(s + 1) * config.weights.seedersFactor * 100;
-  if (s > 50) base += config.weights.seedersTrustBoost;
-  
-  return Math.round(base);
-}
-
-function ageScore(item, config) {
-  const now = config.misc.nowTimestamp();
-  let published = item.published ? Date.parse(item.published) : null;
-  if (!published && item.ageSeconds) published = now - (item.ageSeconds * 1000);
-  if (!published) return 0;
-  
-  const days = Math.max(0, Math.floor((now - published) / (1000 * 60 * 60 * 24)));
-  return Math.round(config.weights.ageDecayPerDay * days);
-}
-
-function exactEpisodeBoost(item, meta, config) {
-  if (!meta || !meta.isSeries) return 0;
-  
-  const s = meta.season;
-  const e = meta.episode;
-  const title = (item.title || "").toUpperCase();
-
-  const exactEpRegex = new RegExp(`S0?${s}[^0-9]*E0?${e}\\b`, "i");
-  const xEpRegex = new RegExp(`\\b${s}x0?${e}\\b`, "i");
-  
-  if (exactEpRegex.test(title) || xEpRegex.test(title)) {
-      return config.weights.exactEpisodeBoost;
-  }
-
-  if (isPack(title, config)) {
-      const seasonPackRegex = new RegExp(`(S0?${s}|Stagione\\s?0?${s}|Season\\s?0?${s})\\b`, "i");
-      if (seasonPackRegex.test(title)) {
-          return config.weights.seasonPackBonus;
+  // 2. Lingua (Sincronizzata con la UI)
+  let isIta = false;
+  // Se la fonte è Corsaro/Knaben è sempre ITA
+  if (/corsaro|knaben/i.test(source)) isIta = true;
+  else {
+      // Controllo Regex completo
+      for (const p of config.heuristics.itaPatterns) {
+          if (p.test(item.title)) { isIta = true; break; }
       }
   }
 
-  return 0;
-}
-
-function camAndQualityPenalty(item, config) {
-  const title = item.title || "";
-  if (isLikelyCam(title, config)) return config.weights.camPenalty;
-  return 0;
-}
-
-function sourceTrustBonus(item, config) {
-  const s = (item.source || "").toString();
-  const key = Object.keys(config.trust.sourceTrust).find(k => s.includes(k));
-  if (key) {
-      return Math.round(config.trust.sourceTrust[key] * config.weights.sourceCorsaroBonus);
+  if (isIta) { score += config.weights.languageITA; reasons.push("ITA"); }
+  else if (config.heuristics.multiPatterns.some(p => p.test(item.title))) {
+      score += config.weights.languageMULTI; reasons.push("MULTI");
   }
-  return 0;
-}
 
-function computeScore(item, meta, config, knownHashesSet) {
-  let score = 0;
-  const reasons = [];
-
-  // 1. Lingua (Peso Massimo - Intoccabile)
-  const langScore = languageScore(item, config);
-  if (langScore) { score += langScore; reasons.push(`lang:${langScore}`); }
-
-  // 2. Episodio o Pack
-  const epBoost = exactEpisodeBoost(item, meta, config);
-  if (epBoost) { score += epBoost; reasons.push(`ep/pack:${epBoost}`); }
-
-  // 3. Qualità
-  const qScore = qualityScoreFromTitle(item.title, config);
-  if (qScore) { score += qScore; reasons.push(`quality:${qScore}`); }
+  // 3. Codec & HDR
+  if (/x265|h265|hevc/i.test(title)) { score += config.weights.hevcBonus; reasons.push("HEVC"); }
+  if (/hdr|dolby|vision/i.test(title)) { score += config.weights.hdrBonus; reasons.push("HDR"); }
 
   // 4. Seeders
-  const sScore = seedersScore(item, config);
-  score += sScore; reasons.push(`seeders:${sScore}`);
+  const seeders = normalizeNumber(item.seeders);
+  score += seeders * config.weights.seedersFactor;
 
-  // 5. Fonte & Trust
-  const src = sourceTrustBonus(item, config);
-  if (src) { score += src; reasons.push(`sourceTrust:${src}`); }
-
-  // 6. Penalità e Correzioni
-  const aScore = ageScore(item, config);
-  if (aScore) { score += aScore; reasons.push(`age:${aScore}`); }
-
-  const cam = camAndQualityPenalty(item, config);
-  if (cam) { score += cam; reasons.push(`camPenalty:${cam}`); }
-
-  const sPenalty = sizeConsistencyPenalty(item, meta, config);
-  if (sPenalty) { score += sPenalty; reasons.push(`sizePenalty:${sPenalty}`); }
-
-  // Bonus Hash noto
-  const hk = extractHashFromMagnet(item.magnet);
-  if (hk && knownHashesSet && knownHashesSet.has(hk)) {
-      score += config.weights.hashKnownBonus;
-      reasons.push(`knownHash`);
-  }
-
-  score += Math.min(100, (item.title || "").length);
+  // 5. Penalità
+  if (config.heuristics.camRegex.test(title)) score += config.weights.camPenalty;
 
   return { score, reasons };
 }
 
-function rankAndFilterResults(results = [], meta = {}, optConfig = {}, knownHashesSet = null) {
-  const config = mergeDeep(DEFAULT_CONFIG, optConfig || {});
+function rankAndFilterResults(results = [], meta = {}, optConfig = {}) {
+  // Unione configurazione
+  const config = { ...DEFAULT_CONFIG, ...optConfig, weights: { ...DEFAULT_CONFIG.weights, ...optConfig.weights } };
 
   if (!Array.isArray(results)) return [];
 
-  const prelim = results.filter(it => {
-    if (!it) return false;
-    if (!it.magnet && !it.url) return false;
+  const scored = results.map(item => {
+    // Filtro base dimensione
+    const size = parseSizeToBytes(item.size || item.sizeBytes);
+    if (size > 0 && size < config.heuristics.minimalSizeBytes) {
+        item._score = -999999999; 
+        return item;
+    }
     
-    const size = parseSizeToBytes(it.size || it.sizeBytes || 0);
-    if (size > 0 && size < config.heuristics.minimalSizeBytes) return false;
-    
-    return true;
-  });
-
-  const scored = prelim.map(item => {
-    const { score, reasons } = computeScore(item, meta, config, knownHashesSet);
+    const { score, reasons } = computeScore(item, meta, config);
     item._score = score;
     item._reasons = reasons;
     return item;
   });
 
-  // Ordina per score decrescente
+  // Ordina Decrescente
   scored.sort((a, b) => b._score - a._score);
   return scored;
 }
 
-function isObject(x) { return x && typeof x === "object" && !Array.isArray(x); }
-
-function mergeDeep(target, source) {
-  if (!isObject(target)) return source;
-  if (!isObject(source)) return target;
-  const out = { ...target };
-  for (const k of Object.keys(source)) {
-    if (isObject(source[k])) {
-      out[k] = mergeDeep(target[k] || {}, source[k]);
-    } else {
-      out[k] = source[k];
-    }
-  }
-  return out;
-}
-
-module.exports = {
-  rankAndFilterResults,
-  DEFAULT_CONFIG
-};
+module.exports = { rankAndFilterResults, DEFAULT_CONFIG };
