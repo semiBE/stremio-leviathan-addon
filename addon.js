@@ -777,7 +777,14 @@ async function fetchExternalResults(type, finalId) {
 
 // --- GENERATE STREAM CON LOGICA SOLO DATABASE ---
 async function generateStream(type, id, config, userConfStr, reqHost) {
-  if (!config.key && !config.rd) return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key nel configuratore" }] };
+  // --- 1. NUOVO CONTROLLO INIZIALE ---
+  const hasDebridKey = (config.key && config.key.length > 0) || (config.rd && config.rd.length > 0);
+  const isWebEnabled = config.filters && (config.filters.enableVix || config.filters.enableGhd);
+
+  // Se NON c'è la chiave E NON c'è nessun modulo web attivo -> Errore
+  if (!hasDebridKey && !isWebEnabled) {
+      return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key o Attiva SC/GuardaHD" }] };
+  }
   
   const configHash = crypto.createHash('md5').update(userConfStr || 'no-conf').digest('hex');
   const cacheKey = `${type}:${id}:${configHash}`;
@@ -1007,7 +1014,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   // 3. Applica il taglio finale globale (MAX_RESULTS)
   const ranked = rankedList.slice(0, CONFIG.MAX_RESULTS);
 
-  if (config.service === 'tb' && ranked.length > 0) {
+  if (config.service === 'tb' && ranked.length > 0 && hasDebridKey) {
       const hashes = ranked.map(r => r.hash);
       const cachedHashes = await TB.checkCached(config.key || config.rd, hashes);
       const cachedSet = new Set(cachedHashes.map(h => h.toUpperCase()));
@@ -1015,7 +1022,9 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   }
 
   let debridStreams = [];
-  if (ranked.length > 0) {
+  // --- 2. MODIFICA LA RISOLUZIONE DEBRID ---
+  // Esegui la risoluzione solo se abbiamo risultati E una chiave valida
+  if (ranked.length > 0 && hasDebridKey) { 
       const rdPromises = ranked.map(item => {
           item.season = meta.season;
           item.episode = meta.episode;
