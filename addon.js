@@ -1019,7 +1019,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       debridStreams = (await Promise.all(rdPromises)).filter(Boolean);
   }
 
-  const vixPromise = searchVix(meta, config);
+  const vixPromise = searchVix(meta, config, reqHost);
   const rawVix = await vixPromise;
   const formattedVix = rawVix;
   
