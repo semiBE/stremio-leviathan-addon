@@ -115,7 +115,7 @@ const MixdropExtractor = {
         const richTitle = generateRichDescription(titleHint);
 
         return [{
-            name: `🦁 GuardaHD\n📦 MixDrop`, // Stile SC: Provider sopra, Dettaglio sotto
+            name: `🦁 GuardaHD\n⚡ MixDrop`, // Stile SC: Provider sopra, Dettaglio sotto
             title: richTitle,
             url: finalUrl,
             behaviorHints: { notWebReady: true }

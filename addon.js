@@ -17,7 +17,7 @@ const aioFormatter = require("./aiostreams-formatter.cjs");
 
 // --- IMPORT GESTORI WEB (Vix & GuardaHD) ---
 const { searchVix } = require("./vix/vix_handler");
-const { searchGuardaHD } = require("./guardahd/ghd_handler"); // <--- NUOVO IMPORT GUARDA HD
+const { searchGuardaHD } = require("./guardahd/ghd_handler"); 
 
 // --- 1. CONFIGURAZIONE LOGGER (Winston) ---
 const logger = winston.createLogger({
@@ -112,7 +112,9 @@ const REGEX_ITA = [
     /\b(SUB|SUBS|SOTTOTITOLI).*(ITA|IT)\b/i,
     /\b(H\.?264|H\.?265|X264|X265|HEVC|AVC|DIVX|XVID).*(ITA|IT)\b/i,
     /\b(iDN_CreW|CORSARO|MUX|WMS|TRIDIM|SPEEDVIDEO|EAGLE|TRL|MEA|LUX|DNA|LEST|GHIZZO|USAbit|Bric|Dtone|Gaiage|BlackBit|Pantry|Vics|Papeete)\b/i,
-    /\b(STAGIONE|EPISODIO|SERIE COMPLETA|STAGIONE COMPLETA)\b/i
+    /\b(STAGIONE|EPISODIO|SERIE COMPLETA|STAGIONE COMPLETA)\b/i,
+    /\b(il|lo|la|i|gli|le|un|uno|una|del|dello|della|dei|degli|delle|nel|nello|nella|nei|negli|nelle)\s+/i,
+    /\b(tutto|niente|sempre|mai|ancora|già|ora|dove|come|quando|perché|chi|cosa|vita|morte|amore|cuore|mondo|tempo|uomo|donna|bambino|polizia|poliziotto|commissario|squadra|omicidio|indagine|prova)\b/i
 ];
 const REGEX_CLEANER = /\b(ita|eng|ger|fre|spa|latino|rus|sub|h264|h265|x264|x265|hevc|avc|vc1|1080p|1080i|720p|480p|4k|2160p|uhd|sdr|hdr|hdr10|dv|dolby|vision|bluray|bd|bdrip|brrip|web-?dl|webrip|hdtv|rip|remux|mux|ac-?3|aac|dts|ddp|flac|truehd|atmos|multi|dual|complete|pack|amzn|nf|dsnp|hmax|atvp|apple|hulu|peacock|rakuten|iyp|dvd|dvdrip|unrated|extended|director|cut)\b.*/yi;
 
@@ -775,7 +777,14 @@ async function fetchExternalResults(type, finalId) {
 
 // --- GENERATE STREAM CON LOGICA SOLO DATABASE ---
 async function generateStream(type, id, config, userConfStr, reqHost) {
-  if (!config.key && !config.rd) return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key nel configuratore" }] };
+  // --- 1. NUOVO CONTROLLO INIZIALE ---
+  const hasDebridKey = (config.key && config.key.length > 0) || (config.rd && config.rd.length > 0);
+  const isWebEnabled = config.filters && (config.filters.enableVix || config.filters.enableGhd);
+
+  // Se NON c'è la chiave E NON c'è nessun modulo web attivo -> Errore
+  if (!hasDebridKey && !isWebEnabled) {
+      return { streams: [{ name: "⚠️ CONFIG", title: "Inserisci API Key o Attiva SC/GuardaHD" }] };
+  }
   
   const configHash = crypto.createHash('md5').update(userConfStr || 'no-conf').digest('hex');
   const cacheKey = `${type}:${id}:${configHash}`;
@@ -1005,7 +1014,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   // 3. Applica il taglio finale globale (MAX_RESULTS)
   const ranked = rankedList.slice(0, CONFIG.MAX_RESULTS);
 
-  if (config.service === 'tb' && ranked.length > 0) {
+  if (config.service === 'tb' && ranked.length > 0 && hasDebridKey) {
       const hashes = ranked.map(r => r.hash);
       const cachedHashes = await TB.checkCached(config.key || config.rd, hashes);
       const cachedSet = new Set(cachedHashes.map(h => h.toUpperCase()));
@@ -1013,7 +1022,9 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   }
 
   let debridStreams = [];
-  if (ranked.length > 0) {
+  // --- 2. MODIFICA LA RISOLUZIONE DEBRID ---
+  // Esegui la risoluzione solo se abbiamo risultati E una chiave valida
+  if (ranked.length > 0 && hasDebridKey) { 
       const rdPromises = ranked.map(item => {
           item.season = meta.season;
           item.episode = meta.episode;
