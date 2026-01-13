@@ -900,16 +900,30 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
     if (!item?.magnet) return false;
     
     const source = (item.source || "").toLowerCase();
-    
+    const title = item.title;
+
     // Blocca provider non desiderati
     if (source.includes("comet") || source.includes("stremthru")) {
         return false;
     }
 
-    const title = item.title;
+    // --- MODIFICA 1337X STRICT ---
+    // Se la fonte è 1337x:
+    // 1. Deve AVERE "ita" o "italian" (parole intere)
+    // 2. NON DEVE AVERE "sub", "subs", "subbed" o "vost" (parole intere)
+    if (source.includes("1337")) {
+        const hasIta = /\b(ita|italian)\b/i.test(title);
+        const isSubbed = /\b(sub|subs|subbed|vost|vostit)\b/i.test(title);
+        
+        // Se non è ITA, oppure è ITA ma è Subbed -> SCARTA
+        if (!hasIta || isSubbed) return false; 
+    }
+    // -----------------------------
+
     const isItalian = isSafeForItalian(item) || /corsaro/i.test(item.source);
 
     // --- FIX PER TITOLI INGLESI (TORRENTIO) ---
+    // Nota: 1337x è già stato filtrato sopra, quindi se passa qui è safe.
     if (item.isExternal && isItalian) {
         return true; 
     }
@@ -922,9 +936,9 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
     const normFile = cleanFile.replace(regexPrefix, "").trim();
     const normMeta = cleanMeta.replace(regexPrefix, "").trim();
 
-    // Filtro per provider che richiedono strict ITA se non siamo External
-    if (source.includes("1337") || source.includes("tgx") || source.includes("torrentgalaxy") || source.includes("yts")) {
-        const hasStrictIta = /\b(ita|italian|it)\b/i.test(title);
+    // Filtro per provider che richiedono strict ITA (Rimosso "it" breve anche qui)
+    if (source.includes("tgx") || source.includes("torrentgalaxy") || source.includes("yts")) {
+        const hasStrictIta = /\b(ita|italian)\b/i.test(title);
         if (!hasStrictIta) return false; 
     }
 
