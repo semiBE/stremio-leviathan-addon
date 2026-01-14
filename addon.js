@@ -388,44 +388,31 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     else if (/eng|en\b|english/i.test(lang || "")) langStr = "🇬🇧 ENG";
     else if (lang) langStr = `🗣️ ${lang.toUpperCase()}`;
     
-    // --- INIZIO MODIFICA GESTIONE FONTI ---
     let displaySource = source || "P2P";
 
-    // 1. Gestione specifica 1337x
     if (/1337/i.test(displaySource)) {
         displaySource = "1337x"; 
     } 
-    // 2. Gestione Corsaro
     else if (/corsaro/i.test(displaySource)) {
         displaySource = "ilCorSaRoNeRo";
     } 
-    // 3. Gestione Knaben
     else if (/knaben/i.test(displaySource)) {
         displaySource = "Knaben";
     } 
-    // 4. Gestione StremThru/Comet
     else if (/comet|stremthru/i.test(displaySource)) {
         displaySource = "StremThru";
     } 
-    // 5. FIX RICHIESTO: Unifica RARBG e TheRARBG
     else if (/rarbg/i.test(displaySource)) {
         displaySource = "RARBG";
     }
-    // 6. FIX RICHIESTO: Estrazione fonte da "rd cache"
     else if (/rd cache/i.test(displaySource)) {
-        // Tenta di estrarre il gruppo dal nome del file (es: Film-GROUP.mkv -> GROUP)
-        // Cerca l'ultima parte del testo dopo un trattino, ignorando l'estensione del file
         const groupMatch = fileTitle.match(/[-_]\s*([a-zA-Z0-9]+)(?:\.[a-z0-9]{2,4})?$/i);
-        
-        // Se trova un gruppo valido (lunghezza < 15 caratteri per evitare errori), lo usa
         if (groupMatch && groupMatch[1] && groupMatch[1].length < 15 && !/mkv|mp4|avi/i.test(groupMatch[1])) {
             displaySource = groupMatch[1]; 
         } else {
-            // Se non riesce ad estrarre nulla, mette un nome più pulito di "rd cache"
             displaySource = "Cloud"; 
         }
     }
-    // 7. Gestione Standard (pulizia nomi generici)
     else {
         displaySource = displaySource
             .replace(/MediaFusion/gi, '') 
@@ -435,7 +422,6 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
             .replace(/Fallback/ig, '')
             .trim() || "P2P";
     }
-    // --- FINE MODIFICA ---
     
     const sourceLine = `⚡ [${serviceTag}] ${displaySource}`;
     const name = `🦑 LEVIATHAN\n${qIcon} ${quality}`;
@@ -833,7 +819,7 @@ async function fetchExternalResults(type, finalId) {
     }
 }
 
-// --- GENERATE STREAM CON LOGICA SOLO DATABASE ---
+// --- GENERATE STREAM CON LOGICA SEQUENZIALE INTELLIGENTE ---
 async function generateStream(type, id, config, userConfStr, reqHost) {
   // --- 1. NUOVO CONTROLLO INIZIALE ---
   const hasDebridKey = (config.key && config.key.length > 0) || (config.rd && config.rd.length > 0);
@@ -880,8 +866,74 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   logger.info(`🚀 [SPEED] Start search for: ${meta.title}`);
   
   const tmdbIdLookup = meta.tmdb_id || (await imdbToTmdb(meta.imdb_id, userTmdbKey))?.tmdbId;
+  const dbOnlyMode = config.filters?.dbOnly === true; 
 
-  // --- 1. REMOTE INDEXER PROMISE (Sempre usata) ---
+  // --- DEFINIZIONE LOGICA FILTRO (Riutilizzabile) ---
+  const aggressiveFilter = (item) => {
+      if (!item?.magnet) return false;
+      
+      const source = (item.source || "").toLowerCase();
+      const title = item.title;
+
+      if (source.includes("comet") || source.includes("stremthru")) return false;
+
+      if (source.includes("1337")) {
+          const hasIta = /\b(ita|italian)\b/i.test(title);
+          const isSubbed = /\b(sub|subs|subbed|vost|vostit)\b/i.test(title);
+          if (!hasIta || isSubbed) return false; 
+      }
+
+      const isItalian = isSafeForItalian(item) || /corsaro/i.test(item.source);
+
+      if (item.isExternal && isItalian) return true; 
+
+      const cleanFile = title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
+      const cleanMeta = meta.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
+
+      const regexPrefix = /^(?:the|a|an|il|lo|la|i|gli|le|un|uno|una|el|los|las|les)\s+/i;
+      const normFile = cleanFile.replace(regexPrefix, "").trim();
+      const normMeta = cleanMeta.replace(regexPrefix, "").trim();
+
+      if (source.includes("tgx") || source.includes("torrentgalaxy") || source.includes("yts")) {
+          const hasStrictIta = /\b(ita|italian)\b/i.test(title);
+          if (!hasStrictIta) return false; 
+      }
+
+      if (!config.filters?.allowEng && !isItalian) return false;
+
+      if (!meta.isSeries) {
+          const metaYear = parseInt(meta.year);
+          if (!isNaN(metaYear)) {
+               const fileYearMatch = item.title.match(REGEX_YEAR);
+               if (fileYearMatch) {
+                   const fileYear = parseInt(fileYearMatch[0]);
+                   if (Math.abs(fileYear - metaYear) > 1) return false; 
+               }
+          }
+          if (normFile.includes(normMeta)) {
+               if (!normFile.startsWith(normMeta)) return false; 
+          }
+      }
+
+      if (item.isExternal) {
+          if (!meta.isSeries) {
+              if (simpleSeriesFallback(meta, item.title)) return true;
+              if (smartMatch(meta.title, item.title, meta.isSeries)) return true;
+              return false;
+          }
+          if (simpleSeriesFallback(meta, item.title)) return true;
+          if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
+          if (PackResolver.isSeasonPack(item.title)) return true;
+          return false;
+      }
+
+      if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
+      if (meta.isSeries && simpleSeriesFallback(meta, item.title)) return true;
+
+      return false;
+  };
+
+  // --- FASE 1: FONTI VELOCI (Remote + External) ---
   const remotePromise = withTimeout(
       queryRemoteIndexer(tmdbIdLookup, type, meta.season, meta.episode),
       CONFIG.TIMEOUTS.REMOTE_INDEXER,
@@ -891,20 +943,28 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       return [];
   });
 
-  // --- LOGICA "SOLO DATABASE" ---
-  const dbOnlyMode = config.filters?.dbOnly === true; 
-  
   let externalPromise = Promise.resolve([]);
-  let scraperPromise = Promise.resolve([]);
-
-  if (dbOnlyMode) {
-      logger.info(`⚡ [MODE] SOLO DATABASE ATTIVO - Interrogo SOLO: ${CONFIG.INDEXER_URL}`);
-      
-  } else {
-      // --- 2. EXTERNAL ADDONS ---
+  if (!dbOnlyMode) {
       externalPromise = fetchExternalResults(type, finalId);
+  }
 
-      // --- 3. SCRAPERS LOCALI ---
+  const [remoteResults, externalResults] = await Promise.all([remotePromise, externalPromise]);
+  
+  if (remoteResults.length > 0) logger.info(`✅ [REMOTE] ${remoteResults.length} items`);
+  if (externalResults.length > 0) logger.info(`✅ [EXTERNAL] ${externalResults.length} items`);
+
+  // Filtra e deduplica i risultati veloci
+  let fastResults = [...remoteResults, ...externalResults].filter(aggressiveFilter);
+  let cleanResults = deduplicateResults(fastResults);
+  const validFastCount = cleanResults.length;
+
+  logger.info(`⚡ [FAST CHECK] Trovati ${validFastCount} risultati validi da fonti veloci.`);
+
+  // --- FASE 2: SCRAPER PESANTI (Solo se necessario) ---
+  // Se non abbiamo almeno 3 risultati validi e NON siamo in modalità "Solo DB", attiviamo gli scraper.
+  if (!dbOnlyMode && validFastCount < 3) {
+      logger.info(`⚠️ [HEAVY] Meno di 3 risultati (${validFastCount}). Attivazione Scraper Locali...`);
+      
       let dynamicTitles = [];
       try {
           if (tmdbIdLookup) dynamicTitles = await getTmdbAltTitles(tmdbIdLookup, type, userTmdbKey);
@@ -913,6 +973,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       const allowEng = config.filters?.allowEng === true;
       const queries = generateSmartQueries(meta, dynamicTitles, allowEng);
       
+      let scrapedResults = [];
       if (queries.length > 0) {
           const allScraperTasks = [];
           queries.forEach(q => {
@@ -934,156 +995,50 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
                   }
               });
           });
-          scraperPromise = Promise.all(allScraperTasks).then(results => results.flat());
+          scrapedResults = await Promise.all(allScraperTasks).then(results => results.flat());
+          logger.info(`✅ [SCRAPER] ${scrapedResults.length} items trovati`);
+          
+          // Filtra i risultati degli scraper
+          const filteredScraped = scrapedResults.filter(aggressiveFilter);
+          // Unisci ai risultati precedenti (fastResults già filtrati + nuovi filtrati)
+          const combined = [...cleanResults, ...filteredScraped];
+          // Riesegui la deduplica finale
+          cleanResults = deduplicateResults(combined);
+      }
+  } else {
+      if (!dbOnlyMode) {
+        logger.info(`🚀 [SKIP] Scraper saltati: Trovati abbastanza risultati (${validFastCount} >= 3).`);
       }
   }
 
-  // ESECUZIONE (Se dbOnly=true, external e scraper risolvono subito vuoti)
-  const [remoteResults, externalResults, scrapedResults] = await Promise.all([
-      remotePromise, 
-      externalPromise,
-      scraperPromise
-  ]);
-
-  if (remoteResults.length > 0) logger.info(`✅ [REMOTE] ${remoteResults.length} items`);
-  if (!dbOnlyMode) {
-      if (externalResults.length > 0) logger.info(`✅ [EXTERNAL] ${externalResults.length} items`);
-      if (scrapedResults.length > 0) logger.info(`✅ [SCRAPER] ${scrapedResults.length} items`);
-  }
-
-  let resultsRaw = [...remoteResults, ...externalResults, ...scrapedResults];
-
-  // FILTRI AGGRESSIVI (Anno Strict + Anti-Prefix)
-  resultsRaw = resultsRaw.filter(item => {
-    if (!item?.magnet) return false;
-    
-    const source = (item.source || "").toLowerCase();
-    const title = item.title;
-
-    // Blocca provider non desiderati
-    if (source.includes("comet") || source.includes("stremthru")) {
-        return false;
-    }
-
-    // --- MODIFICA 1337X STRICT ---
-    // Se la fonte è 1337x:
-    // 1. Deve AVERE "ita" o "italian" (parole intere)
-    // 2. NON DEVE AVERE "sub", "subs", "subbed" o "vost" (parole intere)
-    if (source.includes("1337")) {
-        const hasIta = /\b(ita|italian)\b/i.test(title);
-        const isSubbed = /\b(sub|subs|subbed|vost|vostit)\b/i.test(title);
-        
-        // Se non è ITA, oppure è ITA ma è Subbed -> SCARTA
-        if (!hasIta || isSubbed) return false; 
-    }
-    // -----------------------------
-
-    const isItalian = isSafeForItalian(item) || /corsaro/i.test(item.source);
-
-    // --- FIX PER TITOLI INGLESI (TORRENTIO) ---
-    // Nota: 1337x è già stato filtrato sopra, quindi se passa qui è safe.
-    if (item.isExternal && isItalian) {
-        return true; 
-    }
-    // ------------------------------------------
-
-    const cleanFile = title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
-    const cleanMeta = meta.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
-
-    const regexPrefix = /^(?:the|a|an|il|lo|la|i|gli|le|un|uno|una|el|los|las|les)\s+/i;
-    const normFile = cleanFile.replace(regexPrefix, "").trim();
-    const normMeta = cleanMeta.replace(regexPrefix, "").trim();
-
-    // Filtro per provider che richiedono strict ITA (Rimosso "it" breve anche qui)
-    if (source.includes("tgx") || source.includes("torrentgalaxy") || source.includes("yts")) {
-        const hasStrictIta = /\b(ita|italian)\b/i.test(title);
-        if (!hasStrictIta) return false; 
-    }
-
-    if (!config.filters?.allowEng && !isItalian) return false;
-
-    // Logica standard per risultati NON esterni (Scraper/DB)
-    if (!meta.isSeries) {
-        const metaYear = parseInt(meta.year);
-        if (!isNaN(metaYear)) {
-             const fileYearMatch = item.title.match(REGEX_YEAR);
-             if (fileYearMatch) {
-                 const fileYear = parseInt(fileYearMatch[0]);
-                 if (Math.abs(fileYear - metaYear) > 1) return false; 
-             }
-        }
-        if (normFile.includes(normMeta)) {
-             if (!normFile.startsWith(normMeta)) {
-                 return false; 
-             }
-        }
-    }
-
-    // Fallback per risultati esterni
-    if (item.isExternal) {
-        if (!meta.isSeries) {
-            if (simpleSeriesFallback(meta, item.title)) return true;
-            if (smartMatch(meta.title, item.title, meta.isSeries)) return true;
-            return false;
-        }
-        if (simpleSeriesFallback(meta, item.title)) return true;
-        if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
-        if (PackResolver.isSeasonPack(item.title)) return true;
-        return false;
-    }
-
-    if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
-    if (meta.isSeries && simpleSeriesFallback(meta, item.title)) return true;
-
-    return false;
-});
-
-  let cleanResults = deduplicateResults(resultsRaw);
-  
+  // --- FINALIZZAZIONE RISULTATI ---
   if (!dbOnlyMode) {
       saveResultsToDbBackground(meta, cleanResults);
   }
 
-  // =========================================================================
-  
-  //  NUOVA LOGICA: SPETTRO VISIVO (Exclusion Logic)
+  //  SPETTRO VISIVO (Exclusion Logic)
   if (config.filters) {
       cleanResults = cleanResults.filter(item => {
           const t = (item.title || "").toLowerCase();
-
-          // Flag no4k (Pulsante 4K escluso)
           if (config.filters.no4k && REGEX_QUALITY["4K"].test(t)) return false;
-
-          // Flag no1080 (Pulsante 1080p escluso)
           if (config.filters.no1080 && REGEX_QUALITY["1080p"].test(t)) return false;
-
-          // Flag no720 (Pulsante 720p escluso)
           if (config.filters.no720 && REGEX_QUALITY["720p"].test(t)) return false;
-
-          // Flag noScr (Pulsante SD escluso)
-          // Rimuove sia qualità SD/480p che CAM/Screener
           if (config.filters.noScr) {
                if (REGEX_QUALITY["SD"].test(t)) return false;
                if (/cam|hdcam|ts|telesync|screener|scr\b/i.test(t)) return false;
           }
-
-          // Flag Legacy "No Cam" 
           if (config.filters.noCam && /cam|hdcam|ts|telesync|screener|scr\b/i.test(t)) return false;
-
           return true;
       });
   }
-  // =========================================================================
 
-  // 1. Esegui il ranking normale (ordina per seeders, lingua, ecc.)
+  // Ranking finale
   let rankedList = rankAndFilterResults(cleanResults, meta, config);
 
-  // 2.  Applica il limite per qualità (Signal Gate) se configurato
   if (config.filters && config.filters.maxPerQuality) {
       rankedList = filterByQualityLimit(rankedList, config.filters.maxPerQuality);
   }
 
-  // 3. Applica il taglio finale globale (MAX_RESULTS)
   const ranked = rankedList.slice(0, CONFIG.MAX_RESULTS);
 
   if (config.service === 'tb' && ranked.length > 0 && hasDebridKey) {
@@ -1094,8 +1049,6 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   }
 
   let debridStreams = [];
-  // --- 2. MODIFICA LA RISOLUZIONE DEBRID ---
-  // Esegui la risoluzione solo se abbiamo risultati E una chiave valida
   if (ranked.length > 0 && hasDebridKey) { 
       const rdPromises = ranked.map(item => {
           item.season = meta.season;
@@ -1105,45 +1058,32 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       });
       debridStreams = (await Promise.all(rdPromises)).filter(Boolean);
       
-      // --- NUOVA LOGICA DI ORDINAMENTO PER CACHE BUILDER ---
-      // Sposta i file [📥 DOWNLOAD] in fondo alla lista Debrid
       debridStreams.sort((a, b) => {
           const aIsUncached = a.name.includes('📥');
           const bIsUncached = b.name.includes('📥');
-
-          if (aIsUncached && !bIsUncached) return 1; // A (uncached) va dopo B (cached)
-          if (!aIsUncached && bIsUncached) return -1; // A (cached) va prima di B (uncached)
-          return 0; // Mantiene l'ordine originale
+          if (aIsUncached && !bIsUncached) return 1;
+          if (!aIsUncached && bIsUncached) return -1; 
+          return 0;
       });
   }
 
-  // === WEB PROVIDERS (Vix & GuardaHD) ===
-  
-  // 1. StreamingCommunity
+  // === WEB PROVIDERS ===
   const vixPromise = searchVix(meta, config, reqHost);
-  
-  // 2. GuardaHD (ATTIVATO DA CONFIG INDEX.HTML)
   let ghdPromise = Promise.resolve([]);
   if (config.filters && config.filters.enableGhd) {
-      // Passiamo 'config' che contiene config.mediaflow (per eventuale proxy)
       ghdPromise = searchGuardaHD(meta, config).catch(err => {
           logger.warn(`GuardaHD Error: ${err.message}`);
           return [];
       });
   }
 
-  // Attendi entrambi i provider Web
   const [rawVix, formattedGhd] = await Promise.all([vixPromise, ghdPromise]);
-  const formattedVix = rawVix; // Vix è già formattato
+  const formattedVix = rawVix; 
   
-  // UNIONE FINALE
   let finalStreams = [];
-  
-  // Se VixLast è attivo, mettiamo tutti i Web Stream (Vix e GHD) in fondo
   if (config.filters && config.filters.vixLast === true) {
       finalStreams = [...debridStreams, ...formattedGhd, ...formattedVix];
   } else {
-      // Default: Web Stream in cima
       finalStreams = [...formattedGhd, ...formattedVix, ...debridStreams];
   }
   
@@ -1302,7 +1242,7 @@ const PUBLIC_PORT = process.env.PUBLIC_PORT || PORT;
 app.listen(PORT, () => {
     console.log(`🚀 Leviathan (God Tier) attivo su porta interna ${PORT}`);
     console.log(`-----------------------------------------------------`);
-    console.log(`⚡ MODE: REMOTE READER + LOCAL WRITER`);
+    console.log(`⚡ MODE: REMOTE READER + LOCAL WRITER (SEQUENTIAL)`);
     console.log(`📡 INDEXER URL (ENV): ${CONFIG.INDEXER_URL}`);
     console.log(`🎬 METADATA: TMDB Primary (User Key Priority)`);
     console.log(`💾 SCRITTURA: DB Locale (Auto-Learning attivo)`);
