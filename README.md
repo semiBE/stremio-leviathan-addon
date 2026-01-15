@@ -138,7 +138,7 @@ Leviathan evolve oltre il Torrent. Il modulo **VIX** interroga direttamente l'in
 * **Zero-Wait:** Nessun buffering iniziale, nessun bisogno di seeders. Il contenuto parte istantaneamente.
 * **Fallback Intelligente:** Se il torrent non ha seed, il sistema commuta automaticamente sul flusso web.
 
-### 6. 🕶️ GuardaHD Integration Layer
+### 6. 🦁 GuardaHD Integration Layer
 Modulo web nativo per contenuti ITA-first.
 * **Direct Stream Extraction:** Parsing automatico di flussi HLS (m3u8) e MP4 dai player embedded.
 * **ITA Validation:** Verifica semantica lingua/audio. Se non è italiano → scartato.
