@@ -143,9 +143,9 @@ Modulo web nativo per contenuti ITA-first.
 * Direct Stream Extraction: Parsing automatico di flussi HLS (m3u8) e MP4 dai player embedded.
 * ITA Validation: Verifica semantica lingua/audio. Se non è italiano → scartato.
 * Multi-Player Support: Risoluzione dinamica dei player (MixDrop, StreamTape, ecc.).
- **Zero-Seed Playback: Avvio immediato, nessuna dipendenza da torrent o debrid.
-* **Fast Web Lane: Priorità alta come fallback dopo VIX.
-* **Risultato: streaming istantaneo, affidabile, solo ITA.
+* Zero-Seed Playback: Avvio immediato, nessuna dipendenza da torrent o debrid.
+* Fast Web Lane: Priorità alta come fallback dopo VIX.
+* Risultato: streaming istantaneo, affidabile, solo ITA.
 
 ### 7. 👻 Debrid Ghost Shell (MediaFlow Proxy)
 Progettato per l'elusione dei blocchi IP e la gestione di account Multi-Utente.
