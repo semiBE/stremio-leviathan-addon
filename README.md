@@ -145,9 +145,16 @@ Modulo web nativo per contenuti ITA-first.
 * **Multi-Player Support:** Risoluzione dinamica dei player (MixDrop, StreamTape, ecc.).
 * **Zero-Seed Playback:** Avvio immediato, nessuna dipendenza da torrent o debrid.
 * **Fast Web Lane:** Priorità alta come fallback dopo VIX.
-* **Risultato:** streaming istantaneo, affidabile, solo ITA.
 
-### 7. 👻 Debrid Ghost Shell (MediaFlow Proxy)
+### 7.🍿 GuardaSerie Integration Layer
+Sorgente web specializzata in Serie TV ITA.
+* **Season/Episode Resolver:** Parsing nativo strutture Stagione/Episodio.
+* **Direct Stream Extraction:** Estrazione diretta HLS (m3u8) / MP4 dai player embedded.
+* **ITA-Strict Filter:** Validazione semantica lingua/audio. Non ITA → eliminato.
+* **Zero-Seed Playback:** Avvio immediato, nessuna dipendenza da torrent o debrid.
+* **Fast Web Lane:** Priorità alta come web fallback per serie TV.
+
+### 8. 👻 Debrid Ghost Shell (MediaFlow Proxy)
 Progettato per l'elusione dei blocchi IP e la gestione di account Multi-Utente.
 * **IP Masking:** Tutto il traffico verso Real-Debrid viene tunnelizzato tramite **MediaFlow Proxy**.
 * **Shared Account Support:** Permette l'utilizzo dello stesso account Debrid su più IP contemporaneamente senza rischiare il ban, poiché il provider vede solo l'IP del Proxy.
