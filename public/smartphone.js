@@ -290,6 +290,14 @@ const mobileHTML = `
                         <label class="m-switch"><input type="checkbox" id="m-enableGhd" onchange="updateStatus('m-enableGhd','st-ghd')"><span class="m-slider m-warn-ghd"></span></label>
                     </div>
 
+                    <div class="m-row">
+                        <div class="m-label">
+                            <h4>GuardaSerie <span class="m-status-text" id="st-gs">OFF</span></h4>
+                            <p style="font-size:0.75rem; color:var(--m-warning); max-width:180px;">Richiede <b style="text-decoration:underline">OBBLIGATORIAMENTE</b> MediaFlow Proxy</p>
+                        </div>
+                        <label class="m-switch"><input type="checkbox" id="m-enableGs" onchange="updateStatus('m-enableGs','st-gs')"><span class="m-slider m-warn-ghd"></span></label>
+                    </div>
+
                     <div id="m-priority-panel" class="m-priority-wrapper">
                         <div class="m-priority-box">
                             <div class="m-priority-info">
@@ -368,7 +376,7 @@ const mobileHTML = `
             <div id="page-network" class="m-page">
                 <div class="m-card" style="border-color: rgba(112,0,255,0.4)">
                     <div class="m-card-header"><i class="fas fa-network-wired m-card-icon" style="color:var(--m-secondary)"></i> MEDIAFLOW PROXY</div>
-                    <p style="font-size:0.8rem; color:var(--m-dim); margin-bottom:15px; line-height:1.4;">Bridge essenziale per <b>GuardaHD</b> e per la protezione IP <b>Debrid Ghost</b>.</p>
+                    <p style="font-size:0.8rem; color:var(--m-dim); margin-bottom:15px; line-height:1.4;">Bridge essenziale per <b>GuardaHD/GuardaSerie</b> e per la protezione IP <b>Debrid Ghost</b>.</p>
                     
                     <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:12px; border:1px dashed rgba(255,255,255,0.1);">
                         <div class="m-input-group" style="margin-bottom:10px;">
@@ -393,7 +401,7 @@ const mobileHTML = `
         <div class="m-modal-header"><div class="m-modal-title">DATABASE FAQ</div><div class="m-close-icon" onclick="closeFaq()"><i class="fas fa-times"></i></div></div>
         <div class="m-faq-content">
             <div class="m-faq-item" onclick="toggleFaqItem(this)"><div class="m-faq-q">Come funziona? <i class="fas fa-chevron-down"></i></div><div class="m-faq-a">Leviathan scansiona le profondità del web per trovare Torrent e flussi StreamingCommunity ad alta velocità.</div></div>
-            <div class="m-faq-item" onclick="toggleFaqItem(this)"><div class="m-faq-q">MediaFlow & GuardaHD <i class="fas fa-chevron-down"></i></div><div class="m-faq-a">GuardaHD richiede un Proxy. Inserisci URL e Password del tuo MediaFlow Server nel modulo "Network".</div></div>
+            <div class="m-faq-item" onclick="toggleFaqItem(this)"><div class="m-faq-q">MediaFlow & GuardaHD/GS <i class="fas fa-chevron-down"></i></div><div class="m-faq-a">GuardaHD e GuardaSerie richiedono un Proxy. Inserisci URL e Password del tuo MediaFlow Server nel modulo "Network".</div></div>
             <div class="m-faq-item" onclick="toggleFaqItem(this)"><div class="m-faq-q">Cos'è il Cache Builder? <i class="fas fa-chevron-down"></i></div><div class="m-faq-a">Mostra Torrent NON ancora scaricati su Debrid. Cliccandoli, avvierai il download.</div></div>
              <div class="m-faq-item" onclick="toggleFaqItem(this)"><div class="m-faq-q">Ghost Shell Mode <i class="fas fa-chevron-down"></i></div><div class="m-faq-a">Debrid Ghost instrada le richieste Debrid tramite il proxy MediaFlow, nascondendo il tuo IP.</div></div>
         </div>
@@ -522,8 +530,9 @@ function updateStatus(inputId, statusId) {
 function checkWebPriorityVisibility() {
     const vix = document.getElementById('m-enableVix').checked;
     const ghd = document.getElementById('m-enableGhd').checked;
+    const gs = document.getElementById('m-enableGs').checked;
     const panel = document.getElementById('m-priority-panel');
-    if (vix || ghd) panel.classList.add('show');
+    if (vix || ghd || gs) panel.classList.add('show');
     else panel.classList.remove('show');
 }
 
@@ -608,6 +617,7 @@ function loadMobileConfig() {
             if(config.filters) {
                 document.getElementById('m-enableVix').checked = config.filters.enableVix || false;
                 document.getElementById('m-enableGhd').checked = config.filters.enableGhd || false;
+                document.getElementById('m-enableGs').checked = config.filters.enableGs || false;
                 document.getElementById('m-allowEng').checked = config.filters.allowEng || false;
                 document.getElementById('m-showUncached').checked = config.filters.showUncached || false;
                 document.getElementById('m-dbOnly').checked = config.filters.dbOnly || false;
@@ -635,6 +645,7 @@ function loadMobileConfig() {
             
             updateStatus('m-enableVix', 'st-vix');
             updateStatus('m-enableGhd', 'st-ghd');
+            updateStatus('m-enableGs', 'st-gs');
             updateStatus('m-allowEng', 'st-eng');
             updateStatus('m-showUncached', 'st-cache');
             updateStatus('m-dbOnly', 'st-db');
@@ -667,6 +678,7 @@ function getMobileConfig() {
             noCam: document.getElementById('mq-sd').classList.contains('excluded'),
             enableVix: document.getElementById('m-enableVix').checked,
             enableGhd: document.getElementById('m-enableGhd').checked,
+            enableGs: document.getElementById('m-enableGs').checked,
             vixLast: document.getElementById('m-vixLast').checked,
             scQuality: mScQuality,
             dbOnly: document.getElementById('m-dbOnly').checked,
@@ -678,7 +690,7 @@ function getMobileConfig() {
 
 function mobileInstall() {
     const config = getMobileConfig();
-    if(!config.key && !config.filters.enableVix && !config.filters.enableGhd) {
+    if(!config.key && !config.filters.enableVix && !config.filters.enableGhd && !config.filters.enableGs) {
         alert("⚠️ ERRORE: Inserisci una API Key o attiva una sorgente Web."); return;
     }
     const manifestUrl = `${window.location.host}/${btoa(JSON.stringify(config))}/manifest.json`;
