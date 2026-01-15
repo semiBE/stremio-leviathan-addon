@@ -1,15 +1,14 @@
 const mobileCSS = `
 :root {
     --m-bg: #000103;
-    --m-primary: #00f2ff;
-    --m-secondary: #7000ff;
-    --m-gold: #ffd700;
+    --m-primary: #00f2ff;     /* Ciano Principale */
+    --m-secondary: #7000ff;   /* Viola Deep */
+    --m-accent: #b026ff;      /* Viola Elettrico */
     --m-surface: rgba(12, 18, 25, 0.85);
     --m-surface-border: rgba(0, 242, 255, 0.2);
     --m-text: #e0f7fa;
     --m-dim: #6c8a9e;
-    --m-error: #ff3366;
-    --m-warning: #ffcc00;
+    --m-error: #ff2a6d;       
     --m-success: #00ff9d;
     --safe-bottom: env(safe-area-inset-bottom);
 }
@@ -101,7 +100,14 @@ body {
     backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0,0,0,0.4);
 }
 .m-card.active-border { border-color: var(--m-primary); box-shadow: 0 0 25px rgba(0,242,255,0.15); }
-.m-card-gold { border-color: rgba(255, 215, 0, 0.4); box-shadow: 0 0 15px rgba(255, 215, 0, 0.1); }
+
+/* ACCENT CARD */
+.m-card-accent { 
+    border-color: rgba(176, 38, 255, 0.4); 
+    box-shadow: 0 0 15px rgba(112, 0, 255, 0.15); 
+    background: linear-gradient(165deg, rgba(20,0,40,0.8), rgba(5,10,15,0.95));
+}
+
 .m-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; color: #fff; font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; }
 .m-card-icon { color: var(--m-primary); font-size: 1.3rem; filter: drop-shadow(0 0 8px var(--m-primary)); }
 
@@ -113,8 +119,10 @@ body {
     font-family: 'Rajdhani', monospace; font-size: 1.1rem; font-weight: 700; transition: 0.3s;
 }
 .m-input:focus { border-color: var(--m-primary); background: rgba(0,10,20,0.8); box-shadow: 0 0 20px rgba(0,242,255,0.15); color: #fff; }
-.m-tmdb-input { border-color: rgba(255, 215, 0, 0.3); color: var(--m-gold); }
-.m-tmdb-input:focus { border-color: var(--m-gold); box-shadow: 0 0 15px rgba(255, 215, 0, 0.15); }
+
+.m-tmdb-input { border-color: rgba(176, 38, 255, 0.3); color: var(--m-accent); }
+.m-tmdb-input:focus { border-color: var(--m-accent); box-shadow: 0 0 15px rgba(176, 38, 255, 0.2); }
+
 .m-paste-btn {
     position: absolute; right: 8px; top: 8px; bottom: 8px;
     background: rgba(255,255,255,0.08); color: var(--m-primary);
@@ -130,24 +138,92 @@ body {
 .m-tab-btn.active { background: linear-gradient(135deg, rgba(0, 242, 255, 0.15), rgba(112, 0, 255, 0.1)); color: #fff; border: 1px solid var(--m-primary); box-shadow: 0 0 20px rgba(0,242,255,0.1); }
 .m-tab-btn.active .m-tab-icon { filter: grayscale(0) drop-shadow(0 0 8px rgba(255,255,255,0.6)); animation: rotateIcon 6s linear infinite; }
 @keyframes rotateIcon { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-.m-ad-warning { display: none; background: rgba(255, 204, 0, 0.1); border: 1px solid var(--m-warning); border-radius: 12px; padding: 12px; margin-bottom: 20px; text-align: center; color: var(--m-warning); font-size: 0.85rem; font-weight: 700; }
 
-/* SWITCHES */
-.m-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+/* WARNING BOX */
+.m-ad-warning { display: none; background: rgba(255, 42, 109, 0.1); border: 1px solid var(--m-error); border-radius: 12px; padding: 12px; margin-bottom: 20px; text-align: center; color: var(--m-error); font-size: 0.85rem; font-weight: 700; box-shadow: 0 0 15px rgba(255, 42, 109, 0.1); }
+
+/* --- SWITCHES (FLEX FIX) --- */
+.m-row { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 15px 0; 
+    border-bottom: 1px solid rgba(255,255,255,0.05); 
+    gap: 15px; 
+}
 .m-row:last-child { border-bottom: none; }
-.m-label h4 { margin: 0; font-size: 1.05rem; color: #fff; font-family: 'Rajdhani', sans-serif; font-weight: 700; display:flex; align-items:center; gap:8px; }
-.m-label p { margin: 4px 0 0; font-size: 0.85rem; color: var(--m-dim); font-weight: 300; }
-.m-status-text { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.1); color: #777; transition: 0.3s; }
-.m-status-text.on { background: rgba(0, 255, 157, 0.15); color: var(--m-success); border: 1px solid rgba(0, 255, 157, 0.3); text-shadow: 0 0 5px var(--m-success); }
-.m-switch { position: relative; width: 52px; height: 28px; flex-shrink: 0; }
+
+.m-label { 
+    flex: 1; 
+    min-width: 0; 
+    padding-right: 5px; 
+}
+
+/* FLEX HEADER */
+.m-label h4 { 
+    margin: 0; 
+    display: flex; 
+    align-items: center; 
+    flex-wrap: wrap; 
+    gap: 8px;
+    font-size: 1.05rem; 
+    color: #fff; 
+    font-family: 'Rajdhani', sans-serif; 
+    font-weight: 700; 
+    line-height: 1.3;
+}
+
+/* ICONA */
+.m-label h4 i {
+    flex-shrink: 0; 
+    font-size: 1.1em;
+}
+
+/* DESCRIZIONE */
+.m-label p { 
+    margin: 4px 0 0; 
+    font-size: 0.85rem; 
+    color: var(--m-dim); 
+    font-weight: 300; 
+    line-height: 1.2; 
+    display: block; /* Assicura che vada a capo */
+}
+
+/* BADGE */
+.m-status-text { 
+    font-size: 0.7rem; 
+    padding: 2px 6px; 
+    border-radius: 4px; 
+    background: rgba(255,255,255,0.1); 
+    color: #777; 
+    transition: 0.3s; 
+    white-space: nowrap; 
+}
+.m-status-text.on { 
+    background: rgba(0, 255, 157, 0.15); 
+    color: var(--m-success); 
+    border: 1px solid rgba(0, 255, 157, 0.3); 
+    text-shadow: 0 0 5px var(--m-success); 
+}
+
+.m-switch { 
+    position: relative; 
+    width: 52px; 
+    height: 28px; 
+    flex-shrink: 0; 
+}
 .m-switch input { opacity: 0; width: 0; height: 0; }
 .m-slider { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: #1a1a1a; border-radius: 34px; border: 1px solid #333; transition: .4s; }
 .m-slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: #666; border-radius: 50%; transition: .4s; }
 input:checked + .m-slider { background-color: rgba(0,242,255,0.25); border-color: var(--m-primary); }
 input:checked + .m-slider:before { transform: translateX(24px); background-color: var(--m-primary); box-shadow: 0 0 10px var(--m-primary); }
-.m-warn-ghd { border-color: var(--m-warning) !important; }
-input:checked + .m-warn-ghd { background-color: rgba(255,204,0,0.2) !important; }
-input:checked + .m-warn-ghd:before { background-color: var(--m-warning) !important; box-shadow: 0 0 10px var(--m-warning) !important; }
+
+/* PURPLE ACCENT SWITCH */
+.m-slider-purple { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: #1a1a1a; border-radius: 34px; border: 1px solid #333; transition: .4s; }
+.m-slider-purple:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: #666; border-radius: 50%; transition: .4s; }
+input:checked + .m-slider-purple { background-color: rgba(176, 38, 255, 0.25); border-color: var(--m-accent); }
+input:checked + .m-slider-purple:before { transform: translateX(24px); background-color: var(--m-accent); box-shadow: 0 0 10px var(--m-accent); }
+
 
 /* --- GERARCHIA SORGENTI - TACTICAL PANEL --- */
 .m-priority-wrapper {
@@ -175,7 +251,7 @@ input:checked + .m-warn-ghd:before { background-color: var(--m-warning) !importa
 .m-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff; cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
 .m-q-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 15px; }
 .m-q-item { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: var(--m-dim); padding: 12px 0; text-align: center; border-radius: 10px; font-size: 0.85rem; font-weight: 700; font-family: 'Rajdhani', sans-serif; transition: 0.3s; }
-.m-q-item.excluded { border-color: var(--m-error); color: var(--m-error); opacity: 0.6; text-decoration: line-through; background: rgba(255,51,102,0.15); }
+.m-q-item.excluded { border-color: var(--m-error); color: var(--m-error); opacity: 0.6; text-decoration: line-through; background: rgba(255, 42, 109, 0.15); }
 
 /* FOOTER */
 .m-credits-section { margin-top: 40px; padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; gap: 20px; }
@@ -253,11 +329,11 @@ const mobileHTML = `
                     </div>
                 </div>
 
-                <div class="m-card m-card-gold">
-                     <div class="m-card-header"><i class="fas fa-database m-card-icon" style="color:var(--m-gold)"></i> TMDB API (Opzionale)</div>
+                <div class="m-card m-card-accent">
+                     <div class="m-card-header"><i class="fas fa-database m-card-icon" style="color:var(--m-accent)"></i> TMDB API (Opzionale)</div>
                      <div class="m-input-group">
                         <input type="text" id="m-tmdb" class="m-input m-tmdb-input" placeholder="Chiave TMDB Personale">
-                        <div class="m-paste-btn" style="color:var(--m-gold); border-color:rgba(255, 215, 0, 0.3)" onclick="pasteTo('m-tmdb')"><i class="fas fa-paste"></i> PASTE</div>
+                        <div class="m-paste-btn" style="color:var(--m-accent); border-color:rgba(176, 38, 255, 0.3)" onclick="pasteTo('m-tmdb')"><i class="fas fa-paste"></i> PASTE</div>
                     </div>
                     <p style="font-size:0.75rem; color:var(--m-dim); margin-top:5px;">Migliora i metadati. Se vuoto usa default.</p>
                 </div>
@@ -267,10 +343,17 @@ const mobileHTML = `
                     
                     <div class="m-row">
                         <div class="m-label">
-                            <h4>StreamingCommunity <span class="m-status-text" id="st-vix">OFF</span></h4>
-                            <p>Scraper Web Veloce</p>
+                            <h4>
+                                <i class="fas fa-play-circle" style="color:var(--m-secondary);"></i> 
+                                SC 
+                                <span class="m-status-text" id="st-vix">OFF</span>
+                            </h4>
+                            <p>(StreamingCommunity) • Scraper Web Veloce</p>
                         </div>
-                        <label class="m-switch"><input type="checkbox" id="m-enableVix" onchange="updateStatus('m-enableVix','st-vix')"><span class="m-slider"></span></label>
+                        <label class="m-switch">
+                            <input type="checkbox" id="m-enableVix" onchange="updateStatus('m-enableVix','st-vix')">
+                            <span class="m-slider"></span>
+                        </label>
                     </div>
 
                     <div id="m-sc-options" style="display:none; margin-top:15px; border-top:1px dashed rgba(255,255,255,0.1); padding-top:15px;">
@@ -284,18 +367,32 @@ const mobileHTML = `
 
                     <div class="m-row" style="margin-top:10px;">
                         <div class="m-label">
-                            <h4>GuardaHD <span class="m-status-text" id="st-ghd">OFF</span></h4>
-                            <p style="font-size:0.75rem; color:var(--m-warning); max-width:180px;">Richiede <b style="text-decoration:underline">OBBLIGATORIAMENTE</b> MediaFlow Proxy</p>
+                            <h4>
+                                <i class="fas fa-film" style="color:var(--m-primary);"></i> 
+                                GuardaHD 
+                                <span class="m-status-text" id="st-ghd">OFF</span>
+                            </h4>
+                            <p style="color:var(--m-primary);">Richiede <u>MediaFlow Proxy</u></p>
                         </div>
-                        <label class="m-switch"><input type="checkbox" id="m-enableGhd" onchange="updateStatus('m-enableGhd','st-ghd')"><span class="m-slider m-warn-ghd"></span></label>
+                        <label class="m-switch">
+                            <input type="checkbox" id="m-enableGhd" onchange="updateStatus('m-enableGhd','st-ghd')">
+                            <span class="m-slider"></span>
+                        </label>
                     </div>
 
                     <div class="m-row">
                         <div class="m-label">
-                            <h4>GuardaSerie <span class="m-status-text" id="st-gs">OFF</span></h4>
-                            <p style="font-size:0.75rem; color:var(--m-warning); max-width:180px;">Richiede <b style="text-decoration:underline">OBBLIGATORIAMENTE</b> MediaFlow Proxy</p>
+                            <h4>
+                                <i class="fas fa-tv" style="color:var(--m-accent);"></i> 
+                                GuardaSerie 
+                                <span class="m-status-text" id="st-gs">OFF</span>
+                            </h4>
+                            <p style="color:var(--m-accent);">Richiede <u>MediaFlow Proxy</u></p>
                         </div>
-                        <label class="m-switch"><input type="checkbox" id="m-enableGs" onchange="updateStatus('m-enableGs','st-gs')"><span class="m-slider m-warn-ghd"></span></label>
+                        <label class="m-switch">
+                            <input type="checkbox" id="m-enableGs" onchange="updateStatus('m-enableGs','st-gs')">
+                            <span class="m-slider m-slider-purple"></span>
+                        </label>
                     </div>
 
                     <div id="m-priority-panel" class="m-priority-wrapper">
@@ -322,7 +419,7 @@ const mobileHTML = `
                         <img src="https://i.ibb.co/gLkrjxXT/Whats-App-Image-2026-01-12-at-20-15-37.jpg" alt="LUC4N3X" class="m-cmd-avatar">
                         <div class="m-cmd-info"><span class="m-cmd-label">SYSTEM COMMANDER</span><span class="m-cmd-name">LUC4N3X</span></div>
                     </a>
-                    <a href="https://www.paypal.me/luc4nex" target="_blank" class="m-donate-btn"><i class="fas fa-mug-hot" style="color:var(--m-gold)"></i> OFFRIMI UN CAFFÈ</a>
+                    <a href="https://www.paypal.me/luc4nex" target="_blank" class="m-donate-btn"><i class="fas fa-mug-hot" style="color:var(--m-error)"></i> OFFRIMI UN CAFFÈ</a>
                     <div style="height:30px;"></div> 
                 </div>
             </div>
