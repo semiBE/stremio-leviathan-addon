@@ -18,7 +18,7 @@ const aioFormatter = require("./aiostreams-formatter.cjs");
 // --- IMPORT GESTORI WEB (Vix, GuardaHD & GuardaSerie) ---
 const { searchVix } = require("./vix/vix_handler");
 const { searchGuardaHD } = require("./guardahd/ghd_handler"); 
-const { searchGuardaserie } = require("./guardaserie/gs_handler"); // <--- AGGIUNTO
+const { searchGuardaserie } = require("./guardaserie/gs_handler"); 
 
 // --- 1. CONFIGURAZIONE LOGGER (Winston) ---
 const logger = winston.createLogger({
@@ -874,33 +874,52 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       if (!item?.magnet) return false;
       
       const source = (item.source || "").toLowerCase();
-      const title = item.title;
-
+      // Filtro di sicurezza per provider non voluti
       if (source.includes("comet") || source.includes("stremthru")) return false;
 
+      // --- MODIFICA RICHIESTA: SE È EXTERNAL, PASSA TUTTO (Basta che il titolo combaci) ---
+      // Ignoriamo completamente i check sulla lingua ("ita") e "allowEng"
+      if (item.isExternal) {
+          if (!meta.isSeries) {
+              if (simpleSeriesFallback(meta, item.title)) return true;
+              if (smartMatch(meta.title, item.title, meta.isSeries)) return true;
+              return false;
+          }
+          // Per le serie
+          if (simpleSeriesFallback(meta, item.title)) return true;
+          if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
+          if (PackResolver.isSeasonPack(item.title)) return true;
+          return false;
+      }
+
+      // --- DA QUI IN GIÙ: LOGICA PER SCRAPER INTERNI / DB (MANTIENE FILTRI ITA) ---
+
+      // 1337x Logic (Internal)
       if (source.includes("1337")) {
-          const hasIta = /\b(ita|italian)\b/i.test(title);
-          const isSubbed = /\b(sub|subs|subbed|vost|vostit)\b/i.test(title);
+          const hasIta = /\b(ita|italian)\b/i.test(item.title);
+          const isSubbed = /\b(sub|subs|subbed|vost|vostit)\b/i.test(item.title);
           if (!hasIta || isSubbed) return false; 
       }
 
       const isItalian = isSafeForItalian(item) || /corsaro/i.test(item.source);
 
-      if (item.isExternal && isItalian) return true; 
+      // TGX/YTS Logic (Internal)
+      if (source.includes("tgx") || source.includes("torrentgalaxy") || source.includes("yts")) {
+          const hasStrictIta = /\b(ita|italian)\b/i.test(item.title);
+          if (!hasStrictIta) return false; 
+      }
 
-      const cleanFile = title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
+      // Blocco lingua standard (solo per non-external)
+      if (!config.filters?.allowEng && !isItalian) return false;
+
+      // ... match titles for internal ...
+
+      const cleanFile = item.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
       const cleanMeta = meta.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
 
       const regexPrefix = /^(?:the|a|an|il|lo|la|i|gli|le|un|uno|una|el|los|las|les)\s+/i;
       const normFile = cleanFile.replace(regexPrefix, "").trim();
       const normMeta = cleanMeta.replace(regexPrefix, "").trim();
-
-      if (source.includes("tgx") || source.includes("torrentgalaxy") || source.includes("yts")) {
-          const hasStrictIta = /\b(ita|italian)\b/i.test(title);
-          if (!hasStrictIta) return false; 
-      }
-
-      if (!config.filters?.allowEng && !isItalian) return false;
 
       if (!meta.isSeries) {
           const metaYear = parseInt(meta.year);
@@ -914,18 +933,6 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
           if (normFile.includes(normMeta)) {
                if (!normFile.startsWith(normMeta)) return false; 
           }
-      }
-
-      if (item.isExternal) {
-          if (!meta.isSeries) {
-              if (simpleSeriesFallback(meta, item.title)) return true;
-              if (smartMatch(meta.title, item.title, meta.isSeries)) return true;
-              return false;
-          }
-          if (simpleSeriesFallback(meta, item.title)) return true;
-          if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
-          if (PackResolver.isSeasonPack(item.title)) return true;
-          return false;
       }
 
       if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
@@ -1068,29 +1075,33 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       });
   }
 
-  // === WEB PROVIDERS ===
-  const vixPromise = searchVix(meta, config, reqHost);
-  
-  let ghdPromise = Promise.resolve([]);
-  if (config.filters && config.filters.enableGhd) {
-      ghdPromise = searchGuardaHD(meta, config).catch(err => {
-          logger.warn(`GuardaHD Error: ${err.message}`);
-          return [];
-      });
+  // === WEB PROVIDERS (MODIFICATO PER DB ONLY MODE) ===
+  let rawVix = [], formattedGhd = [], formattedGs = [], formattedVix = [];
+
+  // Esegui i Web Providers SOLO se NON siamo in modalità "Solo DB"
+  if (!dbOnlyMode) {
+       const vixPromise = searchVix(meta, config, reqHost);
+       
+       let ghdPromise = Promise.resolve([]);
+       if (config.filters && config.filters.enableGhd) {
+           ghdPromise = searchGuardaHD(meta, config).catch(err => {
+               logger.warn(`GuardaHD Error: ${err.message}`);
+               return [];
+           });
+       }
+
+       let gsPromise = Promise.resolve([]);
+       if (config.filters && config.filters.enableGs) {
+           gsPromise = searchGuardaserie(meta, config).catch(err => {
+               logger.warn(`GuardaSerie Error: ${err.message}`);
+               return [];
+           });
+       }
+
+       [rawVix, formattedGhd, formattedGs] = await Promise.all([vixPromise, ghdPromise, gsPromise]);
+       formattedVix = rawVix; 
   }
 
-  // --- AGGIUNTA GUARDASERIE ---
-  let gsPromise = Promise.resolve([]);
-  if (config.filters && config.filters.enableGs) {
-      gsPromise = searchGuardaserie(meta, config).catch(err => {
-          logger.warn(`GuardaSerie Error: ${err.message}`);
-          return [];
-      });
-  }
-
-  const [rawVix, formattedGhd, formattedGs] = await Promise.all([vixPromise, ghdPromise, gsPromise]);
-  const formattedVix = rawVix; 
-  
   let finalStreams = [];
   if (config.filters && config.filters.vixLast === true) {
       finalStreams = [...debridStreams, ...formattedGhd, ...formattedGs, ...formattedVix];
