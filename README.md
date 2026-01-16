@@ -92,16 +92,20 @@
 
 Il core, sviluppato in **Node.js**, orchestra scansioni parallele sui principali index mondiali e italiani. Utilizza una logica proprietaria per distinguere le sorgenti in base alla latenza di risposta, applicando timeout dinamici e tecniche di evasione anti-bot.
 
-### 🔥 Release 2.0 Highlights
+### 🔥 Release 2.1 Highlights
 
 * 🚀 **Core Refactoring:** Motore riscritto per massimizzare stabilità e concorrenza.
-* 🌪️ **VIX Hybrid Module:** Integrazione diretta con **StreamingCommunity** per flussi istantanei (No-P2P).
+* 🧠 **Proprietary DB:** Implementazione di un database di proprietà per indicizzazione istantanea e indipendente.
+* 📱 **Mobile UX:** Implementazione di `smartphone.js` per una GUI completamente ridisegnata e ottimizzata per dispositivi mobili.
+* 🌪️ **VIX Hybrid Module:** Integrazione diretta con **StreamingCommunity**, **GuardaHD** e **GuardaSerie** per flussi istantanei (No-P2P).
 * 👻 **Ghost Proxying:** Supporto nativo a **MediaFlow** per l'uso sicuro di Account Debrid condivisi.
 * 🔗 **AIOStreams:** Supporto nativo per flussi AIOStreams, integrato nel motore Leviathan.
 * 🏎️ **Fast Lane Mode:** Gestione intelligente dei timeout per API ad alta velocità.
 * 🇮🇹 **Strict ITA Validation:** Filtri regex chirurgici per l'eliminazione dei falsi positivi.
 * 🛡️ **Cloudscraper Integration:** Ottimizzazione avanzata per il superamento dei controlli Cloudflare.
 * 💉 **Magnet Injection:** Arricchimento automatico dei metadati con tracker UDP Tier-1.
+
+
 
 ---
 
@@ -138,7 +142,23 @@ Leviathan evolve oltre il Torrent. Il modulo **VIX** interroga direttamente l'in
 * **Zero-Wait:** Nessun buffering iniziale, nessun bisogno di seeders. Il contenuto parte istantaneamente.
 * **Fallback Intelligente:** Se il torrent non ha seed, il sistema commuta automaticamente sul flusso web.
 
-### 6. 👻 Debrid Ghost Shell (MediaFlow Proxy)
+### 6. 🦁 GuardaHD Integration Layer
+Modulo web nativo per contenuti ITA-first.
+* **Direct Stream Extraction:** Parsing automatico di flussi HLS (m3u8) e MP4 dai player embedded.
+* **ITA Validation:** Verifica semantica lingua/audio. Se non è italiano → scartato.
+* **Multi-Player Support:** Risoluzione dinamica dei player (MixDrop, StreamTape, ecc.).
+* **Zero-Seed Playback:** Avvio immediato, nessuna dipendenza da torrent o debrid.
+* **Fast Web Lane:** Priorità alta come fallback dopo VIX.
+
+### 7.🍿 GuardaSerie Integration Layer
+Sorgente web specializzata in Serie TV ITA.
+* **Season/Episode Resolver:** Parsing nativo strutture Stagione/Episodio.
+* **Direct Stream Extraction:** Estrazione diretta HLS (m3u8) / MP4 dai player embedded.
+* **ITA-Strict Filter:** Validazione semantica lingua/audio. Non ITA → eliminato.
+* **Zero-Seed Playback:** Avvio immediato, nessuna dipendenza da torrent o debrid.
+* **Fast Web Lane:** Priorità alta come web fallback per serie TV.
+
+### 8. 👻 Debrid Ghost Shell (MediaFlow Proxy)
 Progettato per l'elusione dei blocchi IP e la gestione di account Multi-Utente.
 * **IP Masking:** Tutto il traffico verso Real-Debrid viene tunnelizzato tramite **MediaFlow Proxy**.
 * **Shared Account Support:** Permette l'utilizzo dello stesso account Debrid su più IP contemporaneamente senza rischiare il ban, poiché il provider vede solo l'IP del Proxy.
