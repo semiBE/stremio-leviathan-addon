@@ -27,16 +27,20 @@ function createClient(targetDomain) {
             'Origin': targetDomain,
             'Referer': `${targetDomain}/`
         },
-        timeout: 10000 
+        timeout: 6000 // TIMEOUT RIDOTTO A 6 SECONDI PER VELOCITÀ
     };
     const instance = axios.create(config);
     return wrapper(instance);
 }
 
-// --- HELPER: GENERATORE DESCRIZIONI (STILE VIX) ---
+// --- HELPER: GENERATORE DESCRIZIONI ---
 function generateRichDescription(meta, provider, quality = "HD") {
     const lines = [];
-    lines.push(`🎬 ${meta.title || "Episodio"}`);
+    let episodeInfo = "";
+    if (meta.season && meta.episode) {
+        episodeInfo = `S${meta.season} E${meta.episode}`;
+    }
+    lines.push(`🎬 ${meta.title || "Episodio"} ${episodeInfo}`);
     lines.push(`🇮🇹 ITA • 🔊 AAC`);
     lines.push(`🎞️ ${quality} • ⚡ Fast`);
     lines.push(`☁️ ${provider} • 🍿 GuardaSerie`);
@@ -64,22 +68,21 @@ function detectAndUnpack(html) {
     } catch (e) { return null; }
 }
 
-// --- PROVIDER 1: DROPLOAD (Ottimizzato) ---
+// --- PROVIDER 1: DROPLOAD ---
 async function extractDropload(client, dlUrl, referer, mfpUrl, mfpPsw, meta) {
     try {
         const response = await client.get(dlUrl, {
-            headers: { 'User-Agent': UA, 'Referer': referer }
+            headers: { 'User-Agent': UA, 'Referer': referer },
+            timeout: 5000 // Fail fast
         });
         
         let html = response.data;
         let streamUrl = null;
 
-        // 1. Cerca "file": "..."
         const fileRegex = /file\s*:\s*["']([^"']+)["']/;
         let m = html.match(fileRegex);
         if (m) streamUrl = m[1];
 
-        // 2. Fallback Unpacker
         if (!streamUrl) {
             const unpacked = detectAndUnpack(html);
             if (unpacked) {
@@ -90,17 +93,14 @@ async function extractDropload(client, dlUrl, referer, mfpUrl, mfpPsw, meta) {
 
         if (streamUrl) {
             return {
-                name: `🛡️ GuardaSerie\n📦 Dropload`,
+                name: `🍿 GuardaSerie\n📦 Dropload`,
                 title: generateRichDescription(meta, "Dropload", "FHD"),
                 url: streamUrl,
                 behaviorHints: {
                     notWebReady: false,
                     bingieGroup: "guardaserie-dropload",
                     proxyHeaders: {
-                        request: {
-                            "Referer": dlUrl,
-                            "User-Agent": UA
-                        }
+                        request: { "Referer": dlUrl, "User-Agent": UA }
                     }
                 }
             };
@@ -109,7 +109,7 @@ async function extractDropload(client, dlUrl, referer, mfpUrl, mfpPsw, meta) {
     return null;
 }
 
-// --- PROVIDER 2: LOADM (Legacy) ---
+// --- PROVIDER 2: LOADM ---
 const KEY = Buffer.from('kiemtienmua911ca', 'utf-8');
 const IV = Buffer.from('1234567890oiuytr', 'utf-8');
 
@@ -125,7 +125,8 @@ async function extractLoadM(client, playerUrl, referer, mfpUrl, mfpPsw, meta) {
         const response = await client.get(apiUrl, {
             headers: { 'Referer': playerUrl, 'User-Agent': UA },
             params: { id, w: '2560', h: '1440', r: referer },
-            responseType: 'text'
+            responseType: 'text',
+            timeout: 5000 // Fail fast
         });
 
         const hexData = response.data;
@@ -145,7 +146,6 @@ async function extractLoadM(client, playerUrl, referer, mfpUrl, mfpPsw, meta) {
         
         if (hls) {
             let finalUrl = hls;
-            // Gestione Proxy MFP (Opzionale per LoadM, ma utile)
             if (mfpUrl) {
                 const proxyBase = mfpUrl.replace(/\/+$/, '');
                 const params = new URLSearchParams();
@@ -157,7 +157,7 @@ async function extractLoadM(client, playerUrl, referer, mfpUrl, mfpPsw, meta) {
             }
 
             return {
-                name: `🛡️ GuardaSerie\n⚡ LoadM`,
+                name: `🍿 GuardaSerie\n⚡ LoadM`,
                 title: generateRichDescription(meta, "LoadM", "HD"),
                 url: finalUrl,
                 behaviorHints: {
@@ -171,14 +171,13 @@ async function extractLoadM(client, playerUrl, referer, mfpUrl, mfpPsw, meta) {
     return null;
 }
 
-// --- RICERCA & NAVIGAZIONE ---
+// --- RICERCA ---
 async function searchGuardoserie(client, targetDomain, query, imdbId) {
     if (imdbId && imdbId.startsWith('tt')) {
         try {
             const searchUrl = `${targetDomain}/?story=${imdbId}&do=search&subaction=search`;
             const res = await client.get(searchUrl);
             const $ = cheerio.load(res.data);
-            
             let href = null;
             $('.mlnh-2 h2 a, .mlnew h2 a, .movie-item a').each((_, el) => {
                 if (!href) href = $(el).attr('href');
@@ -191,25 +190,22 @@ async function searchGuardoserie(client, targetDomain, query, imdbId) {
         const simpleSearchUrl = `${targetDomain}/?s=${encodeURIComponent(query)}`;
         const res = await client.get(simpleSearchUrl);
         const $ = cheerio.load(res.data);
-        
         const candidates = [];
         $('.mlnh-2 h2 a, .mlnew h2 a').each((_, el) => {
             const href = $(el).attr('href');
             const text = $(el).text().trim();
             if (href && text) candidates.push({ href, text });
         });
-
         const match = candidates.find(c => {
             const t = c.text.toLowerCase().replace(/[^a-z0-9]/g, '');
             const q = query.toLowerCase().replace(/[^a-z0-9]/g, '');
             return t.includes(q) || q.includes(t);
         });
-
         return match ? match.href : null;
     } catch (e) { return null; }
 }
 
-// --- CORE: RISOLUZIONE LINK (PARALLELA) ---
+// --- CORE: RISOLUZIONE OTTIMIZZATA ---
 async function resolvePageStream(client, pageUrl, mfpUrl, mfpPsw, meta) {
     const streams = [];
     const { season, episode } = meta;
@@ -218,37 +214,53 @@ async function resolvePageStream(client, pageUrl, mfpUrl, mfpPsw, meta) {
         const res = await client.get(pageUrl);
         const $ = cheerio.load(res.data);
         const links = new Set();
+        let foundSpecific = false;
 
         if (season && episode) {
-            const epId = `serie-${season}_${episode}`;
-            const targetEl = $(`#${epId}`);
+            // TENTATIVO 1: ID SPECIFICO
+            const ids = [
+                `serie-${season}_${episode}`, 
+                `serie-${season}_0${episode}`,
+                `serie-${parseInt(season)}_${parseInt(episode)}`
+            ];
             
-            if (targetEl.length > 0) {
-                const direct = targetEl.attr('data-link') || targetEl.attr('href');
-                if (direct && direct.length > 5) links.add(direct);
-                
-                const parentLi = targetEl.closest('li');
-                parentLi.find('[data-link]').each((_, el) => links.add($(el).attr('data-link')));
+            for (const id of ids) {
+                const targetEl = $(`#${id}`);
+                if (targetEl.length > 0) {
+                    foundSpecific = true;
+                    const direct = targetEl.attr('data-link') || targetEl.attr('href');
+                    if (direct && direct.length > 5) links.add(direct);
+                    
+                    const parentLi = targetEl.closest('li');
+                    parentLi.find('[data-link]').each((_, el) => {
+                        const l = $(el).attr('data-link');
+                        if(l) links.add(l);
+                    });
+                }
             }
         }
 
-        // Fallback: cerca tutto se non trova ID specifico
+        // TENTATIVO 2: FALLBACK (Se non abbiamo trovato nulla con gli ID)
         if (links.size === 0) {
             $('iframe').each((_, el) => links.add($(el).attr('src') || $(el).attr('data-src')));
             $('[data-link]').each((_, el) => links.add($(el).attr('data-link')));
         }
 
-        // Processamento Parallelo
-        const processingPromises = Array.from(links).map(async (link) => {
-            if (!link) return null;
+        // --- OTTIMIZZAZIONE VELOCITA' ---
+        // Convertiamo il Set in Array e prendiamo SOLO I PRIMI 6.
+        // Se non è nei primi 6, probabilmente è spazzatura o troppo in fondo.
+        // Questo evita di fare 30 richieste HTTP per una sola pagina.
+        const candidates = Array.from(links)
+            .filter(l => l && (l.includes('dropload') || l.includes('loadm')))
+            .slice(0, 6); // <--- LIMITE MASSIMO DI ANALISI
+
+        const processingPromises = candidates.map(async (link) => {
             if (link.startsWith('//')) link = 'https:' + link;
             if (link.startsWith('/')) link = new URL(link, pageUrl).href;
 
-            // Filtro provider (Supervideo rimosso come richiesto)
             if (link.includes('dropload')) {
                 return await extractDropload(client, link, pageUrl, mfpUrl, mfpPsw, meta);
-            } 
-            else if (link.includes('loadm')) {
+            } else if (link.includes('loadm')) {
                 return await extractLoadM(client, link, pageUrl, mfpUrl, mfpPsw, meta);
             }
             return null;
@@ -256,9 +268,16 @@ async function resolvePageStream(client, pageUrl, mfpUrl, mfpPsw, meta) {
 
         const results = await Promise.allSettled(processingPromises);
         
+        // --- DEDUPLICAZIONE ---
+        const uniqueKeys = new Set();
         results.forEach(res => {
             if (res.status === 'fulfilled' && res.value) {
-                streams.push(res.value);
+                const stream = res.value;
+                const uniqueKey = `${stream.name}|${stream.title}`;
+                if (!uniqueKeys.has(uniqueKey)) {
+                    uniqueKeys.add(uniqueKey);
+                    streams.push(stream);
+                }
             }
         });
 
@@ -285,7 +304,7 @@ async function searchGuardaserie(meta, config) {
         return await resolvePageStream(client, seriesUrl, mfpUrl, mfpPsw, meta);
 
     } catch (e) {
-        console.error(`🛡️ [GS] Critical: ${e.message}`);
+        console.error(`🍿️ [GS] Critical: ${e.message}`);
         return [];
     }
 }
