@@ -18,7 +18,7 @@ const aioFormatter = require("./aiostreams-formatter.cjs");
 // --- IMPORT GESTORI WEB (Vix, GuardaHD & GuardaSerie) ---
 const { searchVix } = require("./vix/vix_handler");
 const { searchGuardaHD } = require("./guardahd/ghd_handler"); 
-const { searchGuardaserie } = require("./guardaserie/gs_handler"); // <--- AGGIUNTO
+const { searchGuardaserie } = require("./guardaserie/gs_handler"); 
 
 // --- 1. CONFIGURAZIONE LOGGER (Winston) ---
 const logger = winston.createLogger({
@@ -612,6 +612,7 @@ function saveResultsToDbBackground(meta, results) {
     })().catch(err => console.error("❌ Errore background save:", err.message));
 }
 
+// --- LAZY RESOLVE IMPLEMENTATION (MODIFICATA) ---
 async function resolveDebridLink(config, item, showFake, reqHost, meta = null, dbHelper = null) {
     try {
         const service = config.service || 'rd';
@@ -619,135 +620,50 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta = null, d
         if (!apiKey) return null;
 
         if (!item.hash || item.hash.length !== 40) return null;
-
-        const isSeries = meta && meta.isSeries;
-        const isPackCandidate = item.fileIdx === undefined || item.fileIdx === null;
-
-        if (isSeries && PackResolver.isSeasonPack(item.title) && isPackCandidate) {
-             try {
-                const resolverConfig = { 
-                    rd_key: service === 'rd' ? apiKey : null,
-                    torbox_key: service === 'tb' ? apiKey : null 
-                };
-                const resolved = await withTimeout(
-                    PackResolver.resolveSeriesPackFile(
-                        item.hash, 
-                        resolverConfig, 
-                        meta.imdb_id, 
-                        meta.season, 
-                        meta.episode, 
-                        dbHelper
-                    ), 
-                    CONFIG.TIMEOUTS.PACK_RESOLVER,
-                    'Pack Resolution'
-                );
-                if (resolved) {
-                    item.fileIdx = resolved.fileIndex;
-                    item.title = resolved.fileName;
-                    item._size = resolved.fileSize;
-                    item.source += " [PACK]";
-                }
-             } catch (err) {
-                 logger.warn(`Pack Resolver skipped/failed: ${err.message}`);
-             }
-        }
-
-        if (service === 'tb') {
-            if (item._tbCached) {
-                const serviceTag = "TB";
-                const { name, title } = formatStreamTitleCinePro(item.title, item.source, item._size, item.seeders, serviceTag, config, item.hash);
-                const proxyUrl = `${reqHost}/${config.rawConf}/play_tb/${item.hash}?s=${item.season || 0}&e=${item.episode || 0}&f=${item.fileIdx !== undefined ? item.fileIdx : ''}`;
-                return { 
-                    name, title, url: proxyUrl, infoHash: item.hash, 
-                    behaviorHints: { notWebReady: false, bingieGroup: `corsaro-tb-${item.hash}` } 
-                };
-            } else { return null; }
-        }
-
-        let streamData = null;
-        const cleanMagnet = `magnet:?xt=urn:btih:${item.hash}&dn=${encodeURIComponent(item.title)}`;
-        const safeFileIdx = item.fileIdx !== undefined && item.fileIdx !== null ? item.fileIdx : 0;
-
-        // MODIFICA LEVIATHAN: RD non ha più bisogno di safeFileIdx, fa auto-matching interno
-        if (service === 'rd') {
-            streamData = await RD.getStreamLink(apiKey, cleanMagnet, item.season, item.episode);
-        }
-        else if (service === 'ad') {
-            streamData = await AD.getStreamLink(apiKey, cleanMagnet, item.season, item.episode, safeFileIdx);
-        }
-
-        // --- LOGICA CACHE BUILDER (COMPLETA E FUNZIONALE) ---
-        if (!streamData || streamData.type !== "ready" || streamData.size < CONFIG.REAL_SIZE_FILTER) {
-            
-            // Verifica se l'utente ha attivato la Cache Builder Mode
-            if (config.filters && config.filters.showUncached) {
-                
-                const serviceTag = service.toUpperCase();
-                
-                // Formatta il titolo ESATTAMENTE come se fosse in cache (estetica uguale)
-                const formatted = formatStreamTitleCinePro(
-                    item.title,
-                    item.source,
-                    item._size || item.sizeBytes || 0,
-                    item.seeders,
-                    serviceTag,
-                    config,
-                    item.hash
-                );
-
-                return { 
-                    name: `[📥 DOWNLOAD]`, // Etichetta distintiva
-                    title: `${formatted.title}\n⚠️ DOWNLOAD RICHIESTO (No Cache)`, 
-                    // PUNTIAMO AL NOSTRO ENDPOINT "add_to_cloud" che caricherà il video locale di conferma
-                    url: `${reqHost}/${config.rawConf}/add_to_cloud/${item.hash}`, 
-                    infoHash: item.hash,
-                    behaviorHints: { notWebReady: true, bingieGroup: `uncached-${item.hash}` } 
-                };
-            }
-            
-            return null; // Nascondi se l'opzione è spenta
-        }
-
-        let finalUrl = streamData.url;
-
-        // Verifica la struttura esatta generata dal tuo index.html
-        if (config.mediaflow && config.mediaflow.proxyDebrid && config.mediaflow.url) {
-            try {
-                const mfpBase = config.mediaflow.url.replace(/\/$/, '');
-                const originalLink = streamData.url;
-                
-                // Costruisce l'URL nel formato MFP: /proxy/stream?d=URL_ENCODED
-                finalUrl = `${mfpBase}/proxy/stream?d=${encodeURIComponent(originalLink)}`;
-
-                if (config.mediaflow.pass) {
-                    finalUrl += `&api_password=${config.mediaflow.pass}`;
-                }
-                
-                logger.info(`🛡️ [MFP] Ghost Mode Attiva per: ${item.hash.substring(0,8)}...`);
-            } catch (err) {
-                logger.error(`❌ Errore MediaFlow: ${err.message}`);
-            }
-        }
-       
-
         const serviceTag = service.toUpperCase();
-        const effectiveTitle = streamData.filename && streamData.filename.length > 3 ? streamData.filename : item.title;
-        const { name, title } = formatStreamTitleCinePro(effectiveTitle, item.source, streamData.size || item.size, item.seeders, serviceTag, config, item.hash);
-        
+
+        // -----------------------------------------------------
+        // MODIFICA PER LAZY RESOLVE (RISOLUZIONE AL CLICK)
+        // Invece di chiamare RD/AD qui, generiamo un link proxy
+        // che punterà al nostro server (/unlock/...).
+        // -----------------------------------------------------
+
+        const safeFileIdx = item.fileIdx !== undefined && item.fileIdx !== null ? item.fileIdx : 0;
+        const season = item.season || 0;
+        const episode = item.episode || 0;
+
+        // Se l'utente vuole usare il Cache Builder (Show Uncached), facciamo un controllo rapido
+        // oppure mostriamo tutto. Per "risultati istantanei", assumiamo che il check cache
+        // sia stato fatto a monte o che mostriamo il link e se fallisce, fallisce.
+        // Nel tuo codice precedente, il check TB viene fatto fuori. Per RD/AD, spesso si fa check.
+        // Qui, per massimizzare la velocità, assumiamo che se è arrivato qui, è un candidato valido.
+
+        // Costruiamo il link di sblocco (Proxy)
+        // Formato: /:conf/unlock/:service/:hash/:fileIdx?s=...&e=...
+        const unlockUrl = `${reqHost}/${config.rawConf}/unlock/${service}/${item.hash}/${safeFileIdx}?s=${season}&e=${episode}`;
+
+        // Formattiamo il titolo usando i dati che abbiamo GIA' (dallo scraper),
+        // senza aspettare che Debrid ci dia il nome file vero.
+        const { name, title } = formatStreamTitleCinePro(
+            item.title, // Usiamo il titolo del torrent
+            item.source,
+            item._size || item.size || 0,
+            item.seeders,
+            serviceTag,
+            config,
+            item.hash
+        );
+
         return { 
-            name, title, 
-            url: finalUrl, // Restituisce l'URL modificato (se MFP attivo) o l'originale
+            name, 
+            title, 
+            url: unlockUrl,  // <-- LINK AL NOSTRO SERVER
             infoHash: item.hash, 
             behaviorHints: { notWebReady: false, bingieGroup: `corsaro-${service}-${item.hash}` } 
         };
+
     } catch (e) {
         logger.error(`Errore resolveDebridLink: ${e.message}`);
-        if (showFake) {
-            return { 
-                name: `[P2P ⚠️]`, title: `${item.title}\n⚠️ Cache Assente`, url: item.magnet, infoHash: item.hash,
-                behaviorHints: { notWebReady: true } 
-            };
-        }
         return null;
     }
 }
@@ -874,33 +790,52 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       if (!item?.magnet) return false;
       
       const source = (item.source || "").toLowerCase();
-      const title = item.title;
-
+      // Filtro di sicurezza per provider non voluti
       if (source.includes("comet") || source.includes("stremthru")) return false;
 
+      // --- MODIFICA RICHIESTA: SE È EXTERNAL, PASSA TUTTO (Basta che il titolo combaci) ---
+      // Ignoriamo completamente i check sulla lingua ("ita") e "allowEng"
+      if (item.isExternal) {
+          if (!meta.isSeries) {
+              if (simpleSeriesFallback(meta, item.title)) return true;
+              if (smartMatch(meta.title, item.title, meta.isSeries)) return true;
+              return false;
+          }
+          // Per le serie
+          if (simpleSeriesFallback(meta, item.title)) return true;
+          if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
+          if (PackResolver.isSeasonPack(item.title)) return true;
+          return false;
+      }
+
+      // --- DA QUI IN GIÙ: LOGICA PER SCRAPER INTERNI / DB (MANTIENE FILTRI ITA) ---
+
+      // 1337x Logic (Internal)
       if (source.includes("1337")) {
-          const hasIta = /\b(ita|italian)\b/i.test(title);
-          const isSubbed = /\b(sub|subs|subbed|vost|vostit)\b/i.test(title);
+          const hasIta = /\b(ita|italian)\b/i.test(item.title);
+          const isSubbed = /\b(sub|subs|subbed|vost|vostit)\b/i.test(item.title);
           if (!hasIta || isSubbed) return false; 
       }
 
       const isItalian = isSafeForItalian(item) || /corsaro/i.test(item.source);
 
-      if (item.isExternal && isItalian) return true; 
+      // TGX/YTS Logic (Internal)
+      if (source.includes("tgx") || source.includes("torrentgalaxy") || source.includes("yts")) {
+          const hasStrictIta = /\b(ita|italian)\b/i.test(item.title);
+          if (!hasStrictIta) return false; 
+      }
 
-      const cleanFile = title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
+      // Blocco lingua standard (solo per non-external)
+      if (!config.filters?.allowEng && !isItalian) return false;
+
+      // ... match titles for internal ...
+
+      const cleanFile = item.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
       const cleanMeta = meta.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
 
       const regexPrefix = /^(?:the|a|an|il|lo|la|i|gli|le|un|uno|una|el|los|las|les)\s+/i;
       const normFile = cleanFile.replace(regexPrefix, "").trim();
       const normMeta = cleanMeta.replace(regexPrefix, "").trim();
-
-      if (source.includes("tgx") || source.includes("torrentgalaxy") || source.includes("yts")) {
-          const hasStrictIta = /\b(ita|italian)\b/i.test(title);
-          if (!hasStrictIta) return false; 
-      }
-
-      if (!config.filters?.allowEng && !isItalian) return false;
 
       if (!meta.isSeries) {
           const metaYear = parseInt(meta.year);
@@ -914,18 +849,6 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
           if (normFile.includes(normMeta)) {
                if (!normFile.startsWith(normMeta)) return false; 
           }
-      }
-
-      if (item.isExternal) {
-          if (!meta.isSeries) {
-              if (simpleSeriesFallback(meta, item.title)) return true;
-              if (smartMatch(meta.title, item.title, meta.isSeries)) return true;
-              return false;
-          }
-          if (simpleSeriesFallback(meta, item.title)) return true;
-          if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
-          if (PackResolver.isSeasonPack(item.title)) return true;
-          return false;
       }
 
       if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
@@ -1051,14 +974,19 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
 
   let debridStreams = [];
   if (ranked.length > 0 && hasDebridKey) { 
+      // ORA LA RISOLUZIONE E' ISTANTANEA (Proxy link)
+      // Non usiamo più le Promise pesanti o Bottleneck qui, è solo formattazione stringa.
       const rdPromises = ranked.map(item => {
           item.season = meta.season;
           item.episode = meta.episode;
           config.rawConf = userConfStr;
-          return LIMITERS.rd.schedule(() => resolveDebridLink(config, item, config.filters?.showFake, reqHost, meta, dbHelper));
+          // Chiamiamo direttamente la funzione modificata (Lazy Resolve)
+          return resolveDebridLink(config, item, config.filters?.showFake, reqHost, meta, dbHelper);
       });
+      // await Promise.all qui è veloce perché resolveDebridLink non fa più fetch.
       debridStreams = (await Promise.all(rdPromises)).filter(Boolean);
       
+      // Ordinamento opzionale se ci fossero item "fake"
       debridStreams.sort((a, b) => {
           const aIsUncached = a.name.includes('📥');
           const bIsUncached = b.name.includes('📥');
@@ -1068,29 +996,33 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       });
   }
 
-  // === WEB PROVIDERS ===
-  const vixPromise = searchVix(meta, config, reqHost);
-  
-  let ghdPromise = Promise.resolve([]);
-  if (config.filters && config.filters.enableGhd) {
-      ghdPromise = searchGuardaHD(meta, config).catch(err => {
-          logger.warn(`GuardaHD Error: ${err.message}`);
-          return [];
-      });
+  // === WEB PROVIDERS (MODIFICATO PER DB ONLY MODE) ===
+  let rawVix = [], formattedGhd = [], formattedGs = [], formattedVix = [];
+
+  // Esegui i Web Providers SOLO se NON siamo in modalità "Solo DB"
+  if (!dbOnlyMode) {
+       const vixPromise = searchVix(meta, config, reqHost);
+       
+       let ghdPromise = Promise.resolve([]);
+       if (config.filters && config.filters.enableGhd) {
+           ghdPromise = searchGuardaHD(meta, config).catch(err => {
+               logger.warn(`GuardaHD Error: ${err.message}`);
+               return [];
+           });
+       }
+
+       let gsPromise = Promise.resolve([]);
+       if (config.filters && config.filters.enableGs) {
+           gsPromise = searchGuardaserie(meta, config).catch(err => {
+               logger.warn(`GuardaSerie Error: ${err.message}`);
+               return [];
+           });
+       }
+
+       [rawVix, formattedGhd, formattedGs] = await Promise.all([vixPromise, ghdPromise, gsPromise]);
+       formattedVix = rawVix; 
   }
 
-  // --- AGGIUNTA GUARDASERIE ---
-  let gsPromise = Promise.resolve([]);
-  if (config.filters && config.filters.enableGs) {
-      gsPromise = searchGuardaserie(meta, config).catch(err => {
-          logger.warn(`GuardaSerie Error: ${err.message}`);
-          return [];
-      });
-  }
-
-  const [rawVix, formattedGhd, formattedGs] = await Promise.all([vixPromise, ghdPromise, gsPromise]);
-  const formattedVix = rawVix; 
-  
   let finalStreams = [];
   if (config.filters && config.filters.vixLast === true) {
       finalStreams = [...debridStreams, ...formattedGhd, ...formattedGs, ...formattedVix];
@@ -1111,6 +1043,58 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
 app.get("/api/stats", (req, res) => res.json({ status: "ok" }));
 app.get("/favicon.ico", (req, res) => res.status(204).end());
 
+// --- NUOVA ROTTA: LAZY RESOLVER (Sblocco al Click) ---
+app.get("/:conf/unlock/:service/:hash/:fileIdx", async (req, res) => {
+    const { conf, service, hash, fileIdx } = req.params;
+    const { s, e } = req.query; // season, episode
+
+    logger.info(`🔓 [UNLOCK] Richiesto sblocco: ${service.toUpperCase()} - Hash: ${hash} File: ${fileIdx}`);
+
+    try {
+        const config = getConfig(conf);
+        const apiKey = config.key || config.rd;
+        if (!apiKey) return res.status(403).send("API Key mancante.");
+
+        const cleanMagnet = `magnet:?xt=urn:btih:${hash}`;
+        let streamData = null;
+
+        // Eseguiamo la risoluzione reale ORA (al click)
+        if (service === 'rd') {
+            streamData = await RD.getStreamLink(apiKey, cleanMagnet, s, e);
+        }
+        else if (service === 'ad') {
+            streamData = await AD.getStreamLink(apiKey, cleanMagnet, s, e, parseInt(fileIdx));
+        }
+        else if (service === 'tb') {
+            streamData = await TB.getStreamLink(apiKey, cleanMagnet, s, e, hash, fileIdx);
+        }
+
+        if (!streamData || !streamData.url) {
+            // Se fallisce (es. non cached), possiamo mostrare un video di errore o testo
+            logger.warn(`❌ [UNLOCK FAIL] Impossibile sbloccare il link.`);
+            return res.status(404).send("Errore sblocco: File non trovato o non cached.");
+        }
+
+        // Gestione Proxy MediaFlow (se attivo)
+        let finalUrl = streamData.url;
+        if (config.mediaflow && config.mediaflow.proxyDebrid && config.mediaflow.url) {
+            const mfpBase = config.mediaflow.url.replace(/\/$/, '');
+            finalUrl = `${mfpBase}/proxy/stream?d=${encodeURIComponent(streamData.url)}`;
+            if (config.mediaflow.pass) {
+                finalUrl += `&api_password=${config.mediaflow.pass}`;
+            }
+        }
+
+        // REDIRECT FINALE AL VIDEO
+        res.redirect(finalUrl);
+
+    } catch (err) {
+        logger.error(`Errore Critico Unlock: ${err.message}`);
+        res.status(500).send("Errore server durante lo sblocco.");
+    }
+});
+
+// Vecchia rotta play_tb mantenuta per retrocompatibilità (ma la nuova /unlock gestisce anche TB)
 app.get("/:conf/play_tb/:hash", async (req, res) => {
     const { conf, hash } = req.params;
     const { s, e, f } = req.query; 
@@ -1260,6 +1244,7 @@ app.listen(PORT, () => {
     console.log(`👁️ SPETTRO VISIVO: Modulo Attivo (Esclusioni 4K/1080/720/SD)`);
     console.log(`🦁 GUARDA HD: Modulo Integrato e Pronto`);
     console.log(`🛡️ GUARDA SERIE: Modulo Integrato e Pronto`);
+    console.log(`⏩ LAZY RESOLVE: ATTIVO (0ms Generation)`);
     console.log(`🦑 LEVIATHAN CORE: Optimized for High Reliability`);
     console.log(`-----------------------------------------------------`);
 });
