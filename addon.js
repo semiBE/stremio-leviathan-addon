@@ -920,6 +920,19 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   if (config.filters) {
       cleanResults = cleanResults.filter(item => {
           const t = (item.title || "").toLowerCase();
+
+          // --- NUOVO FILTRO GB: ELIMINA FILE TROPPO GRANDI ---
+          if (config.filters.maxSizeGB && config.filters.maxSizeGB > 0) {
+              // Convertiamo i GB in Bytes (1 GB = 1073741824 Bytes)
+              const maxBytes = config.filters.maxSizeGB * 1024 * 1024 * 1024;
+              // Recuperiamo la dimensione del file (gestiamo le varie nomenclature usate nello script)
+              const itemSize = item._size || item.sizeBytes || 0;
+              
+              // Se il file ha una dimensione valida ed è superiore al limite, lo scartiamo
+              if (itemSize > 0 && itemSize > maxBytes) return false;
+          }
+          // --------------------------------------------------
+
           if (config.filters.no4k && REGEX_QUALITY["4K"].test(t)) return false;
           if (config.filters.no1080 && REGEX_QUALITY["1080p"].test(t)) return false;
           if (config.filters.no720 && REGEX_QUALITY["720p"].test(t)) return false;
@@ -1196,6 +1209,7 @@ app.listen(PORT, () => {
     console.log(`🎬 METADATA: TMDB Primary (User Key Priority)`);
     console.log(`💾 SCRITTURA: DB Locale (Auto-Learning attivo)`);
     console.log(`👁️ SPETTRO VISIVO: Modulo Attivo (Esclusioni 4K/1080/720/SD)`);
+    console.log(`⚖️ SIZE LIMITER: Modulo Attivo (GB Filter)`);
     console.log(`🦁 GUARDA HD: Modulo Integrato e Pronto`);
     console.log(`🛡️ GUARDA SERIE: Modulo Integrato e Pronto`);
     console.log(`🦑 LEVIATHAN CORE: Optimized for High Reliability`);
