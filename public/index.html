@@ -19,6 +19,7 @@
             --text-dim: #8baac2;
             --error: #ff3366;
             --warning: #ffcc00;
+            --amber: #ff9900; /* Nuovo colore per Limite GB */
             --glow-strong: 0 0 20px rgba(0, 242, 255, 0.6);
             --glow-intense: 0 0 40px rgba(0, 242, 255, 0.8), 0 0 60px rgba(0, 242, 255, 0.4);
         }
@@ -487,12 +488,12 @@
         .spec-btn.active { background: linear-gradient(135deg, rgba(0, 242, 255, 0.1), transparent); color: var(--primary); text-shadow: 0 0 8px var(--primary); }
         .spec-btn.excluded { background: rgba(20, 0, 5, 0.6); border-color: var(--error); color: var(--error); opacity: 0.6; text-decoration: line-through; box-shadow: none; }
         
-        /* --- CACHE CARD SPECIFIC (NEW) --- */
+        /* --- CACHE CARD / SIZE CARD SPECIFIC --- */
         .cache-card { background: rgba(5, 20, 30, 0.6); border: 1px solid rgba(255, 51, 102, 0.3); border-radius: 12px; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; transition: 0.3s; }
-        .cache-card:hover { border-color: var(--error); box-shadow: 0 0 15px rgba(255, 51, 102, 0.15); }
+        .cache-card:hover { border-color: var(--amber); box-shadow: 0 0 15px rgba(255, 153, 0, 0.15); }
         .cache-info h4 { margin: 0; color: #fff; font-family: 'Rajdhani', sans-serif; text-transform: uppercase; font-size: 1.1rem; }
         .cache-info p { margin: 3px 0 0; color: var(--text-dim); font-size: 0.8rem; }
-        .cache-icon { font-size: 1.5rem; color: var(--error); margin-right: 15px; }
+        .cache-icon { font-size: 1.5rem; color: var(--amber); margin-right: 15px; }
         .cache-switch input:checked + .slider { background-color: rgba(255, 51, 102, 0.2); border-color: var(--error); }
         .cache-switch input:checked + .slider:before { background-color: var(--error); box-shadow: 0 0 10px var(--error); }
 
@@ -819,18 +820,18 @@
                             </div>
                         </div>
 
-                        <div class="cache-card" id="cacheModule">
-                            <div class="gate-left">
-                                <i class="fas fa-cloud-upload-alt cache-icon"></i>
-                                <div class="cache-info">
-                                    <h4>CACHE BUILDER MODE</h4>
-                                    <p>Mostra anche Torrent non in cache (Download).</p>
+                        <div class="cache-card" id="sizeModule" style="border-color: rgba(255, 153, 0, 0.3);">
+                            <div class="gate-left" style="width: 100%;">
+                                <i class="fas fa-weight-hanging cache-icon" style="color: #ff9900;"></i>
+                                <div class="cache-info" style="flex: 1;">
+                                    <h4>LIMITATORE PESO (GB)</h4>
+                                    <p>Escludi file superiori a <span id="sizeDisplay" style="color: #ff9900; font-weight:800;">∞</span> GB</p>
+                                </div>
+                                
+                                <div class="gate-controls" style="opacity: 1; pointer-events: auto; filter: none; margin-left: 15px;">
+                                    <input type="range" min="0" max="100" step="1" value="0" class="gate-slider" id="maxSizeSlider" oninput="updateSizeVal(this.value)" style="background: linear-gradient(90deg, #ff9900, #333); width: 100px;">
                                 </div>
                             </div>
-                            <label class="switch cache-switch">
-                                <input type="checkbox" id="showUncached">
-                                <span class="slider"></span>
-                            </label>
                         </div>
 
                         <div class="spectrum-container">
@@ -1109,6 +1110,16 @@
         }
 
         function updateGateVal(val) { document.getElementById('gateDisplay').innerText = val; }
+        
+        // --- FUNZIONE AGGIORNAMENTO TESTO LIMITATORE GB ---
+        function updateSizeVal(val) {
+            const display = document.getElementById('sizeDisplay');
+            if (val == 0) {
+                display.innerText = "∞";
+            } else {
+                display.innerText = val;
+            }
+        }
 
         function toggleAuxCard(cardId) {
             const card = document.getElementById(cardId);
@@ -1143,9 +1154,8 @@
                         document.getElementById('enableVix').checked = config.filters.enableVix || false;
                         document.getElementById('vixLast').checked = config.filters.vixLast || false;
                         document.getElementById('dbOnly').checked = config.filters.dbOnly || false;
-                        document.getElementById('showUncached').checked = config.filters.showUncached || false;
                         document.getElementById('enableGhd').checked = config.filters.enableGhd || false;
-                        document.getElementById('enableGs').checked = config.filters.enableGs || false; // CARICAMENTO GS
+                        document.getElementById('enableGs').checked = config.filters.enableGs || false; 
 
                         setSpecState('btn_4k', config.filters.no4k);
                         setSpecState('btn_1080', config.filters.no1080);
@@ -1159,6 +1169,12 @@
                             document.getElementById('gateActive').checked = true;
                             document.getElementById('gateSlider').value = config.filters.maxPerQuality;
                             toggleGate(); 
+                        }
+
+                        // --- RECUPERO VALORE LIMITATORE GB ---
+                        if (config.filters.maxSizeGB) {
+                            document.getElementById('maxSizeSlider').value = config.filters.maxSizeGB;
+                            updateSizeVal(config.filters.maxSizeGB);
                         }
                         
                         if (document.getElementById('allowEng').checked) document.getElementById('card_audio').classList.add('active');
@@ -1208,6 +1224,9 @@
             const gateVal = parseInt(document.getElementById('gateSlider').value);
             const finalMaxQuality = gateActive ? gateVal : 0;
             
+            // Recupero valore slider GB
+            const sizeVal = parseInt(document.getElementById('maxSizeSlider').value);
+
             return {
                 service: currentService,
                 key: document.getElementById('apiKey').value.trim(),
@@ -1227,12 +1246,12 @@
                     noCam: document.getElementById('btn_sd').classList.contains('excluded'),
                     enableVix: document.getElementById('enableVix').checked,
                     enableGhd: document.getElementById('enableGhd').checked,
-                    enableGs: document.getElementById('enableGs').checked, // SALVATAGGIO GS
+                    enableGs: document.getElementById('enableGs').checked, 
                     vixLast: document.getElementById('vixLast').checked,
                     scQuality: currentSCQuality, 
                     dbOnly: document.getElementById('dbOnly').checked,
                     maxPerQuality: finalMaxQuality,
-                    showUncached: document.getElementById('showUncached').checked
+                    maxSizeGB: sizeVal > 0 ? sizeVal : null // NUOVO PARAMETRO
                 }
             };
         }
@@ -1268,12 +1287,15 @@
             let spectrumStr = exclText.length > 0 ? `ESCLUSI: ${exclText.join(', ')}` : 'COMPLETO';
             let gateText = c.filters.maxPerQuality > 0 ? `MAX ${c.filters.maxPerQuality}` : 'ILLIMITATO';
 
+            // Testo per il Limite GB
+            let sizeText = c.filters.maxSizeGB ? `${c.filters.maxSizeGB} GB` : 'ILLIMITATO';
+
             list.innerHTML = `
                 <li>Servizio Debrid <span>${c.service.toUpperCase()}</span></li>
                 <li>Sorgenti Web <span>SC: ${scText} | GHD: ${ghdText} | GS: ${gsText}</span></li>
                 <li>Proxy Bridge <span>${c.mediaflow.url ? 'CONFIGURATO' : 'NON ATTIVO'}</span></li>
                 <li>Proxy Ghost <span>${c.mediaflow.proxyDebrid ? 'ATTIVO' : 'NO'}</span></li>
-                <li>Cache Builder <span>${c.filters.showUncached ? 'ATTIVO 📥' : 'NO'}</span></li>
+                <li>Limite Dimensione <span>${sizeText}</span></li>
                 <li>Filtro Qualità <span>${spectrumStr}</span></li>
                 <li>Signal Gate <span>${gateText}</span></li>
                 <li>Lingua ENG <span>${c.filters.allowEng ? 'SI' : 'NO'}</span></li>
