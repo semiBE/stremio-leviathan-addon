@@ -80,7 +80,7 @@ const CONFIG = {
     DB_QUERY: 3000,
     DEBRID: 10000, 
     PACK_RESOLVER: 7000,
-    EXTERNAL: 2000
+    EXTERNAL: 5000 // <--- MODIFICATO: Aumentato a 5s per dare tempo a Torrentio
   }
 };
 
@@ -769,19 +769,12 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       // Filtro di sicurezza per provider non voluti
       if (source.includes("comet") || source.includes("stremthru")) return false;
 
-      // --- MODIFICA RICHIESTA: SE È EXTERNAL, PASSA TUTTO (Basta che il titolo combaci) ---
-      // Ignoriamo completamente i check sulla lingua ("ita") e "allowEng"
+      // --- MODIFICA RICHIESTA: SE È EXTERNAL, ACCETTA SEMPRE ---
+      // Poiché l'addon esterno (es. Torrentio) ha già cercato per ID IMDb corretto,
+      // ci fidiamo che il risultato sia giusto, anche se il titolo non combacia 
+      // perfettamente (es. "The Rip" vs "Soldi Sporchi").
       if (item.isExternal) {
-          if (!meta.isSeries) {
-              if (simpleSeriesFallback(meta, item.title)) return true;
-              if (smartMatch(meta.title, item.title, meta.isSeries)) return true;
-              return false;
-          }
-          // Per le serie
-          if (simpleSeriesFallback(meta, item.title)) return true;
-          if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
-          if (PackResolver.isSeasonPack(item.title)) return true;
-          return false;
+          return true; 
       }
 
       // --- DA QUI IN GIÙ: LOGICA PER SCRAPER INTERNI / DB (MANTIENE FILTRI ITA) ---
