@@ -4,6 +4,7 @@ const mobileCSS = `
     --m-primary: #00f2ff;     /* Ciano Principale */
     --m-secondary: #7000ff;   /* Viola Deep */
     --m-accent: #b026ff;      /* Viola Elettrico */
+    --m-amber: #ff9900;       /* Amber Limitatori */
     --m-surface: rgba(12, 18, 25, 0.85);
     --m-surface-border: rgba(0, 242, 255, 0.2);
     --m-text: #e0f7fa;
@@ -120,6 +121,9 @@ body {
 }
 .m-input:focus { border-color: var(--m-primary); background: rgba(0,10,20,0.8); box-shadow: 0 0 20px rgba(0,242,255,0.15); color: #fff; }
 
+/* FIX SPECIFICO PER PASSWORD (NO BOTTONE) */
+#m-mfPass { padding-right: 20px !important; }
+
 .m-tmdb-input { border-color: rgba(176, 38, 255, 0.3); color: var(--m-accent); }
 .m-tmdb-input:focus { border-color: var(--m-accent); box-shadow: 0 0 15px rgba(176, 38, 255, 0.2); }
 
@@ -224,6 +228,11 @@ input:checked + .m-slider:before { transform: translateX(24px); background-color
 input:checked + .m-slider-purple { background-color: rgba(176, 38, 255, 0.25); border-color: var(--m-accent); }
 input:checked + .m-slider-purple:before { transform: translateX(24px); background-color: var(--m-accent); box-shadow: 0 0 10px var(--m-accent); }
 
+/* AMBER ACCENT SWITCH (NEW) */
+.m-slider-amber { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: #1a1a1a; border-radius: 34px; border: 1px solid #333; transition: .4s; }
+.m-slider-amber:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: #666; border-radius: 50%; transition: .4s; }
+input:checked + .m-slider-amber { background-color: rgba(255, 153, 0, 0.25); border-color: var(--m-amber); }
+input:checked + .m-slider-amber:before { transform: translateX(24px); background-color: var(--m-amber); box-shadow: 0 0 10px var(--m-amber); }
 
 /* --- GERARCHIA SORGENTI - TACTICAL PANEL --- */
 .m-priority-wrapper {
@@ -427,7 +436,7 @@ const mobileHTML = `
             <div id="page-filters" class="m-page">
                 <div class="m-card">
                     <div class="m-card-header"><i class="fas fa-filter m-card-icon" style="color:var(--m-error)"></i> Filtro Qualità</div>
-                    <p style="font-size:0.85rem; color:#fff; margin-bottom:10px;">Tocca per <b>ESCLUDERE</b> le risoluzioni:</p>
+                    <p style="font-size:0.85rem; color:#fff; margin-bottom:10px; font-weight:300;">Tocca per <b>ESCLUDERE</b> le risoluzioni:</p>
                     <div class="m-q-grid">
                         <div class="m-q-item" id="mq-4k" onclick="toggleFilter('mq-4k')">4K UHD</div>
                         <div class="m-q-item" id="mq-1080" onclick="toggleFilter('mq-1080')">1080p</div>
@@ -440,22 +449,53 @@ const mobileHTML = `
                     <div class="m-card-header"><i class="fas fa-microchip m-card-icon"></i> Sistema</div>
                     
                     <div class="m-row">
-                        <div class="m-label"><h4>Lingua Inglese <span class="m-status-text" id="st-eng">OFF</span></h4><p>Cerca anche audio ENG</p></div>
+                        <div class="m-label">
+                            <h4>
+                                <i class="fas fa-globe-americas" style="color:var(--m-primary)"></i>
+                                Lingua Inglese 
+                                <span class="m-status-text" id="st-eng">OFF</span>
+                            </h4>
+                            <p>Cerca anche audio ENG</p>
+                        </div>
                         <label class="m-switch"><input type="checkbox" id="m-allowEng" onchange="updateStatus('m-allowEng','st-eng')"><span class="m-slider"></span></label>
                     </div>
 
                     <div class="m-row">
-                        <div class="m-label"><h4>Cache Builder <span class="m-status-text" id="st-cache">OFF</span></h4><p style="color:var(--m-primary)">Mostra link Uncached</p></div>
-                        <label class="m-switch"><input type="checkbox" id="m-showUncached" onchange="updateStatus('m-showUncached','st-cache')"><span class="m-slider"></span></label>
-                    </div>
-
-                    <div class="m-row">
-                        <div class="m-label"><h4>Database Mode <span class="m-status-text" id="st-db">OFF</span></h4><p>Solo DB interno (Max Speed)</p></div>
+                        <div class="m-label">
+                            <h4>
+                                <i class="fas fa-bolt" style="color:var(--m-secondary)"></i>
+                                Database Mode 
+                                <span class="m-status-text" id="st-db">OFF</span>
+                            </h4>
+                            <p>Solo DB interno (Max Speed)</p>
+                        </div>
                         <label class="m-switch"><input type="checkbox" id="m-dbOnly" onchange="updateStatus('m-dbOnly','st-db')"><span class="m-slider"></span></label>
                     </div>
 
+                    <div class="m-row">
+                        <div class="m-label">
+                            <h4>
+                                <i class="fas fa-layer-group" style="color:var(--m-accent)"></i>
+                                AIO Mode 
+                                <span class="m-status-text" id="st-aio">OFF</span>
+                            </h4>
+                            <p style="color:var(--m-secondary)">Formatta per AIOStreams</p>
+                        </div>
+                        <label class="m-switch">
+                            <input type="checkbox" id="m-aioMode" onchange="updateStatus('m-aioMode','st-aio')">
+                            <span class="m-slider m-slider-purple"></span>
+                        </label>
+                    </div>
+
                      <div class="m-row">
-                        <div class="m-label"><h4>Signal Gate <span class="m-status-text" id="st-gate">OFF</span></h4><p>Limita risultati per qualità</p></div>
+                        <div class="m-label">
+                            <h4>
+                                <i class="fas fa-compress-arrows-alt" style="color:var(--m-error)"></i>
+                                Signal Gate 
+                                <span class="m-status-text" id="st-gate">OFF</span>
+                            </h4>
+                            <p>Limita risultati per qualità</p>
+                        </div>
                         <label class="m-switch"><input type="checkbox" id="m-gateActive" onchange="toggleGate()"><span class="m-slider"></span></label>
                     </div>
                     
@@ -467,6 +507,30 @@ const mobileHTML = `
                             <span style="font-family:'Rajdhani'; font-weight:800; font-size:1.2rem; color:var(--m-primary); width:30px; text-align:center;" id="m-gate-display">3</span>
                         </div>
                     </div>
+
+                    <div class="m-row">
+                        <div class="m-label">
+                            <h4>
+                                <i class="fas fa-weight-hanging" style="color:var(--m-amber)"></i>
+                                Limite Peso
+                                <span class="m-status-text" id="st-size">OFF</span>
+                            </h4>
+                            <p style="color:var(--m-amber)">Escludi file enormi (GB)</p>
+                        </div>
+                        <label class="m-switch">
+                            <input type="checkbox" id="m-sizeActive" onchange="toggleSize()">
+                            <span class="m-slider m-slider-amber"></span>
+                        </label>
+                    </div>
+                    
+                    <div id="m-size-wrapper" class="m-gate-wrapper">
+                        <div class="m-gate-control">
+                            <span style="font-size:0.8rem; color:#666;">1GB</span>
+                            <input type="range" min="1" max="100" step="1" value="0" class="m-range" id="m-sizeVal" oninput="updateSizeDisplay(this.value)" style="background:linear-gradient(90deg, #ff9900, #333)">
+                            <span style="font-family:'Rajdhani'; font-weight:800; font-size:1.1rem; color:var(--m-amber); width:45px; text-align:center;" id="m-size-display">∞</span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -665,6 +729,37 @@ function toggleGate() {
 }
 
 function updateGateDisplay(val) { document.getElementById('m-gate-display').innerText = val; }
+
+// --- NUOVA FUNZIONE LIMITATORE GB ---
+function toggleSize() {
+    const active = document.getElementById('m-sizeActive').checked;
+    const wrapper = document.getElementById('m-size-wrapper');
+    const lbl = document.getElementById('st-size');
+    const slider = document.getElementById('m-sizeVal');
+    
+    if(active) { 
+        wrapper.classList.add('show'); 
+        lbl.innerText = "ON"; 
+        lbl.classList.add('on');
+        updateSizeDisplay(slider.value);
+    } else { 
+        wrapper.classList.remove('show'); 
+        lbl.innerText = "OFF"; 
+        lbl.classList.remove('on');
+        document.getElementById('m-size-display').innerText = "∞";
+    }
+}
+
+function updateSizeDisplay(val) {
+    const display = document.getElementById('m-size-display');
+    if (val == 0) {
+        display.innerText = "∞";
+    } else {
+        display.innerText = val;
+    }
+}
+// ------------------------------------
+
 function openApiPage() {
     const links = { 'rd': 'https://real-debrid.com/apitoken', 'ad': 'https://alldebrid.com/apikeys', 'tb': 'https://torbox.app/settings' };
     window.open(links[mCurrentService], '_blank');
@@ -706,6 +801,7 @@ function loadMobileConfig() {
             }
             if(config.key) document.getElementById('m-apiKey').value = config.key;
             if(config.tmdb) document.getElementById('m-tmdb').value = config.tmdb;
+            if(config.aiostreams_mode) document.getElementById('m-aioMode').checked = true;
             if(config.mediaflow) {
                 document.getElementById('m-mfUrl').value = config.mediaflow.url || "";
                 document.getElementById('m-mfPass').value = config.mediaflow.pass || "";
@@ -716,7 +812,6 @@ function loadMobileConfig() {
                 document.getElementById('m-enableGhd').checked = config.filters.enableGhd || false;
                 document.getElementById('m-enableGs').checked = config.filters.enableGs || false;
                 document.getElementById('m-allowEng').checked = config.filters.allowEng || false;
-                document.getElementById('m-showUncached').checked = config.filters.showUncached || false;
                 document.getElementById('m-dbOnly').checked = config.filters.dbOnly || false;
                 
                 // Load VixLast
@@ -728,6 +823,8 @@ function loadMobileConfig() {
                 const qMap = {'no4k':'mq-4k', 'no1080':'mq-1080', 'no720':'mq-720', 'noScr':'mq-sd'};
                 for(let k in qMap) if(config.filters[k]) document.getElementById(qMap[k]).classList.add('excluded');
                 if(config.filters.scQuality) setScQuality(config.filters.scQuality);
+                
+                // LOAD SIGNAL GATE
                 if(config.filters.maxPerQuality && config.filters.maxPerQuality > 0) {
                     const val = config.filters.maxPerQuality;
                     document.getElementById('m-gateActive').checked = true;
@@ -738,17 +835,29 @@ function loadMobileConfig() {
                     document.getElementById('m-gateActive').checked = false;
                     toggleGate();
                 }
+
+                // LOAD LIMITATORE GB
+                if(config.filters.maxSizeGB && config.filters.maxSizeGB > 0) {
+                    const valGB = config.filters.maxSizeGB;
+                    document.getElementById('m-sizeActive').checked = true;
+                    document.getElementById('m-sizeVal').value = valGB;
+                    updateSizeDisplay(valGB);
+                    toggleSize();
+                } else {
+                    document.getElementById('m-sizeActive').checked = false;
+                    toggleSize();
+                }
             }
             
             updateStatus('m-enableVix', 'st-vix');
             updateStatus('m-enableGhd', 'st-ghd');
             updateStatus('m-enableGs', 'st-gs');
             updateStatus('m-allowEng', 'st-eng');
-            updateStatus('m-showUncached', 'st-cache');
             updateStatus('m-dbOnly', 'st-db');
             updateStatus('m-proxyDebrid', 'st-ghost');
+            updateStatus('m-aioMode', 'st-aio');
             toggleScOptions();
-            checkWebPriorityVisibility(); // Sync HUD on load
+            checkWebPriorityVisibility(); 
         }
     } catch(e) { console.log("No config loaded"); }
 }
@@ -756,11 +865,17 @@ function loadMobileConfig() {
 function getMobileConfig() {
     const gateActive = document.getElementById('m-gateActive').checked;
     const gateVal = parseInt(document.getElementById('m-gateVal').value);
+
+    // READ GB LIMIT
+    const sizeActive = document.getElementById('m-sizeActive').checked;
+    const sizeVal = parseInt(document.getElementById('m-sizeVal').value);
+    const finalMaxSizeGB = sizeActive ? sizeVal : 0;
     
     return {
         service: mCurrentService,
         key: document.getElementById('m-apiKey').value.trim(),
         tmdb: document.getElementById('m-tmdb').value.trim(),
+        aiostreams_mode: document.getElementById('m-aioMode').checked,
         mediaflow: {
             url: document.getElementById('m-mfUrl').value.trim().replace(/\/$/, ""),
             pass: document.getElementById('m-mfPass').value.trim(),
@@ -780,7 +895,7 @@ function getMobileConfig() {
             scQuality: mScQuality,
             dbOnly: document.getElementById('m-dbOnly').checked,
             maxPerQuality: gateActive ? gateVal : 0,
-            showUncached: document.getElementById('m-showUncached').checked
+            maxSizeGB: finalMaxSizeGB > 0 ? finalMaxSizeGB : null // NEW PARAM
         }
     };
 }
