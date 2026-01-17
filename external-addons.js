@@ -1,6 +1,6 @@
 const EXTERNAL_ADDONS = {
     torrentio: {
-        baseUrl: 'https://torrentio.strem.fun/providers=rarbg,1337x,ilcorsaronero%7Clanguage=italian%7Climit=5%7Cdebridoptions=nodownloadlinks',
+        baseUrl: 'https://torrentio.stremioluca.dpdns.org/oResults=false/aHR0cHM6Ly90b3JyZW50aW8uc3RyZW0uZnVuL3Byb3ZpZGVycz15dHMsZXp0dixyYXJiZywxMzM3eCx0aGVwaXJhdGViYXksa2lja2Fzc3RvcnJlbnRzLHRvcnJlbnRnYWxheHksbWFnbmV0ZGwsaG9ycmlibGVzdWJzLG55YWFzaSx0b2t5b3Rvc2hvLGFuaWRleCxydXRvcixydXRyYWNrZXIsY29tYW5kbyxibHVkdix0b3JyZW50OSxpbGNvcnNhcm9uZXJvLG1lam9ydG9ycmVudCx3b2xmbWF4NGssY2luZWNhbGlkYWQsYmVzdHRvcnJlbnRzfGxhbmd1YWdlPWl0YWxpYW4=',
         name: 'Torrentio',
         emoji: '🅣',
         timeout: 4500
