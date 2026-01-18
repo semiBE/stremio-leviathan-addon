@@ -1207,6 +1207,38 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   } else {
       finalStreams = [...formattedGhd, ...formattedGs, ...formattedVix, ...debridStreams];
   }
+
+  // --- [FIX] FILTRO FINALE DI SICUREZZA ---
+  // Rimuove anche i "finti HD" o stream Web se l'utente ha escluso quelle risoluzioni
+  if (config.filters) {
+      finalStreams = finalStreams.filter(stream => {
+          // Uniamo titolo e badge per il controllo finale
+          const checkStr = (stream.title + " " + (stream.name || "")).toUpperCase();
+
+          // 1. FILTRO 720p (Esteso per coprire "HD" generico)
+          if (config.filters.no720) {
+              // Se c'è scritto esplicitamente 720P
+              if (checkStr.includes("720P")) return false;
+              
+              // SE IL BADGE DICE "HD" MA NON È 1080P/4K -> LO SCARTIAMO
+              // Questo elimina risultati come "LEVIATHAN HD" se non c'è traccia di 1080/FHD/4K
+              const isGenericHD = /\bHD\b/.test(checkStr) && !/1080|2160|4K|FHD|UHD/.test(checkStr);
+              if (isGenericHD) return false;
+          }
+
+          // 2. FILTRO 4K
+          if (config.filters.no4k && (checkStr.includes("4K") || checkStr.includes("2160P") || checkStr.includes("UHD"))) return false;
+
+          // 3. FILTRO 1080p
+          if (config.filters.no1080 && (checkStr.includes("1080P") || checkStr.includes("FHD") || checkStr.includes("FULLHD"))) return false;
+
+          // 4. FILTRO CAM/SCR
+          if ((config.filters.noScr || config.filters.noCam) && /CAM|SCR|TS|TELESYNC|HDCAM/.test(checkStr)) return false;
+
+          return true;
+      });
+  }
+  // --- [FINE FIX] ---
   
   const resultObj = { streams: finalStreams };
 
@@ -1388,7 +1420,50 @@ app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.ht
 app.get("/:conf/configure", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/configure", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/manifest.json", (req, res) => { res.setHeader("Access-Control-Allow-Origin", "*"); res.json(getManifest()); });
-app.get("/:conf/manifest.json", (req, res) => { res.setHeader("Access-Control-Allow-Origin", "*"); res.json(getManifest()); });
+app.get("/:conf/manifest.json", (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    // 1. Carica il manifest originale
+    const manifest = getManifest();
+
+    try {
+        const { conf } = req.params;
+        const config = getConfig(conf);
+        
+        // Rilevamento del servizio
+        const isRD = config.service === 'rd' || (config.rd && !config.service);
+        const isTB = config.service === 'tb' || (config.torbox && !config.service);
+        const isAD = config.service === 'ad';
+
+        // --- STILE & PERSONALIZZAZIONE ---
+        
+        if (isRD) {
+            manifest.name = "Leviathan ⚡ RD";
+            manifest.id += ".rd"; 
+        } 
+        else if (isTB) {
+            manifest.name = "Leviathan 📦 TorBox";
+            manifest.id += ".tb";
+        } 
+        else if (isAD) {
+            manifest.name = "Leviathan 🦅 AllDebrid";
+            manifest.id += ".ad";
+        }
+        else {
+            // Caso Web / Nessun Debrid
+            // Sostituito "No-Debrid" con "Web" professionale
+            manifest.name = "Leviathan 🌐 Web";
+            
+            // Opzionale: aggiungi un suffisso all'ID per separarlo dalle versioni Debrid
+            manifest.id += ".web";
+        }
+
+    } catch (e) {
+        console.error("Errore personalizzazione manifest:", e);
+    }
+
+    res.json(manifest);
+});
 app.get("/:conf/catalog/:type/:id/:extra?.json", async (req, res) => { res.setHeader("Access-Control-Allow-Origin", "*"); res.json({metas:[]}); });
 app.get("/vixsynthetic.m3u8", handleVixSynthetic);
 

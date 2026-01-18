@@ -1,19 +1,18 @@
 const mobileCSS = `
 :root {
     --m-bg: #000000;
-    --m-primary: #00f2ff;     /* Ciano Leviathan - Glow principale */
-    --m-secondary: #5e17eb;   /* Deep Viola - Accenti profondi */
+    --m-primary: #00f2ff;     /* Ciano Leviathan - Colore Base */
+    --m-secondary: #aa00ff;   /* Viola Elettrico */
     --m-accent: #b026ff;      
     --m-amber: #ff9900;       
-    --m-surface: rgba(10, 15, 25, 0.85); /* Superfici con più profondità */
+    --m-surface: rgba(10, 15, 25, 0.85); 
     --m-surface-border: rgba(0, 242, 255, 0.25);
     --m-text: #e0f7fa;
-    --m-dim: #7a9ab5; /* Dim text più luminoso per contrasto */
-    --m-error: #ff2a6d;       
-    --m-success: #00ff9d;
+    --m-dim: #7a9ab5; 
+    --m-error: #ff3366;       /* Rosso Tech */
     --safe-bottom: env(safe-area-inset-bottom);
-    --m-glow: 0 0 12px rgba(0, 242, 255, 0.4); /* Glow standard */
-    --m-shadow-deep: 0 8px 32px rgba(0,0,0,0.6); /* Ombre profonde */
+    --m-glow: 0 0 12px rgba(0, 242, 255, 0.4); 
+    --m-shadow-deep: 0 8px 32px rgba(0,0,0,0.6); 
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; user-select: none; }
@@ -23,61 +22,44 @@ body {
     position: relative; width: 100%;
 }
 
-/* --- LEVIATHAN OCEAN FX (GPU OPTIMIZED & ENHANCED) --- */
-
-/* 1. Base Abissale - Con più strati per profondità */
+/* --- LEVIATHAN OCEAN FX --- */
 .m-bg-layer { 
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -5; 
     background: radial-gradient(circle at 50% 20%, rgba(15, 28, 48, 0.8) 0%, #020408 50%, #000000 100%);
-    transform: translateZ(0); /* Force GPU */
-    box-shadow: inset 0 0 100px rgba(0,0,0,1); /* Profondità abissale */
+    transform: translateZ(0); box-shadow: inset 0 0 100px rgba(0,0,0,1);
 }
 
-/* 2. Correnti Marine - Con glow e scaling migliorato */
 .m-ocean-flow {
     position: fixed; top: -60%; left: -60%; width: 220%; height: 220%; z-index: -4;
     background: radial-gradient(ellipse at center, rgba(0, 242, 255, 0.05) 0%, transparent 70%);
-    opacity: 0.65;
-    animation: oceanSwell 18s infinite alternate ease-in-out;
-    pointer-events: none;
-    will-change: transform, opacity;
-    transform: translateZ(0);
-    filter: blur(10px); /* Soft glow per correnti */
+    opacity: 0.65; animation: oceanSwell 18s infinite alternate ease-in-out;
+    pointer-events: none; transform: translateZ(0); filter: blur(10px);
 }
 @keyframes oceanSwell {
     0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.45; }
     100% { transform: translate3d(0, -30px, 0) scale(1.15); opacity: 0.75; }
 }
 
-/* 3. Caustiche (Luce) - Enhanced con multi-layer e rotazione morbida */
 .m-caustics {
     position: fixed; top: -60%; left: -60%; width: 220%; height: 220%; z-index: -4;
     background-image: 
         repeating-linear-gradient(45deg, transparent 0, transparent 25px, rgba(0, 242, 255, 0.03) 25px, rgba(0, 242, 255, 0.03) 50px),
         repeating-linear-gradient(-45deg, transparent 0, transparent 25px, rgba(112, 0, 255, 0.03) 25px, rgba(112, 0, 255, 0.03) 50px),
-        radial-gradient(circle, rgba(255,255,255,0.02) 0%, transparent 50%); /* Aggiunto layer per shimmer */
+        radial-gradient(circle, rgba(255,255,255,0.02) 0%, transparent 50%);
     background-size: 200% 200%, 200% 200%, 100% 100%;
-    animation: glimmer 30s linear infinite; /* Più lento per immersione */
-    pointer-events: none;
-    will-change: transform;
-    transform: translateZ(0);
-    mix-blend-mode: screen; /* Migliora l'effetto luminoso */
-    opacity: 0.8;
+    animation: glimmer 30s linear infinite; pointer-events: none;
+    transform: translateZ(0); mix-blend-mode: screen; opacity: 0.8;
 }
 @keyframes glimmer {
     0% { transform: translate3d(0, 0, 0) rotate(0deg); }
     100% { transform: translate3d(-30px, -30px, 0) rotate(3deg); }
 }
 
-/* 4. Bolle - Più realistiche con blur e glow variabile */
 .m-bubbles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -3; pointer-events: none; overflow: hidden; }
 .bubble {
     position: absolute; bottom: -30px; background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(0, 242, 255, 0.1) 100%);
     border-radius: 50%; box-shadow: var(--m-glow), inset 0 0 5px rgba(255,255,255,0.3);
-    animation: riseUp linear infinite;
-    will-change: transform, opacity;
-    transform: translateZ(0); /* GPU */
-    filter: blur(1px); /* Soft edge per realismo */
+    animation: riseUp linear infinite; transform: translateZ(0); filter: blur(1px);
 }
 @keyframes riseUp {
     0% { transform: translate3d(0, 0, 0) scale(0.8); opacity: 0; } 
@@ -89,13 +71,11 @@ body {
 /* --- LAYOUT --- */
 #app-container { display: flex; flex-direction: column; height: 100%; position: relative; z-index: 1; width: 100%; max-width: 100%; }
 
-/* HEADER & PTR - Migliorato con glow e transizioni fluide */
 .m-ptr {
     position: absolute; top: -60px; left: 0; width: 100%; height: 60px;
     display: flex; align-items: flex-end; justify-content: center;
     padding-bottom: 15px; color: var(--m-primary); z-index: 10;
     pointer-events: none; opacity: 0; transition: opacity 0.25s ease-out;
-    will-change: transform, opacity;
 }
 .m-ptr-icon {
     font-size: 1.5rem; transition: transform 0.25s ease-in-out;
@@ -105,28 +85,23 @@ body {
 .m-ptr.loading .m-ptr-icon { animation: spin 1.2s linear infinite; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* CONTENT WRAPPER */
 .m-content-wrapper { flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column; }
 .m-content {
     flex: 1; overflow-y: scroll; overflow-x: hidden;
     padding: 0 15px 180px 15px;
-    width: 100%; 
-    -webkit-overflow-scrolling: touch; 
+    width: 100%; -webkit-overflow-scrolling: touch; 
 }
 
 .m-page { display: none; width: 100%; }
 .m-page.active { display: block; animation: fadeFast 0.35s ease-out; }
 @keyframes fadeFast { from { opacity: 0; transform: translate3d(0, 15px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
 
-/* HERO - Migliorato con animazioni e glow intensi */
 .m-hero { text-align: center; padding: 30px 10px 20px 10px; display: flex; flex-direction: column; align-items: center; width: 100%; }
 .m-logo-container {
     width: 130px; height: 130px; margin-bottom: 20px; border-radius: 50%; border: 2px solid rgba(0,242,255,0.5);
     display: flex; align-items: center; justify-content: center;
     background: rgba(0,0,0,0.6); box-shadow: var(--m-shadow-deep), var(--m-glow);
-    backdrop-filter: blur(8px); /* Glassmorphism migliorato */
-    will-change: transform;
-    animation: pulseLogo 2s infinite alternate ease-in-out;
+    backdrop-filter: blur(8px); animation: pulseLogo 2s infinite alternate ease-in-out;
 }
 @keyframes pulseLogo { 0% { transform: scale(1); box-shadow: var(--m-glow); } 100% { transform: scale(1.05); box-shadow: 0 0 25px rgba(0,242,255,0.5); } }
 .m-logo-img { width: 95%; height: 95%; object-fit: contain; border-radius: 50%; animation: rotateLogo 50s linear infinite; filter: drop-shadow(0 0 12px var(--m-primary)); }
@@ -140,49 +115,113 @@ body {
     text-shadow: 0 0 8px rgba(0,242,255,0.3);
 }
 
-/* SOTTOTITOLO CON LINEE RIPRISTINATE - Con glow */
 .m-brand-sub {
-    font-family: 'Rajdhani', sans-serif; font-size: 0.9rem; letter-spacing: 4px;
+    font-family: 'Rajdhani', sans-serif; font-size: 0.85rem; letter-spacing: 3px;
     color: var(--m-primary); text-transform: uppercase; margin-top: 10px; font-weight: 700; opacity: 0.95;
     display: flex; align-items: center; justify-content: center; width: 100%;
-    text-shadow: 0 0 6px var(--m-primary);
+    text-shadow: 0 0 6px var(--m-primary); white-space: nowrap;
 }
 .m-brand-sub::before, .m-brand-sub::after { 
-    content: ''; display: block; width: 40px; height: 2px; 
+    content: ''; display: block; width: 25px; height: 2px; 
     background: linear-gradient(90deg, transparent, var(--m-primary)); 
-    margin: 0 20px; opacity: 0.85; flex-shrink: 0; 
-    box-shadow: 0 0 8px var(--m-primary);
+    margin: 0 10px; opacity: 0.85; flex-shrink: 0; box-shadow: 0 0 8px var(--m-primary);
 }
-.m-brand-sub::after {
-    background: linear-gradient(90deg, var(--m-primary), transparent);
-}
+.m-brand-sub::after { background: linear-gradient(90deg, var(--m-primary), transparent); }
 
 
-/* CARDS - Glassmorphism avanzato con blur e bordi glow */
+/* CARDS STANDARD */
 .m-card {
-    background: var(--m-surface);
-    border: 1px solid var(--m-surface-border); border-radius: 18px;
+    background: var(--m-surface); border: 1px solid var(--m-surface-border); border-radius: 18px;
     padding: 22px; margin-bottom: 18px; position: relative;
-    box-shadow: var(--m-shadow-deep);
-    backdrop-filter: blur(10px); /* Aggiunto blur per effetto vetro */
+    box-shadow: var(--m-shadow-deep); backdrop-filter: blur(10px);
 }
 .m-card.active-border { border-color: var(--m-primary); box-shadow: var(--m-shadow-deep), 0 0 25px rgba(0,242,255,0.2); background: rgba(10, 25, 35, 0.85); }
 .m-card-accent { border-color: rgba(176, 38, 255, 0.5); background: rgba(20, 10, 35, 0.85); box-shadow: var(--m-shadow-deep), 0 0 25px rgba(176,38,255,0.2); }
 
-.m-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; color: #fff; font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 900; text-shadow: 0 0 5px rgba(255,255,255,0.3); }
-.m-card-icon { color: var(--m-primary); font-size: 1.3rem; filter: drop-shadow(0 0 6px var(--m-primary)); }
+/* --- CARD FLUX PRIORITY --- */
+.m-card-flux {
+    background: linear-gradient(145deg, rgba(15, 20, 30, 0.9), rgba(0, 0, 5, 0.95));
+    border: 1px solid rgba(0, 242, 255, 0.3);
+    border-radius: 20px;
+    padding: 25px 22px;
+    margin-bottom: 20px;
+    position: relative;
+    box-shadow: 0 0 30px rgba(0, 242, 255, 0.1), inset 0 0 50px rgba(0, 242, 255, 0.05);
+    overflow: hidden;
+    backdrop-filter: blur(15px);
+}
+.m-card-flux::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(to bottom, var(--m-secondary), var(--m-primary)); box-shadow: 0 0 15px var(--m-primary); }
+.m-card-flux .m-card-header { font-size: 1.4rem; letter-spacing: 2px; color: #fff; text-shadow: 0 0 15px rgba(0, 242, 255, 0.5); margin-bottom: 10px; }
 
-/* INPUTS - Con focus glow e transizioni */
+/* --- CARD FILTRO QUALITÀ --- */
+.m-card-quality {
+    background: linear-gradient(145deg, rgba(5, 10, 20, 0.9), rgba(0, 0, 0, 0.95));
+    border: 1px solid rgba(0, 242, 255, 0.2);
+    border-radius: 20px;
+    padding: 25px 22px;
+    margin-bottom: 20px;
+    position: relative;
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.05);
+    backdrop-filter: blur(15px);
+}
+.m-card-quality::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--m-secondary); box-shadow: 0 0 15px var(--m-secondary); }
+.m-card-quality .m-card-header { color: #fff; font-size: 1.2rem; }
+
+/* --- CARD SYSTEM (FIGHISSIMA) --- */
+.m-card-system {
+    background: linear-gradient(145deg, rgba(0, 15, 25, 0.9), rgba(0, 2, 5, 0.95)); /* Deep Abyss Blue */
+    border: 1px solid rgba(0, 242, 255, 0.3);
+    border-radius: 20px;
+    padding: 25px 22px;
+    margin-bottom: 20px;
+    position: relative;
+    box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
+    overflow: hidden;
+    backdrop-filter: blur(15px);
+}
+/* Side Border */
+.m-card-system::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+    background: linear-gradient(to bottom, #00f2ff, #00457C);
+    box-shadow: 0 0 20px rgba(0, 242, 255, 0.5);
+}
+.m-card-system .m-card-header {
+    font-size: 1.4rem; letter-spacing: 2px; color: #fff;
+    text-shadow: 0 0 15px rgba(0, 242, 255, 0.6);
+    margin-bottom: 15px;
+}
+.m-card-system .m-card-icon {
+    color: var(--m-primary);
+    filter: drop-shadow(0 0 10px var(--m-primary));
+}
+
+
+/* GRID QUALITÀ */
+.m-q-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 18px; }
+.m-q-item { 
+    background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255,255,255,0.1); 
+    color: var(--m-dim); padding: 15px; text-align: center; border-radius: 12px; 
+    font-size: 0.9rem; font-weight: 700; font-family: 'Rajdhani', sans-serif; 
+    transition: all 0.3s ease; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px;
+    position: relative; overflow: hidden;
+}
+/* STILE "INCLUSO" */
+.m-q-item:not(.excluded) { border-color: var(--m-primary); color: #fff; background: linear-gradient(90deg, rgba(0, 242, 255, 0.15), transparent); box-shadow: 0 0 15px rgba(0, 242, 255, 0.2); text-shadow: 0 0 8px rgba(0, 242, 255, 0.6); }
+.m-q-item:not(.excluded) i { color: var(--m-primary); filter: drop-shadow(0 0 5px var(--m-primary)); }
+/* STILE "ESCLUSO" */
+.m-q-item.excluded { border-color: rgba(255, 51, 102, 0.5); color: var(--m-error); opacity: 0.6; background: rgba(20, 5, 10, 0.5); text-decoration: line-through; box-shadow: none; }
+.m-q-item.excluded i { color: var(--m-error); filter: none; }
+
+
+/* INPUTS */
 .m-input-group { position: relative; margin-bottom: 18px; }
 .m-input {
     width: 100%; background: rgba(0,0,0,0.65); border: 1px solid rgba(255,255,255,0.2); border-radius: 12px;
     padding: 18px; padding-right: 95px; color: var(--m-primary);
-    font-family: 'Rajdhani', monospace; font-size: 1.1rem; font-weight: 700;
-    transition: all 0.3s ease;
+    font-family: 'Rajdhani', monospace; font-size: 1.1rem; font-weight: 700; transition: all 0.3s ease;
 }
 .m-input:focus { border-color: var(--m-primary); background: rgba(0,0,0,0.85); box-shadow: var(--m-glow), 0 0 18px rgba(0,242,255,0.15); }
 #m-mfPass { padding-right: 20px !important; }
-
 .m-tmdb-input { border-color: rgba(176, 38, 255, 0.35); color: var(--m-accent); }
 .m-paste-btn {
     position: absolute; right: 8px; top: 8px; bottom: 8px;
@@ -194,14 +233,30 @@ body {
 }
 .m-paste-btn:hover { background: rgba(255,255,255,0.15); }
 
-/* TABS - Con gradienti e icone glow */
-.m-tabs-row { display: flex; gap: 10px; margin-bottom: 22px; background: rgba(0,0,0,0.55); padding: 5px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.15); box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
-.m-tab-btn { flex: 1; text-align: center; padding: 14px; font-size: 0.9rem; color: var(--m-dim); font-weight: 700; border-radius: 12px; transition: all 0.25s ease; font-family: 'Rajdhani', sans-serif; text-transform: uppercase; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+/* TABS STANDARD */
+.m-tabs-row { display: flex; gap: 5px; margin-bottom: 22px; background: rgba(0,0,0,0.55); padding: 5px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.15); box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+.m-tab-btn { flex: 1; text-align: center; padding: 12px 4px; font-size: 0.9rem; color: var(--m-dim); font-weight: 700; border-radius: 12px; transition: all 0.25s ease; font-family: 'Rajdhani', sans-serif; text-transform: uppercase; display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .m-tab-icon { font-size: 1.3rem; filter: grayscale(1) brightness(0.8); transition: all 0.25s; }
 .m-tab-btn.active { background: linear-gradient(135deg, rgba(0, 242, 255, 0.25), rgba(112, 0, 255, 0.15)); color: #fff; border: 1px solid var(--m-primary); box-shadow: var(--m-glow); text-shadow: 0 0 5px rgba(255,255,255,0.5); }
 .m-tab-btn.active .m-tab-icon { filter: grayscale(0) drop-shadow(0 0 6px #fff) brightness(1.2); }
 
-/* ANIMAZIONE ROTAZIONE 3D PER LE ICONE - Più fluida */
+/* --- FLUX CARD BUTTONS --- */
+.m-card-flux .m-tab-btn { background: rgba(255,255,255,0.03); border: 1px solid transparent; }
+.m-card-flux .m-tab-icon { font-size: 1.6rem; filter: none; margin-bottom: 4px; }
+
+/* LEVIATHAN ACTIVE */
+#sort-balanced.active { border-color: var(--m-primary); background: linear-gradient(180deg, rgba(0, 242, 255, 0.15), rgba(0,0,0,0)); box-shadow: 0 0 15px rgba(0, 242, 255, 0.3), inset 0 0 10px rgba(0, 242, 255, 0.1); color: #fff; }
+#sort-balanced.active .m-tab-icon { filter: drop-shadow(0 0 10px var(--m-primary)); transform: scale(1.1); }
+
+/* QUALITY ACTIVE */
+#sort-resolution.active { border-color: var(--m-secondary); background: linear-gradient(180deg, rgba(170, 0, 255, 0.15), rgba(0,0,0,0)); box-shadow: 0 0 15px rgba(170, 0, 255, 0.3), inset 0 0 10px rgba(170, 0, 255, 0.1); color: #fff; }
+#sort-resolution.active .m-tab-icon { filter: drop-shadow(0 0 10px var(--m-secondary)); transform: scale(1.1); }
+
+/* SIZE ACTIVE */
+#sort-size.active { border-color: var(--m-amber); background: linear-gradient(180deg, rgba(255, 153, 0, 0.15), rgba(0,0,0,0)); box-shadow: 0 0 15px rgba(255, 153, 0, 0.3), inset 0 0 10px rgba(255, 153, 0, 0.1); color: #fff; }
+#sort-size.active .m-tab-icon { filter: drop-shadow(0 0 10px var(--m-amber)); transform: scale(1.1); }
+
+
 @keyframes spin3D {
     0% { transform: perspective(400px) rotateY(0deg); }
     40% { transform: perspective(400px) rotateY(180deg); }
@@ -209,12 +264,10 @@ body {
 }
 .m-spin-effect { animation: spin3D 0.7s ease-in-out; }
 
-/* WARNING BOX - Con icona animata */
 .m-ad-warning { display: none; background: rgba(255, 42, 109, 0.15); border: 1px solid var(--m-error); border-radius: 12px; padding: 12px; margin-bottom: 22px; text-align: center; color: var(--m-error); font-size: 0.85rem; font-weight: 700; box-shadow: 0 0 15px rgba(255,42,109,0.2); }
 .m-ad-warning i { animation: pulseWarn 1.5s infinite; }
 @keyframes pulseWarn { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
-/* ROWS & SWITCHES - Con transizioni morbide */
 .m-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.08); gap: 12px; transition: background 0.2s; }
 .m-row:last-child { border-bottom: none; }
 .m-row:hover { background: rgba(255,255,255,0.03); }
@@ -240,25 +293,18 @@ input:checked + .m-slider-purple:before { background-color: var(--m-accent); box
 input:checked + .m-slider-amber { background-color: rgba(255, 153, 0, 0.3); border-color: var(--m-amber); box-shadow: inset 0 0 10px rgba(255,153,0,0.4); }
 input:checked + .m-slider-amber:before { background-color: var(--m-amber); box-shadow: 0 0 10px var(--m-amber); }
 
-/* PRIORITY PANEL - Con animazione fluida */
 .m-priority-wrapper { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.35s ease; margin: 0 -10px; }
 .m-priority-wrapper.show { max-height: 130px; opacity: 1; margin-top: 18px; padding: 0 10px; }
 .m-priority-box { background: rgba(112, 0, 255, 0.15); border: 1px solid rgba(112, 0, 255, 0.35); border-left: 4px solid var(--m-secondary); border-radius: 12px; padding: 14px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 0 15px rgba(112,0,255,0.2); }
 .m-priority-info { display: flex; align-items: center; gap: 12px; }
 .m-priority-text h5 { margin: 0; font-family: 'Rajdhani', sans-serif; font-size: 0.95rem; color: #fff; text-transform: uppercase; text-shadow: 0 0 4px rgba(255,255,255,0.3); }
 
-/* GATE & SLIDERS - Con gradienti e feedback tattile */
 .m-gate-wrapper { width: 100%; overflow: hidden; max-height: 0; opacity: 0; transition: all 0.35s ease; }
 .m-gate-wrapper.show { max-height: 65px; opacity: 1; margin-top: 12px; }
 .m-gate-control { display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.55); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); box-shadow: inset 0 0 8px rgba(0,0,0,0.5); }
 .m-range { -webkit-appearance: none; width: 100%; height: 5px; background: linear-gradient(90deg, #333, #666); border-radius: 3px; transition: background 0.2s; }
 .m-range::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 0 12px rgba(0,0,0,0.6), var(--m-glow); }
 
-.m-q-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
-.m-q-item { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: var(--m-dim); padding: 12px 0; text-align: center; border-radius: 10px; font-size: 0.85rem; font-weight: 700; font-family: 'Rajdhani', sans-serif; transition: all 0.2s ease; box-shadow: inset 0 0 5px rgba(0,0,0,0.3); }
-.m-q-item.excluded { border-color: var(--m-error); color: var(--m-error); opacity: 0.6; text-decoration: line-through; background: rgba(255, 42, 109, 0.15); box-shadow: 0 0 10px rgba(255,42,109,0.2); }
-
-/* FOOTER - Con elementi centrati e glow */
 .m-credits-section { margin-top: 35px; padding-top: 25px; border-top: 1px solid rgba(255,255,255,0.15); display: flex; flex-direction: column; align-items: center; gap: 18px; }
 .m-faq-btn { width: 100%; padding: 14px; background: transparent; border: 1px dashed rgba(255,255,255,0.35); color: var(--m-text); border-radius: 12px; font-family: 'Rajdhani', sans-serif; font-weight: 700; display: flex; justify-content: center; align-items: center; gap: 10px; transition: all 0.2s; box-shadow: var(--m-glow); }
 .m-faq-btn:hover { background: rgba(255,255,255,0.05); }
@@ -269,7 +315,6 @@ input:checked + .m-slider-amber:before { background-color: var(--m-amber); box-s
 .m-donate-btn { text-decoration: none; color: #fff; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.25); padding: 12px 28px; border-radius: 32px; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 10px; box-shadow: 0 0 15px rgba(255,255,255,0.1); transition: all 0.2s; }
 .m-donate-btn:hover { box-shadow: 0 0 20px rgba(255,42,109,0.3); }
 
-/* DOCK - Con backdrop blur e shadow */
 .m-dock-container { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(2, 5, 10, 0.97); border-top: 1px solid rgba(0,242,255,0.15); z-index: 100; display: flex; flex-direction: column; padding-bottom: var(--safe-bottom); box-shadow: 0 -12px 35px rgba(0,0,0,0.85); backdrop-filter: blur(12px); }
 .m-dock-actions { display: flex; gap: 12px; padding: 12px 18px 6px 18px; }
 .m-btn-install { flex: 3; background: linear-gradient(90deg, var(--m-primary), var(--m-secondary)); color: #000; border: none; border-radius: 12px; height: 48px; font-family: 'Rajdhani', sans-serif; font-size: 1.15rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; display: flex; align-items: center; justify-content: center; gap: 12px; box-shadow: 0 0 18px rgba(0,242,255,0.25); transition: all 0.2s; }
@@ -282,7 +327,6 @@ input:checked + .m-slider-amber:before { background-color: var(--m-amber); box-s
 .m-nav-item span { font-size: 0.65rem; font-weight: 700; font-family: 'Rajdhani', sans-serif; }
 .m-nav-item.active { color: var(--m-primary); text-shadow: 0 0 6px var(--m-primary); transform: scale(1.1); }
 
-/* MODAL - Con blur e animazioni */
 .m-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.97); z-index: 200; display: none; padding: 25px; flex-direction: column; backdrop-filter: blur(8px); }
 .m-modal.show { display: flex; animation: fadeInModal 0.3s ease-out; }
 @keyframes fadeInModal { from { opacity: 0; } to { opacity: 1; } }
@@ -432,31 +476,52 @@ const mobileHTML = `
 
             <div id="page-filters" class="m-page">
             
-                <div class="m-card m-card-accent" style="border-color: rgba(0, 242, 255, 0.5);">
+                <div class="m-card-flux">
                     <div class="m-card-header">
-                        <i class="fas fa-sort-amount-up m-card-icon" style="color:#fff"></i> Flux Priority
+                        <i class="fas fa-sort-amount-up m-card-icon" style="color:#fff; margin-right:8px;"></i> FLUX PRIORITY
                     </div>
-                    <p style="font-size:0.85rem; color:#ccc; margin-bottom:15px;">Scegli il criterio principale per ordinare la lista dei risultati.</p>
-                    <div class="m-tabs-row" style="background:rgba(0,0,0,0.6);">
-                        <div class="m-tab-btn active" id="sort-balanced" onclick="setSortMode('balanced')"><span class="m-tab-icon">🦑</span> LEVIATHAN</div>
-                        <div class="m-tab-btn" id="sort-resolution" onclick="setSortMode('resolution')"><span class="m-tab-icon">💎</span> QUALITY</div>
-                        <div class="m-tab-btn" id="sort-size" onclick="setSortMode('size')"><span class="m-tab-icon">💾</span> SIZE</div>
+                    <p style="font-size:0.85rem; color:var(--m-dim); margin-bottom:15px; font-weight:300;">Scegli come ordinare i risultati.</p>
+                    <div class="m-tabs-row" style="background:rgba(0,0,0,0.4);">
+                        <div class="m-tab-btn active" id="sort-balanced" onclick="setSortMode('balanced')">
+                            <i class="fas fa-dragon m-tab-icon" style="color:var(--m-primary)"></i> LEVIATHAN
+                        </div>
+                        <div class="m-tab-btn" id="sort-resolution" onclick="setSortMode('resolution')">
+                            <i class="fas fa-gem m-tab-icon" style="color:var(--m-secondary)"></i> QUALITY
+                        </div>
+                        <div class="m-tab-btn" id="sort-size" onclick="setSortMode('size')">
+                            <i class="fas fa-hdd m-tab-icon" style="color:var(--m-amber)"></i> SIZE
+                        </div>
+                    </div>
+                    <div id="flux-desc-container" style="min-height: 60px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px; margin-top: 10px; border: 1px dashed rgba(255,255,255,0.1);">
+                        <p id="flux-description" style="margin:0; font-size: 0.85rem; color: var(--m-dim); line-height: 1.4; transition: opacity 0.2s ease;">
+                            L'algoritmo standard di Leviathan. Cerca il bilanciamento perfetto tra qualità, popolarità del file e velocità. Ideale per l'uso quotidiano.
+                        </p>
                     </div>
                 </div>
 
-                <div class="m-card">
-                    <div class="m-card-header"><i class="fas fa-filter m-card-icon" style="color:var(--m-error)"></i> Filtro Qualità</div>
+                <div class="m-card-quality">
+                    <div class="m-card-header"><i class="fas fa-filter m-card-icon" style="color:var(--m-error)"></i> FILTRO QUALITÀ</div>
                     <p style="font-size:0.85rem; color:#fff; margin-bottom:10px; font-weight:300;">Tocca per <b>ESCLUDERE</b> le risoluzioni:</p>
                     <div class="m-q-grid">
-                        <div class="m-q-item" id="mq-4k" onclick="toggleFilter('mq-4k')">4K UHD</div>
-                        <div class="m-q-item" id="mq-1080" onclick="toggleFilter('mq-1080')">1080p</div>
-                        <div class="m-q-item" id="mq-720" onclick="toggleFilter('mq-720')">720p</div>
-                        <div class="m-q-item" id="mq-sd" onclick="toggleFilter('mq-sd')">SD/CAM</div>
+                        <div class="m-q-item" id="mq-4k" onclick="toggleFilter('mq-4k')">
+                            <i class="fas fa-star"></i> 4K UHD
+                        </div>
+                        <div class="m-q-item" id="mq-1080" onclick="toggleFilter('mq-1080')">
+                            <i class="fas fa-check-circle"></i> 1080p
+                        </div>
+                        <div class="m-q-item" id="mq-720" onclick="toggleFilter('mq-720')">
+                            <i class="fas fa-compress"></i> 720p
+                        </div>
+                        <div class="m-q-item" id="mq-sd" onclick="toggleFilter('mq-sd')">
+                            <i class="fas fa-video-slash"></i> SD/CAM
+                        </div>
                     </div>
                 </div>
 
-                <div class="m-card">
-                    <div class="m-card-header"><i class="fas fa-microchip m-card-icon"></i> Sistema</div>
+                <div class="m-card-system">
+                    <div class="m-card-header">
+                        <i class="fas fa-microchip m-card-icon"></i> SISTEMA
+                    </div>
                     
                     <div class="m-row">
                         <div class="m-label">
@@ -586,17 +651,23 @@ let mCurrentService = 'rd';
 let mScQuality = 'all';
 let mSortMode = 'balanced';
 
+// TEXT DICTIONARY FOR FLUX PRIORITY
+const fluxDescriptions = {
+    'balanced': "L'algoritmo standard di Leviathan. Cerca il bilanciamento perfetto tra qualità, popolarità del file e velocità. Ideale per l'uso quotidiano.",
+    'resolution': "Gerarchia visiva rigida. I risultati 4K appariranno sempre per primi, seguiti dai 1080p e infine 720p.",
+    'size': "Ordina per grandezza del file (dal più grande al più piccolo). Ideale per chi vuole il massimo bitrate possibile."
+};
+
 function createBubbles() {
     const container = document.getElementById('m-bubbles');
     if(!container) return;
-    // 12 Bolle per bilanciare effetto e performance
     for(let i=0; i<12; i++) {
         const b = document.createElement('div');
         b.classList.add('bubble');
         const size = Math.random() * 8 + 3;
         b.style.width = `${size}px`; b.style.height = `${size}px`;
         b.style.left = `${Math.random() * 100}%`;
-        b.style.animationDuration = `${Math.random() * 15 + 10}s`; // Più lente
+        b.style.animationDuration = `${Math.random() * 15 + 10}s`; 
         b.style.animationDelay = `-${Math.random() * 20}s`;
         container.appendChild(b);
     }
@@ -612,7 +683,6 @@ function initMobileInterface() {
     loadMobileConfig();
 }
 
-// --- OPTIMIZED PTR (REQUEST ANIMATION FRAME) ---
 function initPullToRefresh() {
     const content = document.querySelector('.m-content');
     const ptr = document.getElementById('m-ptr-indicator');
@@ -632,7 +702,6 @@ function initPullToRefresh() {
         const diff = currentY - startY;
 
         if (diff > 0 && content.scrollTop <= 0) {
-            // Usa requestAnimationFrame per non bloccare il thread principale
             if (rAF) return;
             rAF = requestAnimationFrame(() => {
                 ptr.style.opacity = Math.min(diff / 100, 1);
@@ -680,20 +749,15 @@ function navTo(pageId, btn) {
 function setMService(srv, btn, keepInput = false) {
     if(mCurrentService === srv && !keepInput) return;
     mCurrentService = srv;
-    
-    // RESET API KEY: SOLO se NON stiamo forzando il caricamento configurazione
-    if (!keepInput) {
-        document.getElementById('m-apiKey').value = '';
-    }
+    if (!keepInput) { document.getElementById('m-apiKey').value = ''; }
 
     document.querySelectorAll('.m-tab-btn').forEach(t => t.parentElement.classList.contains('m-tabs-row') && !t.id ? t.classList.remove('active') : null);
     if(btn) {
         btn.classList.add('active');
-        // --- ANIMAZIONE ROTAZIONE ---
         const icon = btn.querySelector('.m-tab-icon');
         if(icon) {
             icon.classList.remove('m-spin-effect');
-            void icon.offsetWidth; // Force Reflow
+            void icon.offsetWidth; 
             icon.classList.add('m-spin-effect');
         }
     }
@@ -775,11 +839,7 @@ function toggleSize() {
 
 function updateSizeDisplay(val) {
     const display = document.getElementById('m-size-display');
-    if (val == 0) {
-        display.innerText = "∞";
-    } else {
-        display.innerText = val;
-    }
+    if (val == 0) { display.innerText = "∞"; } else { display.innerText = val; }
 }
 
 function openApiPage() {
@@ -791,14 +851,26 @@ function setScQuality(val) {
     ['all','1080','720'].forEach(q => document.getElementById('mq-sc-'+q).classList.remove('active'));
     document.getElementById('mq-sc-' + val).classList.add('active');
 }
-// --- FLUX PRIORITY LOGIC ---
+
+// --- FLUX PRIORITY LOGIC (UPDATED WITH TEXT) ---
 function setSortMode(mode) {
     mSortMode = mode;
+    // Update Buttons
     ['balanced', 'resolution', 'size'].forEach(m => {
         const btn = document.getElementById('sort-' + m);
         if(m === mode) btn.classList.add('active');
         else btn.classList.remove('active');
     });
+
+    // Update Description Text
+    const descEl = document.getElementById('flux-description');
+    if(descEl) {
+        descEl.style.opacity = 0;
+        setTimeout(() => {
+            descEl.innerText = fluxDescriptions[mode];
+            descEl.style.opacity = 1;
+        }, 200);
+    }
 }
 
 function toggleFilter(id) { document.getElementById(id).classList.toggle('excluded'); }
@@ -825,8 +897,6 @@ function loadMobileConfig() {
             if(config.service) {
                 const tabs = document.querySelectorAll('.m-tab-btn');
                 const srvMap = {'rd':0, 'ad':1, 'tb':2};
-                
-                // Chiama setMService con true per NON cancellare l'input
                 if(srvMap[config.service] !== undefined) {
                     setMService(config.service, tabs[srvMap[config.service]], true);
                 }
@@ -852,7 +922,6 @@ function loadMobileConfig() {
                 document.getElementById('m-enableGhd').checked = config.filters.enableGhd || false;
                 document.getElementById('m-enableGs').checked = config.filters.enableGs || false;
                 document.getElementById('m-allowEng').checked = config.filters.allowEng || false;
-                
                 
                 if(config.filters.vixLast) {
                     document.getElementById('m-vixLast').checked = true;
