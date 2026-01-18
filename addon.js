@@ -85,16 +85,12 @@ const CONFIG = {
 };
 
 const REGEX_YEAR = /(19|20)\d{2}/;
-
-// --- DEFINIZIONI QUALITÀ POTENZIATE PER IL FILTRO ---
 const REGEX_QUALITY = {
-    "4K": /\b(?:2160p|2160i|4k|uhd|ultra\s?hd|hdr)\b/i,
-    "1080p": /\b(?:1080p|1080i|fhd|full\s?hd|1920x\d+)\b/i,
-    "720p": /\b(?:720p|720i|hd|hdrip|1280x\d+)\b/i,
-    "SD": /\b(?:480p|480i|576p|576i|sd|dvd|dvdrip|xvid|divx|satrip|tvrip)\b/i,
-    "CAM": /\b(?:cam|hdcam|ts|telesync|tc|screener|scr|r5|dvdscreener)\b/i
+    "4K": /2160p|4k|uhd/i,
+    "1080p": /1080p/i,
+    "720p": /720p/i,
+    "SD": /480p|\bsd\b/i
 };
-
 const REGEX_AUDIO = {
     channels: /\b(7\.1|5\.1|2\.1|2\.0)\b/,
     atmos: /atmos/i,
@@ -299,14 +295,10 @@ function extractAudioInfo(title) {
 function extractStreamInfo(title, source) {
   const t = String(title).toLowerCase();
   let q = "HD"; let qIcon = "📺";
-  
   if (REGEX_QUALITY["4K"].test(t)) { q = "4K"; qIcon = "🔥"; }
   else if (REGEX_QUALITY["1080p"].test(t)) { q = "1080p"; qIcon = "✨"; }
   else if (REGEX_QUALITY["720p"].test(t)) { q = "720p"; qIcon = "🎞️"; }
   else if (REGEX_QUALITY["SD"].test(t)) { q = "SD"; qIcon = "🐢"; }
-  // Aggiunto controllo display CAM
-  else if (REGEX_QUALITY["CAM"].test(t)) { q = "CAM"; qIcon = "📹"; }
-
   const videoTags = [];
   if (/hdr/.test(t)) videoTags.push("HDR");
   if (/dolby|vision|\bdv\b/.test(t)) videoTags.push("DV");
@@ -469,6 +461,80 @@ function formatVixStream(meta, vixData) {
         url: vixData.url,
         behaviorHints: { notWebReady: false, bingieGroup: "vix-stream" }
     };
+}
+
+// --- HELPER CACHE CHECK TORBOX (URL FIX + CHUNKED) ---
+async function filterTorBoxCached(apiKey, items) {
+    if (!items || items.length === 0) return [];
+    
+    // 1. Estrai gli hash unici e validi
+    const uniqueHashes = [...new Set(items.map(i => i.hash).filter(Boolean))];
+    if (uniqueHashes.length === 0) return [];
+
+    // 2. Funzione interna per processare un "chunk"
+    const checkChunk = async (hashes) => {
+        try {
+            // CORREZIONE: Reintrodotto /v1/ che è obbligatorio per TorBox
+            const url = "https://api.torbox.app/v1/api/torrents/checkcached";
+            
+            const { data: response } = await axios.get(url, {
+                params: { 
+                    hash: hashes.join(','), 
+                    format: 'object', 
+                    list_files: false 
+                },
+                headers: { Authorization: `Bearer ${apiKey}` },
+                timeout: 6000 
+            });
+
+            if (!response || !response.success || !response.data) {
+                return []; 
+            }
+            
+            const confirmed = [];
+            const data = response.data;
+            
+            // Gestione flessibile (Array o Object)
+            if (Array.isArray(data)) {
+                data.forEach(entry => {
+                    if (typeof entry === 'string') confirmed.push(entry.toLowerCase());
+                    else if (entry.hash) confirmed.push(entry.hash.toLowerCase());
+                });
+            } else {
+                Object.keys(data).forEach(h => confirmed.push(h.toLowerCase()));
+            }
+            
+            return confirmed;
+        } catch (e) {
+            // Se errore 404 o altro, lo logghiamo ma non blocchiamo tutto lo script
+            logger.warn(`⚠️ [TB CHUNK FAIL] Errore API: ${e.message}`);
+            return []; 
+        }
+    };
+
+    // 3. Dividi in gruppi da 40 (Safety Limit)
+    const chunkSize = 40;
+    const chunks = [];
+    for (let i = 0; i < uniqueHashes.length; i += chunkSize) {
+        chunks.push(uniqueHashes.slice(i, i + chunkSize));
+    }
+
+    logger.info(`🔍 [TB CHECK] Verifico ${uniqueHashes.length} hash in ${chunks.length} richieste...`);
+
+    // 4. Esegui in parallelo
+    const results = await Promise.all(chunks.map(chunk => checkChunk(chunk)));
+    
+    // 5. Unisci i risultati
+    const confirmedHashes = new Set(results.flat());
+
+    // 6. Filtra la lista originale
+    const cachedItems = items.filter(item => {
+        return item.hash && confirmedHashes.has(item.hash.toLowerCase());
+    });
+
+    logger.info(`✅ [TB CHECK] Risultato: ${items.length} totali -> ${cachedItems.length} confermati in cache.`);
+    
+    return cachedItems;
 }
 
 function validateStreamRequest(type, id) {
@@ -769,24 +835,49 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   const tmdbIdLookup = meta.tmdb_id || (await imdbToTmdb(meta.imdb_id, userTmdbKey))?.tmdbId;
   const dbOnlyMode = config.filters?.dbOnly === true; 
 
-  // --- DEFINIZIONE LOGICA FILTRO (Riutilizzabile) ---
+  // --- DEFINIZIONE LOGICA FILTRO (RIGOROSA E CON LINGUA) ---
   const aggressiveFilter = (item) => {
       if (!item?.magnet) return false;
-      
+
+      // 1. EXTERNAL PASS-THROUGH
+      if (item.isExternal) return true;
+
       const source = (item.source || "").toLowerCase();
-      // Filtro di sicurezza per provider non voluti
+      // Blacklist
       if (source.includes("comet") || source.includes("stremthru")) return false;
 
-      // --- MODIFICA RICHIESTA: SE È EXTERNAL, ACCETTA SEMPRE ---
-      // Poiché l'addon esterno (es. Torrentio) ha già cercato per ID IMDb corretto,
-      // ci fidiamo che il risultato sia giusto, anche se il titolo non combacia 
-      // perfettamente (es. "The Rip" vs "Soldi Sporchi").
-      if (item.isExternal) {
-          return true; 
+      // 2. CONTROLLO LINGUA (Spostato PRIMA della logica serie)
+      const isItalian = isSafeForItalian(item) || /corsaro/i.test(item.source);
+      // Se il filtro "Allow English" è spento E non è italiano -> SCARTA
+      if (!config.filters?.allowEng && !isItalian) return false;
+
+      const t = item.title.toLowerCase();
+
+      // --- LOGICA SERIE TV (Rigorosa su Stagione) ---
+      if (meta.isSeries) {
+          const s = meta.season;
+          const e = meta.episode;
+
+          // A. CONTROLLO NEGATIVO (Anti-Sbaglio): 
+          const wrongSeasonRegex = /(?:s|stagione|season)\s*0?(\d+)(?!\d)/gi;
+          let match;
+          while ((match = wrongSeasonRegex.exec(t)) !== null) {
+              const foundSeason = parseInt(match[1]);
+              if (foundSeason !== s) return false; 
+          }
+
+          // B. CONTROLLO POSITIVO 
+          const hasRightSeason = new RegExp(`(?:s|stagione|season|^)\\s*0?${s}(?!\\d)`, 'i').test(t);
+          const hasRightEpisode = new RegExp(`(?:e|x|ep|episode|^)\\s*0?${e}(?!\\d)`, 'i').test(t);
+          const isPack = /(?:complete|pack|stagione\s*\d+\s*$|season\s*\d+\s*$)/i.test(t) && !/e\d+|x\d+/i.test(t);
+
+          if (hasRightSeason && hasRightEpisode) return true;
+          if (hasRightSeason && isPack) return true;
+
+          return false;
       }
 
-      // --- DA QUI IN GIÙ: LOGICA PER SCRAPER INTERNI / DB (MANTIENE FILTRI ITA) ---
-
+      // --- LOGICA FILM ---
       // 1337x Logic (Internal)
       if (source.includes("1337")) {
           const hasIta = /\b(ita|italian)\b/i.test(item.title);
@@ -794,42 +885,33 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
           if (!hasIta || isSubbed) return false; 
       }
 
-      const isItalian = isSafeForItalian(item) || /corsaro/i.test(item.source);
-
       // TGX/YTS Logic (Internal)
       if (source.includes("tgx") || source.includes("torrentgalaxy") || source.includes("yts")) {
           const hasStrictIta = /\b(ita|italian)\b/i.test(item.title);
           if (!hasStrictIta) return false; 
       }
 
-      // Blocco lingua standard (solo per non-external)
-      if (!config.filters?.allowEng && !isItalian) return false;
-
-      // ... match titles for internal ...
-
+      // Match Titolo e Anno per Film
       const cleanFile = item.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
       const cleanMeta = meta.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
-
       const regexPrefix = /^(?:the|a|an|il|lo|la|i|gli|le|un|uno|una|el|los|las|les)\s+/i;
       const normFile = cleanFile.replace(regexPrefix, "").trim();
       const normMeta = cleanMeta.replace(regexPrefix, "").trim();
 
-      if (!meta.isSeries) {
-          const metaYear = parseInt(meta.year);
-          if (!isNaN(metaYear)) {
-               const fileYearMatch = item.title.match(REGEX_YEAR);
-               if (fileYearMatch) {
-                   const fileYear = parseInt(fileYearMatch[0]);
-                   if (Math.abs(fileYear - metaYear) > 1) return false; 
-               }
-          }
-          if (normFile.includes(normMeta)) {
-               if (!normFile.startsWith(normMeta)) return false; 
-          }
+      const metaYear = parseInt(meta.year);
+      if (!isNaN(metaYear)) {
+           const fileYearMatch = item.title.match(REGEX_YEAR);
+           if (fileYearMatch) {
+               const fileYear = parseInt(fileYearMatch[0]);
+               if (Math.abs(fileYear - metaYear) > 1) return false; 
+           }
+      }
+      if (normFile.includes(normMeta)) {
+           if (!normFile.startsWith(normMeta)) return false; 
       }
 
+      // Fallback finale solo per Film
       if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
-      if (meta.isSeries && simpleSeriesFallback(meta, item.title)) return true;
 
       return false;
   };
@@ -917,54 +999,31 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       saveResultsToDbBackground(meta, cleanResults);
   }
 
-// --- SPETTRO VISIVO: LOGICA STRICT MODE ---
+  //  SPETTRO VISIVO (Exclusion Logic)
   if (config.filters) {
       cleanResults = cleanResults.filter(item => {
           const t = (item.title || "").toLowerCase();
 
-          // 1. FILTRO GB: ELIMINA FILE TROPPO GRANDI
+          // --- NUOVO FILTRO GB: ELIMINA FILE TROPPO GRANDI ---
           if (config.filters.maxSizeGB && config.filters.maxSizeGB > 0) {
+              // Convertiamo i GB in Bytes (1 GB = 1073741824 Bytes)
               const maxBytes = config.filters.maxSizeGB * 1024 * 1024 * 1024;
+              // Recuperiamo la dimensione del file (gestiamo le varie nomenclature usate nello script)
               const itemSize = item._size || item.sizeBytes || 0;
+              
+              // Se il file ha una dimensione valida ed è superiore al limite, lo scartiamo
               if (itemSize > 0 && itemSize > maxBytes) return false;
           }
+          // --------------------------------------------------
 
-          // 2. RILEVAMENTO QUALITÀ
-          const is4k = REGEX_QUALITY["4K"].test(t);
-          const is1080 = REGEX_QUALITY["1080p"].test(t);
-          const is720 = REGEX_QUALITY["720p"].test(t);
-          const isSD = REGEX_QUALITY["SD"].test(t);
-          const isCAM = REGEX_QUALITY["CAM"].test(t);
-
-          // Determina se è "HD Generico" (Nessuna tag trovata)
-          // Se non è 4K, non è 1080, non è 720, non è SD e non è CAM -> è "HD Generico"
-          const isGenericHD = !is4k && !is1080 && !is720 && !isSD && !isCAM;
-
-          // 3. APPLICAZIONE FILTRI
-          
-          // Blocco 4K
-          if (config.filters.no4k && is4k) return false;
-          
-          // Blocco 1080p
-          if (config.filters.no1080 && is1080) return false;
-          
-          // Blocco 720p (STRICT MODE)
-          // Se l'utente non vuole 720p, presumiamo voglia SOLO 1080p o superiore.
-          // Quindi eliminiamo i 720p espliciti E ANCHE gli "HD Generici".
-          if (config.filters.no720) {
-              if (is720) return false;
-              if (isGenericHD) return false; // Elimina i file ambigui come quello nello screenshot
-          }
-          
-          // Blocco SD / CAM (Pulsante Giallo/Arancione)
+          if (config.filters.no4k && REGEX_QUALITY["4K"].test(t)) return false;
+          if (config.filters.no1080 && REGEX_QUALITY["1080p"].test(t)) return false;
+          if (config.filters.no720 && REGEX_QUALITY["720p"].test(t)) return false;
           if (config.filters.noScr) {
-               if (isSD) return false;
-               if (isCAM) return false;
+               if (REGEX_QUALITY["SD"].test(t)) return false;
+               if (/cam|hdcam|ts|telesync|screener|scr\b/i.test(t)) return false;
           }
-          
-          // Fallback legacy CAM
-          if (config.filters.noCam && isCAM) return false;
-
+          if (config.filters.noCam && /cam|hdcam|ts|telesync|screener|scr\b/i.test(t)) return false;
           return true;
       });
   }
@@ -976,7 +1035,18 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       rankedList = filterByQualityLimit(rankedList, config.filters.maxPerQuality);
   }
 
-  const ranked = rankedList.slice(0, CONFIG.MAX_RESULTS);
+  // --- MODIFICA TB: Integrazione Controllo Cache Reale ---
+  let finalRanked = rankedList.slice(0, CONFIG.MAX_RESULTS);
+
+  // Se l'utente usa TorBox (service == 'tb') ed ha una chiave
+  if (config.service === 'tb' && hasDebridKey) {
+      const apiKey = config.key || config.rd; // Recupera la chiave
+      // Eseguiamo il controllo sincrono per filtrare via i fake cached
+      finalRanked = await filterTorBoxCached(apiKey, finalRanked);
+  }
+
+  const ranked = finalRanked;
+  // -------------------------------------------------------
 
   let debridStreams = [];
   if (ranked.length > 0 && hasDebridKey) { 
@@ -984,7 +1054,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       debridStreams = ranked.map(item => generateLazyStream(item, config, meta, reqHost, userConfStr));
   }
 
-  // === WEB PROVIDERS (MODIFICATO PER DB ONLY MODE) ===
+  // === WEB PROVIDERS (MODIFICATO PER DB ONLY MODE & AIO FIX) ===
   let rawVix = [], formattedGhd = [], formattedGs = [], formattedVix = [];
 
   // Esegui i Web Providers SOLO se NON siamo in modalità "Solo DB"
@@ -1008,6 +1078,89 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
        }
 
        [rawVix, formattedGhd, formattedGs] = await Promise.all([vixPromise, ghdPromise, gsPromise]);
+       
+       // --- [FIX] INIZIO FORMATTAZIONE AIO PER WEB ---
+       if (aioFormatter && aioFormatter.isAIOStreamsEnabled(config)) {
+           
+           const applyAioStyle = (streamList, sourceName) => {
+               if (!streamList || !Array.isArray(streamList)) return;
+               
+               streamList.forEach((stream, index) => {
+                   // 1. Rilevamento Qualità Avanzato
+                   let quality = "HD";
+                   let qIcon = "📺";
+                   
+                   // Creiamo una stringa di analisi PULITA dai nomi dei provider che contengono "HD"
+                   // Rimuoviamo "GuardaHD", "StreamingCommunity", "Leviathan" per evitare falsi positivi
+                   let textToCheck = (stream.title + " " + (stream.name || "")).toUpperCase();
+                   textToCheck = textToCheck
+                       .replace("GUARDAHD", "")
+                       .replace("STREAMINGCOMMUNITY", "")
+                       .replace("LEVIATHAN", "")
+                       .replace("VIX", "");
+                   
+                   // Regex più precise per evitare di trovare "HD" dentro altre parole
+                   const regex4k = /\b(4K|2160P|UHD)\b/;
+                   const regex1080 = /\b(1080P|FHD|FULLHD)\b/;
+                   const regex720 = /\b(720P|HD)\b/; // HD solo se parola intera
+                   const regexSD = /\b(480P|SD)\b/;
+
+                   if (regex4k.test(textToCheck)) { quality = "4K"; qIcon = "🔥"; }
+                   else if (regex1080.test(textToCheck)) { quality = "1080p"; qIcon = "✨"; }
+                   else if (regex720.test(textToCheck)) { quality = "720p"; qIcon = "📺"; }
+                   else if (regexSD.test(textToCheck)) { quality = "SD"; qIcon = "🐢"; }
+                   else {
+                       // Nessuna qualità rilevata (es. titolo pulito senza tag)
+                       quality = "WebStreams"; // Default conservativo
+                   }
+                   
+                   // --- LOGICHE SPECIFICHE PER PROVIDER ---
+                   
+                   // GUARDAHD: Spesso usa "FHD" per 1080p. Se non specificato, spesso è 720p o SD.
+                   // Se però abbiamo rilevato SD e la fonte è GuardaHD, a volte è meglio lasciare HD generico?
+                   // Per ora ci fidiamo della detection sopra. Se nel titolo c'era "FHD", ora è 1080p.
+                   
+                   // VIX (StreamingCommunity): Forzatura 1080p se non rilevato altro
+                   if (sourceName.includes("StreamingCommunity") || sourceName.includes("Vix")) {
+                       if (quality === "SD" && !regexSD.test(textToCheck)) {
+                           // Se era SD solo perché non ha trovato tag, promuoviamo a 1080p
+                           quality = "1080p";
+                           qIcon = "✨";
+                       }
+                   }
+                   // ---------------------------------------
+
+                   // 2. Info Tecniche
+                   const techStr = `🎞️ ${quality} ${qIcon}`;
+
+                   // 3. BOX SINISTRO (BADGE)
+                   stream.name = aioFormatter.formatStreamName({
+                       service: "web", 
+                       cached: true,
+                       quality: quality
+                   });
+
+                   // 4. TITOLO (4 Righe)
+                   stream.title = aioFormatter.formatStreamTitle({
+                       title: meta.title,  // Titolo pulito
+                       size: "Web",        
+                       language: "🇮🇹 ITA",
+                       source: sourceName, 
+                       seeders: null,
+                       techInfo: techStr 
+                   });
+                   
+                   // 5. Raggruppamento
+                   if (!stream.behaviorHints) stream.behaviorHints = {};
+                   stream.behaviorHints.bingieGroup = `web-${sourceName.replace(/\W/g,'')}-${quality}`;
+               });
+           };
+
+           if (typeof rawVix !== 'undefined') applyAioStyle(rawVix, "StreamingCommunity");
+           if (typeof formattedGhd !== 'undefined') applyAioStyle(formattedGhd, "GuardaHD");
+           if (typeof formattedGs !== 'undefined') applyAioStyle(formattedGs, "GuardaSerie");
+       }
+
        formattedVix = rawVix; 
   }
 
@@ -1242,6 +1395,7 @@ app.listen(PORT, () => {
     console.log(`⚖️ SIZE LIMITER: Modulo Attivo (GB Filter)`);
     console.log(`🦁 GUARDA HD: Modulo Integrato e Pronto`);
     console.log(`🛡️ GUARDA SERIE: Modulo Integrato e Pronto`);
+    console.log(`📦 TORBOX: True Cache Check Enabled`);
     console.log(`🦑 LEVIATHAN CORE: Optimized for High Reliability`);
     console.log(`-----------------------------------------------------`);
 });
