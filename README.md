@@ -1,9 +1,9 @@
 <div align="center">
 
   <!-- Logo -->
-  <img src="https://i.ibb.co/jvTQLbjb/Gemini-Generated-Image-51j2ce51j2ce51j2-1.png" 
+  <img src="https://i.ibb.co/j9tSSy7f/Gemini-Generated-Image-xep84gxep84gxep8-Photoroom.png" 
        alt="Leviathan Logo"
-       style="width: 220px; border-radius: 30px; filter: drop-shadow(0 0 30px rgba(0, 234, 255, 0.7)); margin-bottom: 20px;" />
+       style="width: 200px; border-radius: 30px; filter: drop-shadow(0 0 30px rgba(0, 234, 255, 0.7)); margin-bottom: 20px;" />
 
   <!-- Titolo + Slogan nello stesso blocco -->
   <h1 style="background: linear-gradient(180deg, #fff 30%, #00eaff 100%);
