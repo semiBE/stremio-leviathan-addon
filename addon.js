@@ -17,6 +17,9 @@ const aioFormatter = require("./aiostreams-formatter.cjs");
 // [NUOVO] Import Gestore Fallback
 const { searchWebStreamr } = require("./webstreamr_handler");
 
+// --- IMPORT GESTORE TRAILER (YouTube/Invidious) ---
+const { getTrailerStreams } = require("./trailerProvider"); 
+
 // --- IMPORT GESTORI WEB (Vix, GuardaHD & GuardaSerie) ---
 const { searchVix } = require("./vix/vix_handler");
 const { searchGuardaHD } = require("./guardahd/ghd_handler"); 
@@ -80,8 +83,8 @@ const CONFIG = {
     REMOTE_INDEXER: 2500, 
     DB_QUERY: 3000,
     DEBRID: 10000, 
-    PACK_RESOLVER: 7000,
-    EXTERNAL: 5000 
+    PACK_RESOLVER: 4000,
+    EXTERNAL: 20000 
   }
 };
 
@@ -436,8 +439,7 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
             .trim() || "P2P";
     }
     
-    // --- FAKE CACHE / LAZY CLEAN ---
-    // Rimossa la logica del dado 🎲. Anche se Lazy, mostriamo tag pulito.
+    // --- MODIFICA LAZY TAG: USA DADO 🎲 PER INDICARE "TENTA LA FORTUNA/DUBBIO" ---
     const finalServiceTag = serviceTag;
     
     const sourceLine = `⚡ [${finalServiceTag}] ${displaySource}`;
@@ -679,16 +681,41 @@ function saveResultsToDbBackground(meta, results) {
 }
 
 async function resolveDebridLink(config, item, showFake, reqHost) {
-    // FUNZIONE DISABILITATA IN FULL LAZY MODE
-    // Lasciata qui per compatibilità se si volesse ripristinare in futuro
-    return null;
+    try {
+        const service = config.service || 'rd';
+        const apiKey = config.key || config.rd;
+        if (!apiKey) return null;
+
+        // Torbox generalmente gestito via cache check, ma se qui:
+        if (service === 'tb') {
+            if (item._tbCached) {
+                const serviceTag = "TB";
+                const { name, title, bingeGroup } = formatStreamTitleCinePro(item.title, item.source, item._size, item.seeders, serviceTag, config, item.hash);
+                const proxyUrl = `${reqHost}/${config.rawConf}/play_tb/${item.hash}?s=${item.season || 0}&e=${item.episode || 0}`;
+                return { name, title, url: proxyUrl, behaviorHints: { notWebReady: false, bingieGroup: bingeGroup } };
+            } else { return null; }
+        }
+
+        let streamData = null;
+        if (service === 'rd') streamData = await RD.getStreamLink(apiKey, item.magnet, item.season, item.episode);
+        else if (service === 'ad') streamData = await AD.getStreamLink(apiKey, item.magnet, item.season, item.episode);
+
+        if (!streamData || (streamData.type === "ready" && streamData.size < CONFIG.REAL_SIZE_FILTER)) return null;
+
+        const serviceTag = service.toUpperCase();
+        const { name, title, bingeGroup } = formatStreamTitleCinePro(streamData.filename || item.title, item.source, streamData.size || item.size, item.seeders, serviceTag, config, item.hash);
+        return { name, title, url: streamData.url, behaviorHints: { notWebReady: false, bingieGroup: bingeGroup } };
+    } catch (e) {
+        if (showFake) return { name: `[P2P ⚠️]`, title: `${item.title}\n⚠️ Cache Assente`, url: item.magnet, behaviorHints: { notWebReady: true } };
+        return null;
+    }
 }
 
 function generateLazyStream(item, config, meta, reqHost, userConfStr, isLazy = false) {
     const service = config.service || 'rd';
     const serviceTag = service.toUpperCase();
     
-    // --- FULL LAZY: Nessun dado, sembrano tutti cached ---
+    // --- MODIFICA RICHIESTA: Se è Lazy, passiamo isLazy a formatStreamTitleCinePro ---
     const { name, title, bingeGroup } = formatStreamTitleCinePro(
         item.title,
         item.source,
@@ -743,38 +770,6 @@ async function queryRemoteIndexer(tmdbId, type, season = null, episode = null) {
         });
     } catch (e) {
         logger.error("Err Remote Indexer:", { error: e.message });
-        return [];
-    }
-}
-
-// [NUOVO] Funzione per leggere dal DB Locale
-async function queryLocalDb(imdbId, type) {
-    try {
-        // Tenta di recuperare i torrent dal DB locale
-        // Assumiamo che dbHelper abbia un metodo getTorrents (standard)
-        // Se non trova nulla, ritorna array vuoto
-        if (!dbHelper.getTorrents) return [];
-        
-        const rows = await dbHelper.getTorrents(imdbId);
-        if(!rows || !Array.isArray(rows)) return [];
-
-        logger.info(`💾 [LOCAL DB] Trovati ${rows.length} risultati per ${imdbId}`);
-        
-        return rows.map(t => {
-            let magnet = t.magnet || `magnet:?xt=urn:btih:${t.info_hash}&dn=${encodeURIComponent(t.title)}`;
-            return {
-                title: t.title,
-                magnet: magnet,
-                hash: t.info_hash ? t.info_hash.toUpperCase() : null,
-                size: "💾 DB",
-                sizeBytes: parseInt(t.size),
-                seeders: t.seeders,
-                source: `💾 ${t.provider || 'Local'}`, // Mostra che viene dal DB locale
-                fileIdx: t.file_index
-            };
-        });
-    } catch (e) {
-        logger.warn(`⚠️ Errore lettura DB Locale: ${e.message}`);
         return [];
     }
 }
@@ -865,9 +860,6 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       if (item.isExternal) return true;
 
       const source = (item.source || "").toLowerCase();
-      // Permetti risultati dal DB Locale
-      if (source.includes("local") || source.includes("db")) return true;
-
       if (source.includes("comet") || source.includes("stremthru")) return false;
 
       const isItalian = isSafeForItalian(item) || /corsaro/i.test(item.source);
@@ -979,7 +971,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       return false;
   };
 
-  // --- FASE 1: FONTI VELOCI (VPS + LOCAL DB + EXTERNAL) ---
+  // --- FASE 1: FONTI VELOCI ---
   const remotePromise = withTimeout(
       queryRemoteIndexer(tmdbIdLookup, type, meta.season, meta.episode),
       CONFIG.TIMEOUTS.REMOTE_INDEXER,
@@ -989,30 +981,18 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       return [];
   });
 
-  // [NUOVO] Query al DB Locale
-  const localDbPromise = withTimeout(
-      queryLocalDb(meta.imdb_id, type),
-      CONFIG.TIMEOUTS.DB_QUERY,
-      'Local DB'
-  ).catch(err => {
-      logger.warn('Local DB query failed', { error: err.message });
-      return [];
-  });
-
   let externalPromise = Promise.resolve([]);
   if (!dbOnlyMode) {
       externalPromise = fetchExternalResults(type, finalId);
   }
 
-  // Eseguiamo tutte e 3 le chiamate in parallelo
-  const [remoteResults, localResults, externalResults] = await Promise.all([remotePromise, localDbPromise, externalPromise]);
+  const [remoteResults, externalResults] = await Promise.all([remotePromise, externalPromise]);
   
-  // Uniamo i risultati: Remote + Local + External
-  let fastResults = [...remoteResults, ...localResults, ...externalResults].filter(aggressiveFilter);
+  let fastResults = [...remoteResults, ...externalResults].filter(aggressiveFilter);
   let cleanResults = deduplicateResults(fastResults);
   const validFastCount = cleanResults.length;
 
-  logger.info(`⚡ [FAST CHECK] Trovati ${validFastCount} risultati validi da fonti veloci (VPS+DB+Ext).`);
+  logger.info(`⚡ [FAST CHECK] Trovati ${validFastCount} risultati validi da fonti veloci.`);
 
   // --- FASE 2: SCRAPER ---
   if (!dbOnlyMode && validFastCount < 3) {
@@ -1059,20 +1039,13 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   if (!dbOnlyMode) {
       saveResultsToDbBackground(meta, cleanResults);
   }
+
+  // --- [MODIFICA RICHIESTA: RIMOSSO FILTRO 0 SEEDERS] ---
+  // Ora vengono mostrati TUTTI i risultati, anche se hanno 0 seeders.
   
   if (config.filters) {
       cleanResults = cleanResults.filter(item => {
           const t = (item.title || "").toLowerCase();
-          
-          // [MODIFICA] Filtro HD con 0 Seeders
-          if ((item.seeders === 0 || item.seeders == null)) {
-              // Se è HD/1080p/4K e ha 0 seeders -> Rimuovi
-              // Mantiene invece gli SD con 0 seeders (spesso roba vecchia rara)
-              if (REGEX_QUALITY["4K"].test(t) || REGEX_QUALITY["1080p"].test(t) || REGEX_QUALITY["720p"].test(t) || /\bhd\b/i.test(t)) {
-                  return false;
-              }
-          }
-
           if (config.filters.maxSizeGB && config.filters.maxSizeGB > 0) {
               const maxBytes = config.filters.maxSizeGB * 1024 * 1024 * 1024;
               const itemSize = item._size || item.sizeBytes || 0;
@@ -1130,14 +1103,30 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
 
   let debridStreams = [];
   if (ranked.length > 0 && hasDebridKey) {
-      // --- MODALITÀ FULL LAZY (FAKE CACHE) ---
-      // Tutti i risultati vengono trattati come Lazy, ma formattati come "Cached"
-      // Questo elimina il controllo istantaneo (Hybrid) e velocizza la risposta
-      // Il link viene risolto solo quando l'utente clicca.
+      // --- MODIFICA FULL LAZY MODE (Film & Serie) ---
+      // Impostiamo TOP_LIMIT a 0 in modo che TUTTO venga gestito come Lazy Stream.
       
-      debridStreams = ranked.map(item =>
+      const isTorBox = config.service === 'tb';
+      let TOP_LIMIT = 0; // Tutto Lazy
+
+      const topItems = ranked.slice(0, TOP_LIMIT);
+      const lazyItems = ranked.slice(TOP_LIMIT);
+
+      // 1. Risoluzione Immediata (Verrà saltata perché topItems è vuoto)
+      const immediatePromises = topItems.map(item => {
+          item.season = meta.season;
+          item.episode = meta.episode;
+          config.rawConf = userConfStr; 
+          return LIMITERS.rd.schedule(() => resolveDebridLink(config, item, config.filters?.showFake, reqHost));
+      });
+
+      // 2. Generazione Lazy (Tutto qui)
+      const lazyStreams = lazyItems.map(item =>
           generateLazyStream(item, config, meta, reqHost, userConfStr, true)
       );
+
+      const resolvedInstant = (await Promise.all(immediatePromises)).filter(Boolean);
+      debridStreams = [...resolvedInstant, ...lazyStreams];
   }
 
   // === WEB PROVIDERS ===
@@ -1250,6 +1239,33 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
            logger.info(`❌ [WEBSTREAMR] Nessun risultato trovato.`);
       }
   }
+
+  // --- [TRAILER SECTION - UPDATED] ---
+  // Attivo solo se richiesto dalla configurazione.
+  // Se attivo, lo mette IN CIMA alla lista (unshift).
+  if (config.filters && config.filters.enableTrailers) {
+      try {
+         if (meta && meta.title) {
+             const trailerStreams = await getTrailerStreams(
+                 type,
+                 meta.imdb_id,
+                 meta.title,
+                 meta.season,
+                 meta.tmdb_id,
+                 'it-IT'
+             );
+
+             if (trailerStreams && trailerStreams.length > 0) {
+                 // UNSHIFT per metterlo come PRIMO risultato
+                 finalStreams.unshift(...trailerStreams);
+                 logger.info(`🎬 [TRAILER] Aggiunto trailer in testa per: ${meta.title}`);
+             }
+         }
+      } catch (err) {
+         logger.warn(`⚠️ Errore recupero Trailer: ${err.message}`);
+      }
+  }
+  // ----------------------------------------
   
   const resultObj = { streams: finalStreams };
 
@@ -1476,18 +1492,17 @@ const PUBLIC_PORT = process.env.PUBLIC_PORT || PORT;
 app.listen(PORT, () => {
     console.log(`🚀 Leviathan (God Tier) attivo su porta interna ${PORT}`);
     console.log(`-----------------------------------------------------`);
-    console.log(`⚡ MODE: FULL LAZY (All items deferred)`);
-    console.log(`🎭 LOOK: Fake Cache Appearance (Instant + Clean)`);
+    console.log(`⚡ MODE: FULL LAZY (All items Lazy)`);
+    console.log(`🎬 SERIES: Full Lazy Mode (No Instant Check)`);
     console.log(`📡 INDEXER URL (ENV): ${CONFIG.INDEXER_URL}`);
     console.log(`🎬 METADATA: TMDB Primary (User Key Priority)`);
     console.log(`💾 SCRITTURA: DB Locale (Auto-Learning attivo)`);
-    console.log(`📖 LETTURA DB: ATTIVA (Integrazione Locale Presente)`);
     console.log(`👁️ SPETTRO VISIVO: Modulo Attivo (Esclusioni 4K/1080/720/SD)`);
     console.log(`⚖️ SIZE LIMITER: Modulo Attivo (GB Filter)`);
-    console.log(`🚫 NO-GHOST HD: Filtro HD con 0 Seeders ATTIVO`);
     console.log(`🦁 GUARDA HD: Modulo Integrato e Pronto`);
     console.log(`🛡️ GUARDA SERIE: Modulo Integrato e Pronto`);
     console.log(`🕷️ WEBSTREAMR: Fallback Attivo (Su 0 Risultati)`);
+    console.log(`🎬 TRAILER: Attivabile da Config (Default: OFF, Primo Risultato se ON)`);
     console.log(`📦 TORBOX: True Cache Check Enabled`);
     console.log(`🦑 LEVIATHAN CORE: Optimized for High Reliability`);
     console.log(`-----------------------------------------------------`);
