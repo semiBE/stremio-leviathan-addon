@@ -109,20 +109,31 @@ const REGEX_AUDIO = {
     flac: /\bflac\b/i
 };
 
-// [MODIFICATO] PULIZIA RADICALE REGEX ITA
+// [MODIFICATO] NUOVA REGEX ITA POTENZIATA PER KNABEN/1337X
 const REGEX_ITA = [
-    /\b(ITA|ITALIAN|ITALY)\b/i,
-    /\b(AUDIO|LINGUA)\s*[:\-]?\s*(ITA|IT)\b/i,
-    /\b(AC-?3|AAC|DDP?|DTS|PCM|TRUEHD|ATMOS|MP3|WMA|FLAC).*(ITA|IT)\b/i,
-    /\b(DD|DDP|AAC|DTS)\s*5\.1\s*(ITA|IT)\b/i,
-    /\b(MULTI|DUAL|TRIPLE).*(ITA|IT)\b/i,
-    /\b(SUB|SUBS|SOTTOTITOLI).*(ITA|IT)\b/i,
-    /\b(H\.?264|H\.?265|X264|X265|HEVC|AVC|DIVX|XVID).*(ITA|IT)\b/i,
-    // Release groups noti
-    /\b(iDN_CreW|CORSARO|MUX|WMS|TRIDIM|SPEEDVIDEO|EAGLE|TRL|MEA|LUX|DNA|LEST|GHIZZO|USAbit|Bric|Dtone|Gaiage|BlackBit|Pantry|Vics|Papeete)\b/i,
-    // Parole chiave sicure per Serie TV
-    /\b(STAGIONE|EPISODIO|SERIE COMPLETA|STAGIONE COMPLETA)\b/i
+    // 1. Espliciti: Audio ITA, Lingua ITA
+    /\b(AUDIO|LINGUA|LANG|VO)\s*[:.\-_]?\s*(ITA|IT|ITALIAN)\b/i,
+    
+    // 2. Codec o Qualità + ITA (es. "AC3 ITA", "1080p ITA", "WebRip.ITA")
+    /\b(AC-?3|AAC|DDP?|DTS|PCM|TRUEHD|ATMOS|MP3|FLAC|MD|LD|DD\+?|5\.1|H\.?264|H\.?265|X264|X265|HEVC|AVC|DIVX|XVID|BLURAY|BD|BDRIP|WEBRIP|WEB-?DL|HDTV|1080[pi]|720[pi]|480[pi]|4K|2160[pi])[\s.\-_]+(ITA|IT|ITALIAN)\b/i,
+    
+    // 3. Multi/Dual che include ITA
+    /\b(MULTI|DUAL|TRIPLE).*ITA\b/i,
+    
+    // 4. ITA seguito da altro (es. "ITA-ENG", "ITA.AC3")
+    /\b(ITA|IT|ITALIAN)[\s.\-_]+(ENG|EN|ENGLISH|FRA|GER|SPA|RUS|AC3|AAC|DDP|DTS|H264|H265)\b/i,
+    
+    // 5. ITA Isolato tra separatori (es. "[ITA]", ".ITA.", "-ITA-", " ITA ")
+    /(?:^|[_\-. \[(\/])(ITA|ITALIAN|ITALY)(?:$|[_\-. \])\/])/i,
+    
+    // 6. Release Groups noti (Aggiungine altri se ne trovi)
+    /\b(iDN_CreW|CORSARO|MUX|WMS|TRIDIM|SPEEDVIDEO|EAGLE|TRL|MEA|LUX|DNA|LEST|GHIZZO|USAbit|Bric|Dtone|Gaiage|BlackBit|Pantry|Vics|Papeete|Lidri|MirCrew)\b/i
 ];
+
+// Regex specifica per escludere i soli sottotitoli (False Positives)
+const REGEX_SUB_ONLY = /\b(SUB|SUBS|SUBBED|SOTTOTITOLI|VOST|VOSTIT)\s*[:.\-_]?\s*(ITA|IT|ITALIAN)\b/i;
+// Regex per confermare che, anche se c'è scritto SUB, c'è pure l'audio (es. "Audio ITA - Sub ITA")
+const REGEX_AUDIO_CONFIRM = /\b(AUDIO|AC3|AAC|DTS|MD|LD|DDP|MP3|LINGUA)[\s.\-_]+(ITA|IT)\b/i;
 
 const REGEX_CLEANER = /\b(ita|eng|ger|fre|spa|latino|rus|sub|h264|h265|x264|x265|hevc|avc|vc1|1080p|1080i|720p|480p|4k|2160p|uhd|sdr|hdr|hdr10|dv|dolby|vision|bluray|bd|bdrip|brrip|web-?dl|webrip|hdtv|remux|mux|ac-?3|aac|dts|ddp|flac|truehd|atmos|multi|dual|complete|pack|amzn|nf|dsnp|hmax|atvp|apple|hulu|peacock|rakuten|iyp|dvd|dvdrip|unrated|extended|director|cut|rip)\b.*/yi;
 
@@ -280,50 +291,102 @@ function getEpisodeTag(filename) {
 
 function extractAudioInfo(title) {
     const t = String(title).toLowerCase();
+
+    // Canali audio 
     const channelMatch = t.match(REGEX_AUDIO.channels);
-    let channels = channelMatch ? channelMatch[1] : "";
+    let channels = channelMatch?.[1] || "";
     if (channels === "2.0") channels = "";
-    let audioTag = "";
-    if (REGEX_AUDIO.atmos.test(t)) audioTag = "💣 Atmos";
-    else if (REGEX_AUDIO.dtsx.test(t)) audioTag = "💣 DTS:X";
-    else if (REGEX_AUDIO.truehd.test(t)) audioTag = "🔊 TrueHD";
-    else if (REGEX_AUDIO.dtshd.test(t)) audioTag = "🔊 DTS-HD";
-    else if (REGEX_AUDIO.ddp.test(t)) audioTag = "🔊 Dolby+";
-    else if (REGEX_AUDIO.dts.test(t)) audioTag = "🔊 DTS";
-    else if (REGEX_AUDIO.flac.test(t)) audioTag = "🎼 FLAC";
-    else if (REGEX_AUDIO.dolby.test(t)) audioTag = "🔈 Dolby";
-    else if (REGEX_AUDIO.aac.test(t)) audioTag = "🔈 AAC";
-    else if (/\bmp3\b/i.test(t)) audioTag = "🔈 MP3";
-    if (!audioTag && (channels === "5.1" || channels === "7.1")) audioTag = "🔊 Surround";
-    if (!audioTag) return "🔈 Stereo";
-    return channels ? `${audioTag} ${channels}` : audioTag;
+
+    // CONFIGURAZIONE "LEVIATHAN WAR MODE" ⚔️
+    const AUDIO_PRIORITY = [
+        { test: REGEX_AUDIO.atmos,  tag: "💥💣 Atmos" },   // Esplosivo
+        { test: REGEX_AUDIO.dtsx,   tag: "💥💣 DTS:X" },   // Esplosivo
+        { test: REGEX_AUDIO.truehd, tag: "🔊⚡ TrueHD" },  // Potenza pura
+        { test: REGEX_AUDIO.dtshd,  tag: "🔊⚡ DTS-HD" },  // Potenza pura
+        { test: REGEX_AUDIO.ddp,    tag: "🔊🔥 Dolby+" },  // Caldo
+        { test: REGEX_AUDIO.dts,    tag: "🔊🔥 DTS" },     // Caldo
+        { test: REGEX_AUDIO.flac,   tag: "🎼🌊 FLAC" },    // Fluido/Musicale
+        { test: REGEX_AUDIO.dolby,  tag: "🔈🌑 Dolby" },   // Dark
+        { test: REGEX_AUDIO.aac,    tag: "🔈✨ AAC" },     // Crisp
+        { test: /\bmp3\b/i,         tag: "🔈🎶 MP3" }      // Basic
+    ];
+
+    let audioTag = AUDIO_PRIORITY.find(c => c.test.test(t))?.tag || "";
+
+    // Fallback surround
+    if (!audioTag && (channels === "5.1" || channels === "7.1")) {
+        audioTag = "🔊🌌 Surround";
+    }
+
+    // Fallback stereo
+    if (!audioTag) return "🔈⚡ Stereo";
+
+    
+    return channels ? `${audioTag} ┃ ${channels}` : audioTag;
+}
+
+// --- NUOVA FUNZIONE HELPER PER IL GRASSETTO (Unicode) ---
+function toBold(text) {
+    const map = {
+        '0': '𝟬', '1': '𝟭', '2': '𝟮', '3': '𝟯', '4': '𝟰', '5': '𝟱', '6': '𝟲', '7': '𝟳', '8': '𝟴', '9': '𝟵',
+        'A': '𝗔', 'B': '𝗕', 'C': '𝗖', 'D': '𝗗', 'E': '𝗘', 'F': '𝗙', 'G': '𝗚', 'H': '𝗛', 'I': '𝗜', 'J': '𝗝',
+        'K': '𝗞', 'L': '𝗟', 'M': '𝗠', 'N': '𝗡', 'O': '𝗢', 'P': '𝗣', 'Q': '𝗤', 'R': '𝗥', 'S': '𝗦', 'T': '𝗧',
+        'U': '𝗨', 'V': '𝗩', 'W': '𝗪', 'X': '𝗫', 'Y': '𝗬', 'Z': '𝗭',
+        'a': '𝗮', 'b': '𝗯', 'c': '𝗰', 'd': '𝗱', 'e': '𝗲', 'f': '𝗳', 'g': '𝗴', 'h': '𝗵', 'i': '𝗶', 'j': '𝗷',
+        'k': '𝗸', 'l': '𝗹', 'm': '𝗺', 'n': '𝗻', 'o': '𝗼', 'p': '𝗽', 'q': '𝗾', 'r': '𝗿', 's': '𝘀', 't': '𝘁',
+        'u': '𝘂', 'v': '𝘃', 'w': '𝘄', 'x': '𝘅', 'y': '𝘆', 'z': '𝘇'
+    };
+    return text.split('').map(c => map[c] || c).join('');
 }
 
 function extractStreamInfo(title, source) {
   const t = String(title).toLowerCase();
+  
+  // DEFAULT
   let q = "HD"; let qIcon = "📺";
   if (REGEX_QUALITY["4K"].test(t)) { q = "4K"; qIcon = "🔥"; }
-  else if (REGEX_QUALITY["1080p"].test(t)) { q = "1080p"; qIcon = "✨"; }
-  else if (REGEX_QUALITY["720p"].test(t)) { q = "720p"; qIcon = "🎞️"; }
-  else if (REGEX_QUALITY["SD"].test(t)) { q = "SD"; qIcon = "🐢"; }
+  else if (REGEX_QUALITY["1080p"].test(t)) { q = "1080p"; qIcon = "👑"; }
+  else if (REGEX_QUALITY["720p"].test(t)) { q = "720p"; qIcon = "⚡"; }
+  else if (REGEX_QUALITY["SD"].test(t)) { q = "SD"; qIcon = "📼"; }
+  
+  // --- NUOVA LOGICA TAG VIDEO ESTETICI (High Tech B&W + Fix x264/Fallback) ---
   const videoTags = [];
-  if (/hdr/.test(t)) videoTags.push("HDR");
-  if (/dolby|vision|\bdv\b/.test(t)) videoTags.push("DV");
-  if (/imax/.test(t)) videoTags.push("IMAX");
-  if (/x265|h265|hevc/.test(t)) videoTags.push("HEVC");
+  
+  // HDR: "🔥" (Fuoco richiesto) + Bold Text
+  if (/hdr/.test(t)) videoTags.push(`🔥 ${toBold("HDR")}`);
+  
+  // Dolby Vision: "👁️" + Bold DV
+  if (/dolby|vision|\bdv\b/.test(t)) videoTags.push(`👁️ ${toBold("DV")}`);
+  
+  // IMAX: "🏟️" + Bold IMAX
+  if (/imax/.test(t)) videoTags.push(`🏟️ ${toBold("IMAX")}`);
+  
+  // HEVC / AVC / Fallback
+  if (/x265|h\.?265|hevc/i.test(t)) {
+      videoTags.push(`⚙️ ${toBold("HEVC")}`);
+  } 
+  else if (/x264|h\.?264|avc|mpeg-?4/i.test(t)) {
+      videoTags.push(`📼 ${toBold("AVC")}`);
+  }
+  else {
+      // [FIX RIGA MANCANTE] Se non è specificato nulla, assumiamo AVC (standard)
+      // Questo forza la comparsa della riga anche per file senza info codec
+      videoTags.push(`📼 ${toBold("AVC")}`);
+  }
   
   let lang = "🇬🇧 ENG";
-
   if (/corsaro/i.test(source) || isSafeForItalian({ title })) {
       lang = "🇮🇹 ITA";
       if (/multi|mui/i.test(t)) lang = "🇮🇹 MULTI";
   }
   
   const audioInfo = extractAudioInfo(title);
-  let detailsParts = [];
-  if (videoTags.length) detailsParts.push(`🖥️ ${videoTags.join(" ")}`);
   
-  return { quality: q, qIcon, info: detailsParts.join(" | "), lang, audioInfo, rawVideoTags: videoTags };
+  // Costruzione stringa info
+  let detailsParts = [];
+  if (videoTags.length) detailsParts.push(videoTags.join(" • "));
+  
+  return { quality: q, qIcon, info: detailsParts.join(" "), lang, audioInfo, rawVideoTags: videoTags };
 }
 
 function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag = "RD", config = {}, infoHash = null, isLazy = false, isPackItem = false) {
@@ -392,32 +455,31 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
         return { name, title, bingeGroup };
     }
 
-    const sizeStr = `🧲 ${sizeString}`;
-    const seedersStr = seeders != null ? `👤 ${seeders}` : "";
+    // === MODIFICHE ESTETICHE "HIGH TECH" ===
+    
+    // 1. Qualità in Grassetto Unicode (es. 𝟰𝗞)
+    const qualityBold = toBold(quality);
 
-    let langStr = "🌐 ?";
-    if (/multi/i.test(lang || "")) langStr = "🌐 MULTI"; 
-    else if (/ita|it\b|italiano/i.test(lang || "")) langStr = "🇮🇹 ITA";
-    else if (/eng|en\b|english/i.test(lang || "")) langStr = "🇬🇧 ENG";
+    const sizeStr = `🧲 ${sizeString}`;
+    
+    // 2. Seeders: Icona Folla
+    const seedersStr = seeders != null ? `👥 ${seeders}` : "";
+
+    // 3. Lingua: Omino + Bandiera
+    let langStr = "🗣️ ❓";
+    if (/multi/i.test(lang || "")) langStr = "🗣️ 🌐"; 
+    else if (/ita|it\b|italiano/i.test(lang || "")) langStr = "🗣️ 🇮🇹";
+    else if (/eng|en\b|english/i.test(lang || "")) langStr = "🗣️ 🇬🇧";
     else if (lang) langStr = `🗣️ ${lang.toUpperCase()}`;
     
     let displaySource = source || "P2P";
 
-    if (/1337/i.test(displaySource)) {
-        displaySource = "1337x"; 
-    } 
-    else if (/corsaro/i.test(displaySource)) {
-        displaySource = "ilCorSaRoNeRo";
-    } 
-    else if (/knaben/i.test(displaySource)) {
-        displaySource = "Knaben";
-    } 
-    else if (/comet|stremthru/i.test(displaySource)) {
-        displaySource = "StremThru";
-    } 
-    else if (/rarbg/i.test(displaySource)) {
-        displaySource = "RARBG";
-    }
+    // Normalizzazione nomi sorgenti
+    if (/1337/i.test(displaySource)) displaySource = "1337x"; 
+    else if (/corsaro/i.test(displaySource)) displaySource = "ilCorSaRoNeRo";
+    else if (/knaben/i.test(displaySource)) displaySource = "Knaben";
+    else if (/comet|stremthru/i.test(displaySource)) displaySource = "StremThru";
+    else if (/rarbg/i.test(displaySource)) displaySource = "RARBG";
     else if (/rd cache/i.test(displaySource)) {
         const groupMatch = fileTitle.match(/[-_]\s*([a-zA-Z0-9]+)(?:\.[a-z0-9]{2,4})?$/i);
         if (groupMatch && groupMatch[1] && groupMatch[1].length < 15 && !/mkv|mp4|avi/i.test(groupMatch[1])) {
@@ -437,27 +499,45 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     }
     
     const finalServiceTag = serviceTag;
+
+    // --- ICONE SERVIZIO (Cometa confermata per RD) ---
+    let serviceIcon = "⚡"; 
+    if (finalServiceTag === "TB") serviceIcon = "📦";      
+    else if (finalServiceTag === "RD") serviceIcon = "☄️"; // Cometa per RD
+    else if (finalServiceTag === "AD") serviceIcon = "🦅"; 
     
-    const sourceLine = `⚡ [${finalServiceTag}] ${displaySource}`;
-    const name = `🦑 LEVIATHAN\n${qIcon} ${quality}`;
+    const sourceLine = `${serviceIcon} [${finalServiceTag}] ${displaySource}`;
+
+    // Nome in alto: Icona Qualità + Qualità in Grassetto
+    const name = `🦑 𝗟𝗘𝗩𝗜𝗔𝗧𝗛𝗔𝗡\n${qIcon} ┃ ${qualityBold}`;
+    
     const cleanName = cleanFilename(fileTitle)
-        .replace(/(s\d{1,2}e\d{1,2}|\d{1,2}x\d{1,2}|s\d{1,2})/ig, "")
-        .replace(/\s{2,}/g, " ")
-        .trim();
+    .replace(/(s\d{1,2}e\d{1,2}|\d{1,2}x\d{1,2}|s\d{1,2})/ig, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
     
-    // Gestione Tag Episodio / Pack
     const epTag = getEpisodeTag(fileTitle);
     const finalEpTag = isPackItem ? "📦 SEASON PACK" : epTag;
 
     const lines = [];
-    lines.push(`🎬 ${cleanName}${finalEpTag ? ` ${finalEpTag}` : ""}`);
+    // Icona Film: 🗂️ (DOSSIER STYLE - MODIFICATA SU RICHIESTA)
+    lines.push(`🗂️ ${cleanName}${finalEpTag ? ` ${finalEpTag}` : ""}`);
+    
+    // Lingua + Audio
     const audioLine = [langStr, audioInfo].filter(Boolean).join(" • ");
     if (audioLine) lines.push(audioLine);
+    
+    // Info Video (formattate con icone e bold in extractStreamInfo)
     const cleanInfo = info ? info.replace("🖥️ ", "") : "";
-    if (cleanInfo) lines.push(`🎞️ ${cleanInfo}`);
+    if (cleanInfo) lines.push(cleanInfo);
+    
+    // Tech: Size + Seeders (Folla)
     const techLine = [sizeStr, seedersStr].filter(Boolean).join(" • ");
     if (techLine) lines.push(techLine);
+    
+    // Sorgente
     if (sourceLine) lines.push(sourceLine);
+    
     return { name, title: lines.join("\n"), bingeGroup };
 }
 
@@ -737,7 +817,7 @@ function generateLazyStream(item, config, meta, reqHost, userConfStr, isLazy = f
     };
 }
 
-// [FIXED] Lettura DB con FILTRO LINGUA + KNABEN + BLOCCO RUSSI/ARABI + STRICT SERIES
+// Lettura DB con FILTRO LINGUA + KNABEN + BLOCCO RUSSI/ARABI + STRICT SERIES
 async function queryLocalIndexer(meta, config) { 
     try {
         if (dbHelper && typeof dbHelper.getTorrents === 'function') {
@@ -775,7 +855,7 @@ async function queryLocalIndexer(meta, config) {
                         seeders: t.seeders || 0,
                         source: t.provider || 'External', 
                         fileIdx: t.file_index,
-                        // [MODIFICA 1] DB Locale ora viene filtrato (isExternal: false)
+                        // DB Locale ora viene filtrato (isExternal: false)
                         isExternal: false 
                     };
                 }).filter(item => {
@@ -812,14 +892,14 @@ async function queryLocalIndexer(meta, config) {
                         return false;
                     }
 
-                    // 3. [MODIFICA 3] LOGICA STRICT PREVENTIVA PER SERIE TV NEL DB
+                    // 3.  LOGICA STRICT PREVENTIVA PER SERIE TV NEL DB
                     if (meta.isSeries) {
                         // Verifica che il numero stagione nel titolo corrisponda a quello richiesto
                         const wrongSeasonRegex = /(?:s|stagione|season)\s*0?(\d+)(?!\d)/gi;
                         let match;
                         while ((match = wrongSeasonRegex.exec(cleanFile)) !== null) {
                             const foundSeason = parseInt(match[1]);
-                            if (foundSeason !== s) return false; // Se trovo S04 e cerco S01 -> VIA
+                            if (foundSeason !== s) return false; 
                         }
                         
                         // Verifica presenza Episodio (o Pack)
@@ -866,7 +946,7 @@ async function queryLocalIndexer(meta, config) {
     }
 }
 
-// [FIXED] Remote Indexer ora viene chiamato con config per futura espansione (ma il filtro avviene dopo)
+
 async function queryRemoteIndexer(tmdbId, type, season = null, episode = null, config) {
     if (!CONFIG.INDEXER_URL) return [];
     try {
@@ -1005,115 +1085,109 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
   const tmdbIdLookup = meta.tmdb_id || (await imdbToTmdb(meta.imdb_id, userTmdbKey))?.tmdbId;
   const dbOnlyMode = config.filters?.dbOnly === true; 
 
-  // --- FILTRO AGGRESSIVO CON FIX KNABEN E SEASON PACKS ---
+  // --- FILTRO AGGRESSIVO ---
   const aggressiveFilter = (item) => {
       if (!item?.magnet) return false;
-      // EXTERNAL (FetchExternalResults) passa sempre
-      // Nota: LocalDB ora ha isExternal: false, quindi verrà controllato qui.
       if (item.isExternal) return true;
 
       const source = (item.source || "").toLowerCase();
+      // Filtri tecnici globali
       if (source.includes("comet") || source.includes("stremthru")) return false;
 
-      // ----------------------------------------------------
-      // LOGICA BLINDATA: LINGUA E KNABEN
-      // ----------------------------------------------------
+      // Analisi Titolo
+      const t = item.title; 
+      const tLower = t.toLowerCase();
+      
       const isCorsaro = /corsaro/i.test(source);
       const isKnaben = /knaben/i.test(source);
-      
-      // Controllo base: è un titolo italiano generico?
-      let isItalianTitle = isSafeForItalian(item) || isCorsaro;
+      const is1337x = /1337/i.test(source);
+      const isTgx = /tgx|torrentgalaxy/i.test(source);
 
-      // Se l'utente NON vuole l'inglese (allowEng = false)
+      // Check Match Italiano Potenziato
+      const matchesItalianRegex = REGEX_ITA.some(r => r.test(t));
+      
+      // Gestione Config "Solo ITA" (allowEng = false) o Provider Misti
       if (!config.filters?.allowEng) {
           
-          // CASO SPECIFICO KNABEN (Il "Maledetto"):
-          // Knaben è internazionale. Se il file ha "ITA" nel titolo, spesso sono solo SUB.
-          // Se siamo in modalità "Solo ITA", Knaben deve avere un tag AUDIO esplicito per passare.
-          if (isKnaben) {
-               // Cerca tag forti: AC3 ITA, AAC ITA, MP3 ITA, MD ITA, LD ITA, AUDIO ITA
-               const hasStrongAudioIta = /\b(AC-?3|AAC|DDP|DTS|MP3|MD|LD|AUDIO|LINGUA).*(ITA|IT)\b/i.test(item.title);
-               
-               // Se non ha un tag audio esplicito, SCARTALO, anche se isItalianTitle era true (perché magari era solo SUB)
-               if (!hasStrongAudioIta) {
-                   return false; 
-               }
+          // LOGICA KNABEN & 1337x & TGX (Provider Internazionali)
+          if (isKnaben || is1337x || isTgx) {
+              
+              if (!matchesItalianRegex) {
+                  // Se non c'è traccia di ITA nelle regex potenti -> VIA
+                  return false; 
+              }
+
+              
+              // Se matcha "SUB ITA" E NON matcha "AUDIO ITA" -> Scarta
+              const looksLikeSubOnly = REGEX_SUB_ONLY.test(t);
+              const hasConfirmedAudio = REGEX_AUDIO_CONFIRM.test(t);
+
+              if (looksLikeSubOnly && !hasConfirmedAudio) {
+                   
+                  const cleanTitleNoSub = t.replace(REGEX_SUB_ONLY, ""); 
+                  const stillHasIta = REGEX_ITA.some(r => r.test(cleanTitleNoSub));
+                  
+                  if (!stillHasIta) return false; 
+              }
           } 
-          // CASO GENERALE (Non Knaben)
+          // LOGICA GENERALE (Altri Provider)
           else {
-              // Se non è Italiano -> VIA
-              if (!isItalianTitle) return false;
+
+              if (!matchesItalianRegex && !isSafeForItalian(item) && !isCorsaro) {
+                  return false;
+              }
               
-              // FILTRO SUBTITLES-ONLY (Anti-Beffa per provider non-Knaben)
-              // Se il titolo contiene SUB/VOST ma NON ha tag Audio ITA espliciti, è probabilmente ENG audio -> VIA
-              const isSubbed = /\b(sub|subs|subbed|vost|vostit|sottotitoli)\b/i.test(item.title);
-              const hasExplicitAudio = /\b(AC-?3|AAC|DDP|DTS|MP3|MD|LD).*(ITA|IT)\b/i.test(item.title);
-              
-              if (isSubbed && !hasExplicitAudio && !isCorsaro) {
+              // Anti-Sub Generico
+              if (/\b(sub|subs|subbed|vost|vostit)\b/i.test(t) && !REGEX_AUDIO_CONFIRM.test(t) && !isCorsaro) {
                   return false;
               }
           }
       }
-      // ----------------------------------------------------
 
-      const t = item.title.toLowerCase();
+      
       const metaYear = parseInt(meta.year);
 
-      // --- FIX FRANKENSTEIN ---
+      // Fix Frankenstein 2025
       if (metaYear === 2025 && /frankenstein/i.test(meta.title)) {
            if (!item.title.includes("2025")) return false;
       }
 
-      // --- [MODIFICA 2] LOGICA SERIE TV BLINDATA ---
+      // LOGICA SERIE TV
       if (meta.isSeries) {
           const s = meta.season;
           const e = meta.episode;
           
-          // 1. Controllo Regex Esplicite Sbagliate (es. S04 trovato, cerco S01)
+          // 1. Check Stagione Sbagliata
           const wrongSeasonRegex = /(?:s|stagione|season)\s*0?(\d+)(?!\d)/gi;
           let match;
-          while ((match = wrongSeasonRegex.exec(t)) !== null) {
+          while ((match = wrongSeasonRegex.exec(tLower)) !== null) {
               const foundSeason = parseInt(match[1]);
               if (foundSeason !== s) return false; 
           }
 
-          // 2. Controllo formato "NxMM" (es. 1x05)
-          const xMatch = t.match(/(\d+)x(\d+)/i);
+          // 2. Check 1x05
+          const xMatch = tLower.match(/(\d+)x(\d+)/i);
           if (xMatch) {
-              const xS = parseInt(xMatch[1]);
-              const xE = parseInt(xMatch[2]);
-              if (xS !== s) return false;
-              if (xE !== e) return false;
-              return true; // Match perfetto 1x05
+              if (parseInt(xMatch[1]) !== s) return false;
+              if (parseInt(xMatch[2]) !== e) return false;
+              return true;
           }
 
-          // 3. Controllo standard Sxx Exx
-          const hasRightSeason = new RegExp(`(?:s|stagione|season|^)\\s*0?${s}(?!\\d)`, 'i').test(t);
-          const hasRightEpisode = new RegExp(`(?:e|x|ep|episode|^)\\s*0?${e}(?!\\d)`, 'i').test(t);
-          const hasAnyEpisodeTag = /(?:e|x|ep|episode)\s*0?\d+/i.test(t);
-          const isExplicitPack = /(?:complete|pack|stagione\s*\d+\s*$|season\s*\d+\s*$|tutta|completa)/i.test(t);
+          // 3. Standard Sxx Exx
+          const hasRightSeason = new RegExp(`(?:s|stagione|season|^)\\s*0?${s}(?!\\d)`, 'i').test(tLower);
+          const hasRightEpisode = new RegExp(`(?:e|x|ep|episode|^)\\s*0?${e}(?!\\d)`, 'i').test(tLower);
+          const hasAnyEpisodeTag = /(?:e|x|ep|episode)\s*0?\d+/i.test(tLower);
+          const isExplicitPack = /(?:complete|pack|stagione\s*\d+\s*$|season\s*\d+\s*$|tutta|completa)/i.test(tLower);
           
           if (hasRightSeason && hasRightEpisode) return true;
           if (hasRightSeason && (isExplicitPack || !hasAnyEpisodeTag)) {
               item._isPack = true; 
               return true;
           }
-          
-          // Se è una serie, e non ha matchato le regole sopra, È UN FALSO POSITIVO.
-          // NON permettere il fallback al controllo titolo generico.
           return false;
       }
 
-      // --- LOGICA FILM (Resta invariata) ---
-      if (source.includes("1337")) {
-          const hasIta = /\b(ita|italian)\b/i.test(item.title);
-          const isSubbed = /\b(sub|subs|subbed|vost|vostit)\b/i.test(item.title);
-          if (!hasIta || isSubbed) return false; 
-      }
-      if (source.includes("tgx") || source.includes("torrentgalaxy") || source.includes("yts")) {
-          const hasStrictIta = /\b(ita|italian)\b/i.test(item.title);
-          if (!hasStrictIta) return false; 
-      }
+      // LOGICA FILM (Anno)
       if (!isNaN(metaYear)) {
            const fileYearMatch = item.title.match(REGEX_YEAR);
            if (fileYearMatch) {
@@ -1122,8 +1196,8 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
            }
       }
 
-      // --- FIX MATCH TITOLO ---
-      const cleanFile = item.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
+      // CHECK MATCH TITOLO
+      const cleanFile = tLower.replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
       const cleanMeta = meta.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
       const metaTitleShort = meta.title.split(/ - |: /)[0].toLowerCase().trim();
       const metaOriginal = (meta.originalTitle || "").toLowerCase().trim();
@@ -1133,8 +1207,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
           let searchKeyword = strToCheck.replace(/^(the|a|an|il|lo|la|i|gli|le)\s+/i, "").trim();
           if (searchKeyword === "rip") {
                const strictStartRegex = /^(the\s+|il\s+)?rip\b/i;
-               if (strictStartRegex.test(cleanFile)) return true;
-               return false;
+               return strictStartRegex.test(cleanFile);
           }
           if (searchKeyword.length <= 3) {
               const regexShort = new RegExp(`\\b${searchKeyword}\\b`, 'i');
@@ -1143,16 +1216,17 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
           return cleanFile.includes(searchKeyword);
       };
 
-      if (checkMatch(cleanMeta)) return true;        
+      if (checkMatch(cleanMeta)) return true;         
       if (checkMatch(metaTitleShort)) return true;  
-      if (checkMatch(metaOriginal)) return true;    
+      if (checkMatch(metaOriginal)) return true;     
       if (smartMatch(meta.title, item.title, meta.isSeries, meta.season, meta.episode)) return true;
+      
       return false;
   };
 
-  // --- FASE 1: FONTI VELOCI ---
+  // --- FONTI VELOCI ---
   
-  // 1. Remote Indexer (Passiamo config per il filtro interno Knaben)
+  // 1. Remote Indexer 
   const remotePromise = withTimeout(
       queryRemoteIndexer(tmdbIdLookup, type, meta.season, meta.episode, config),
       CONFIG.TIMEOUTS.REMOTE_INDEXER,
@@ -1162,7 +1236,7 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       return [];
   });
 
-  // 2. DB Locale (Filtro Knaben già incluso internamente)
+  // 2. DB Locale 
   const localPromise = withTimeout(
       queryLocalIndexer(meta, config),
       CONFIG.TIMEOUTS.LOCAL_DB,
@@ -1618,7 +1692,8 @@ app.get("/:conf/manifest.json", (req, res) => {
         const hasTBKey = (config.service === 'tb' && config.key) || config.torbox;
         const hasADKey = (config.service === 'ad' && config.key) || config.alldebrid;
         if (hasRDKey) {
-            manifest.name = "Leviathan ⚡ RD";
+            // [MODIFICATO] ICONA COMETA PER IL NOME ADDON
+            manifest.name = "Leviathan ☄️ RD";
             manifest.id += ".rd"; 
         } 
         else if (hasTBKey) {
