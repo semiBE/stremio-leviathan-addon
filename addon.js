@@ -90,12 +90,15 @@ const CONFIG = {
 };
 
 const REGEX_YEAR = /(19|20)\d{2}/;
+
+// Regex Qualità Estremamente Precisa
 const REGEX_QUALITY = {
-    "4K": /2160p|4k|uhd/i,
-    "1080p": /1080p/i,
-    "720p": /720p/i,
-    "SD": /480p|\bsd\b/i
+    "4K": /\b(?:2160p|4k|uhd|ultra[-.\s]?hd|2160i)\b/i,
+    "1080p": /\b(?:1080p|1080i|fhd|full[-.\s]?hd|blu[-.\s]?ray|bd[-.\s]?rip)\b/i,
+    "720p": /\b(?:720p|720i|hd[-.\s]?rip|hd)\b/i,
+    "SD": /\b(?:480p|576p|sd|dvd|dvd[-.\s]?rip|dvd[-.\s]?scr|cd)\b/i
 };
+
 const REGEX_AUDIO = {
     channels: /\b(7\.1|5\.1|2\.1|2\.0)\b/,
     atmos: /atmos/i,
@@ -109,7 +112,7 @@ const REGEX_AUDIO = {
     flac: /\bflac\b/i
 };
 
-// [MODIFICATO] NUOVA REGEX ITA POTENZIATA PER KNABEN/1337X
+// NUOVA REGEX ITA POTENZIATA PER KNABEN/1337X
 const REGEX_ITA = [
     // 1. Espliciti: Audio ITA, Lingua ITA
     /\b(AUDIO|LINGUA|LANG|VO)\s*[:.\-_]?\s*(ITA|IT|ITALIAN)\b/i,
@@ -325,10 +328,11 @@ function extractAudioInfo(title) {
     return channels ? `${audioTag} ┃ ${channels}` : audioTag;
 }
 
-// --- NUOVA FUNZIONE HELPER PER IL GRASSETTO (Unicode) ---
-function toBold(text) {
-    const map = {
-        '0': '𝟬', '1': '𝟭', '2': '𝟮', '3': '𝟯', '4': '𝟰', '5': '𝟱', '6': '𝟲', '7': '𝟳', '8': '𝟴', '9': '𝟵',
+// --- NUOVA FUNZIONE PER TESTO STILIZZATO (BOLD SANS, SPACED, E 'SUPER' PER QUALITÀ) ---
+function toStylized(text, type = 'std') {
+    // Mappa per lettere e numeri standard
+    const numbers = { '0': '𝟎', '1': '𝟏', '2': '𝟐', '3': '𝟑', '4': '𝟒', '5': '𝟓', '6': '𝟔', '7': '𝟕', '8': '𝟖', '9': '𝟗' };
+    const chars = {
         'A': '𝗔', 'B': '𝗕', 'C': '𝗖', 'D': '𝗗', 'E': '𝗘', 'F': '𝗙', 'G': '𝗚', 'H': '𝗛', 'I': '𝗜', 'J': '𝗝',
         'K': '𝗞', 'L': '𝗟', 'M': '𝗠', 'N': '𝗡', 'O': '𝗢', 'P': '𝗣', 'Q': '𝗤', 'R': '𝗥', 'S': '𝗦', 'T': '𝗧',
         'U': '𝗨', 'V': '𝗩', 'W': '𝗪', 'X': '𝗫', 'Y': '𝗬', 'Z': '𝗭',
@@ -336,42 +340,93 @@ function toBold(text) {
         'k': '𝗸', 'l': '𝗹', 'm': '𝗺', 'n': '𝗻', 'o': '𝗼', 'p': '𝗽', 'q': '𝗾', 'r': '𝗿', 's': '𝘀', 't': '𝘁',
         'u': '𝘂', 'v': '𝘃', 'w': '𝘄', 'x': '𝘅', 'y': '𝘆', 'z': '𝘇'
     };
-    return text.split('').map(c => map[c] || c).join('');
+
+    // Mappa SUPER BOMBA (Sans-Serif Bold Italic) per 4K, 1080p, etc.
+    const superNumbers = { '0': '𝟬', '1': '𝟭', '2': '𝟮', '3': '𝟯', '4': '𝟰', '5': '𝟱', '6': '𝟲', '7': '𝟳', '8': '𝟴', '9': '𝟵' };
+    const superChars = { 
+        'K': '𝙆', 'p': '𝙥', 'H': '𝙃', 'D': '𝘿', 'S': '𝙎', 'A': '𝘼', 'R': '𝙍',
+        'a': '𝙖', 'b': '𝙗', 'c': '𝙘', 'd': '𝙙', 'e': '𝙚', 'f': '𝙛', 'g': '𝙜', 'h': '𝙝', 'i': '𝙞' 
+    };
+
+    if (type === 'super') {
+        return text.split('').map(c => {
+             if (/[0-9]/.test(c)) return superNumbers[c] || c;
+             return superChars[c] || chars[c] || c; // Fallback a Bold se manca super
+        }).join('');
+    }
+
+    if (type === 'spaced') {
+        return text.split('').map(c => (chars[c] || numbers[c] || c) + ' ').join('').trim();
+    }
+
+    return text.split('').map(c => {
+        if (/[0-9]/.test(c)) return numbers[c] || c;
+        return chars[c] || c;
+    }).join('');
 }
 
 function extractStreamInfo(title, source) {
   const t = String(title).toLowerCase();
   
-  // DEFAULT
-  let q = "HD"; let qIcon = "📺";
-  if (REGEX_QUALITY["4K"].test(t)) { q = "4K"; qIcon = "🔥"; }
-  else if (REGEX_QUALITY["1080p"].test(t)) { q = "1080p"; qIcon = "👑"; }
-  else if (REGEX_QUALITY["720p"].test(t)) { q = "720p"; qIcon = "⚡"; }
-  else if (REGEX_QUALITY["SD"].test(t)) { q = "SD"; qIcon = "📼"; }
-  
-  // --- NUOVA LOGICA TAG VIDEO ESTETICI (High Tech B&W + Fix x264/Fallback) ---
-  const videoTags = [];
-  
-  // HDR: "🔥" (Fuoco richiesto) + Bold Text
-  if (/hdr/.test(t)) videoTags.push(`🔥 ${toBold("HDR")}`);
-  
-  // Dolby Vision: "👁️" + Bold DV
-  if (/dolby|vision|\bdv\b/.test(t)) videoTags.push(`👁️ ${toBold("DV")}`);
-  
-  // IMAX: "🏟️" + Bold IMAX
-  if (/imax/.test(t)) videoTags.push(`🏟️ ${toBold("IMAX")}`);
-  
-  // HEVC / AVC / Fallback
-  if (/x265|h\.?265|hevc/i.test(t)) {
-      videoTags.push(`⚙️ ${toBold("HEVC")}`);
-  } 
-  else if (/x264|h\.?264|avc|mpeg-?4/i.test(t)) {
-      videoTags.push(`📼 ${toBold("AVC")}`);
+  // LOGICA ESTRAZIONE QUALITÀ: NIENTE ICONE NEL TITOLO
+  let q = "SD"; 
+
+  if (REGEX_QUALITY["4K"].test(t)) { 
+      q = "4K"; 
+  }
+  else if (REGEX_QUALITY["1080p"].test(t)) { 
+      q = "1080p"; 
+  }
+  else if (REGEX_QUALITY["720p"].test(t)) { 
+      q = "720p"; 
   }
   else {
-      // [FIX RIGA MANCANTE] Se non è specificato nulla, assumiamo AVC (standard)
-      // Questo forza la comparsa della riga anche per file senza info codec
-      videoTags.push(`📼 ${toBold("AVC")}`);
+      q = "SD";
+  }
+  
+  // --- NUOVA LOGICA TAG VIDEO ---
+  const videoTags = [];
+  
+  // 1. ANALISI SORGENTE POTENZIATA E SMART
+  const isRemux = /remux/i.test(t);
+  const isBluRay = /\bbd\b|\bbluray\b|\bbdrip\b|\bbrrip\b/i.test(t) && !isRemux;
+  
+  // Regex Web Estesa: cerca web-dl ma anche i tag dei provider (NF, AMZN, DSNP, etc)
+  const isWeb = /\bweb-?dl\b|\bwebrip\b|\bweb\b|\bhdtv\b|\bppv\b|\bnf\b|\bamzn\b|\bdsnp\b|\bhmax\b|\bhulu\b|\bmax\b/i.test(t);
+  
+  if (isRemux) videoTags.push(`💎 ${toStylized("REMUX")}`);
+  else if (isBluRay) videoTags.push(`💿 ${toStylized("BluRay")}`);
+  else if (isWeb) videoTags.push(`☁️ ${toStylized("WEB")}`);
+  
+  // 2. ANALISI TECNICA (HDR, DV, 10bit)
+  if (/hdr/.test(t)) videoTags.push(`🔥 ${toStylized("HDR")}`);
+  if (/dolby|vision|\bdv\b/.test(t)) videoTags.push(`👁️ ${toStylized("DV")}`);
+  if (/imax/.test(t)) videoTags.push(`🏟️ ${toStylized("IMAX")}`);
+  if (/10bit|10-bit|hi10p/i.test(t)) videoTags.push(`🔟 ${toStylized("10bit")}`);
+  if (/\bsdr\b/i.test(t)) videoTags.push(`🌈 ${toStylized("SDR")}`);
+
+  // 3. CODEC (HEVC, AVC) E FIX "HEVC SOLITARIO"
+  let hasCodec = false;
+  if (/x265|h\.?265|hevc/i.test(t)) {
+      videoTags.push(`⚙️ ${toStylized("HEVC")}`);
+      hasCodec = true;
+  } 
+  else if (/x264|h\.?264|avc|mpeg-?4/i.test(t)) {
+      videoTags.push(`📼 ${toStylized("AVC")}`);
+      hasCodec = true;
+  }
+
+  // --- FIX HEVC SOLITARIO ---
+  // Se abbiamo trovato un codec ma nessuna sorgente (Web/BD/Remux), aggiungiamo una sorgente di default.
+  // Se è HEVC/AVC è quasi certamente un file digitale.
+  const hasSourceTag = isRemux || isBluRay || isWeb;
+  if (hasCodec && !hasSourceTag) {
+      // Se non abbiamo identificato la sorgente, ma c'è il codec, forziamo WEB (o HDRip per bassa qualità)
+      if (q === "4K" || q === "1080p") {
+         videoTags.unshift(`☁️ ${toStylized("WEB")}`);
+      } else {
+         videoTags.unshift(`📼 ${toStylized("HDRip")}`);
+      }
   }
   
   let lang = "🇬🇧 ENG";
@@ -385,6 +440,9 @@ function extractStreamInfo(title, source) {
   // Costruzione stringa info
   let detailsParts = [];
   if (videoTags.length) detailsParts.push(videoTags.join(" • "));
+  
+  // qIcon qui non serve più, lo gestiamo in formatStreamTitle
+  const qIcon = ""; 
   
   return { quality: q, qIcon, info: detailsParts.join(" "), lang, audioInfo, rawVideoTags: videoTags };
 }
@@ -455,17 +513,21 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
         return { name, title, bingeGroup };
     }
 
-    // === MODIFICHE ESTETICHE "HIGH TECH" ===
+    // === MODIFICHE ESTETICHE "OLD SCHOOL REVAMPED" ===
     
-    // 1. Qualità in Grassetto Unicode (es. 𝟰𝗞)
-    const qualityBold = toBold(quality);
+    // 1. Qualità in FONT BOMBA (Super Style) - es. 𝟭𝟬𝟴𝟬𝗽, 𝟰𝗞
+    const qualityBold = toStylized(quality, 'super');
+
+    // 2. Leviathan Spaziato (es. 𝗟 𝗘 𝗩 𝗜 𝗔 𝗧 𝗛 𝗔 𝗡)
+    // CALAMARO SINGOLO
+    const leviathanStyled = toStylized("LEVIATHAN", "spaced");
 
     const sizeStr = `🧲 ${sizeString}`;
     
-    // 2. Seeders: Icona Folla
+    // Seeders: Icona Folla
     const seedersStr = seeders != null ? `👥 ${seeders}` : "";
 
-    // 3. Lingua: Omino + Bandiera
+    // Lingua: Omino + Bandiera
     let langStr = "🗣️ ❓";
     if (/multi/i.test(lang || "")) langStr = "🗣️ 🌐"; 
     else if (/ita|it\b|italiano/i.test(lang || "")) langStr = "🗣️ 🇮🇹";
@@ -500,16 +562,23 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     
     const finalServiceTag = serviceTag;
 
-    // --- ICONE SERVIZIO (Cometa confermata per RD) ---
+    // --- ICONE SERVIZIO PER IL TITOLO ---
+    // RD = Cometa, TB = Scatola, AD = Aquila
+    let serviceIconForTitle = "⚡"; 
+    if (finalServiceTag === "RD") serviceIconForTitle = "☄️";
+    else if (finalServiceTag === "TB") serviceIconForTitle = "📦";
+    else if (finalServiceTag === "AD") serviceIconForTitle = "🦅";
+
+    // ICONA SERVIZIO PER LA RIGA SOTTO (solo estetico)
     let serviceIcon = "⚡"; 
     if (finalServiceTag === "TB") serviceIcon = "📦";      
-    else if (finalServiceTag === "RD") serviceIcon = "☄️"; // Cometa per RD
+    else if (finalServiceTag === "RD") serviceIcon = "☄️"; 
     else if (finalServiceTag === "AD") serviceIcon = "🦅"; 
     
     const sourceLine = `${serviceIcon} [${finalServiceTag}] ${displaySource}`;
 
-    // Nome in alto: Icona Qualità + Qualità in Grassetto
-    const name = `🦑 𝗟𝗘𝗩𝗜𝗔𝗧𝗛𝗔𝗡\n${qIcon} ┃ ${qualityBold}`;
+    // Nome in alto: CALAMARO + TITOLO SPAZIATO + ICONA SERVICE + BARRA + QUALITÀ SUPER
+    const name = `🦑 ${leviathanStyled}\n${serviceIconForTitle} ┃ ${qualityBold}`;
     
     const cleanName = cleanFilename(fileTitle)
     .replace(/(s\d{1,2}e\d{1,2}|\d{1,2}x\d{1,2}|s\d{1,2})/ig, "")
@@ -520,18 +589,18 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
     const finalEpTag = isPackItem ? "📦 SEASON PACK" : epTag;
 
     const lines = [];
-    // Icona Film: 🗂️ (DOSSIER STYLE - MODIFICATA SU RICHIESTA)
+    // Icona Film: 🗂️
     lines.push(`🗂️ ${cleanName}${finalEpTag ? ` ${finalEpTag}` : ""}`);
     
     // Lingua + Audio
     const audioLine = [langStr, audioInfo].filter(Boolean).join(" • ");
     if (audioLine) lines.push(audioLine);
     
-    // Info Video (formattate con icone e bold in extractStreamInfo)
+    // Info Video (TUTTE LE INFO TECNICHE DETTAGLIATE + FIX HEVC SOLITARIO)
     const cleanInfo = info ? info.replace("🖥️ ", "") : "";
     if (cleanInfo) lines.push(cleanInfo);
     
-    // Tech: Size + Seeders (Folla)
+    // Tech: Size + Seeders
     const techLine = [sizeStr, seedersStr].filter(Boolean).join(" • ");
     if (techLine) lines.push(techLine);
     
@@ -544,7 +613,7 @@ function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag =
 function formatVixStream(meta, vixData) {
     const isFHD = vixData.isFHD;
     const quality = isFHD ? "1080p" : "720p";
-    const qIcon = isFHD ? "🌕" : "🌗";
+    const qStyled = toStylized(quality, 'super');
     const lines = [];
     lines.push(`🎬 ${meta.title}`);
     lines.push(`🇮🇹 ITA • 🔊 AAC`);
@@ -554,7 +623,7 @@ function formatVixStream(meta, vixData) {
     const bingeGroup = `Leviathan|${quality}|Web|SC`;
 
     return {
-        name: `🌪️ StreamingCommunity\n${qIcon} ${quality}`,
+        name: `🌪️ StreamingCommunity\n${qStyled}`,
         title: lines.join("\n"),
         url: vixData.url,
         behaviorHints: { notWebReady: false, bingieGroup: bingeGroup }
@@ -1432,14 +1501,14 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
                    const regexSD = /\b(480P|SD)\b/;
 
                    if (regex4k.test(textToCheck)) { quality = "4K"; qIcon = "🔥"; }
-                   else if (regex1080.test(textToCheck)) { quality = "1080p"; qIcon = "✨"; }
-                   else if (regex720.test(textToCheck)) { quality = "720p"; qIcon = "📺"; }
-                   else if (regexSD.test(textToCheck)) { quality = "SD"; qIcon = "🐢"; }
+                   else if (regex1080.test(textToCheck)) { quality = "1080p"; qIcon = "🔥"; }
+                   else if (regex720.test(textToCheck)) { quality = "720p"; qIcon = "🔥"; }
+                   else if (regexSD.test(textToCheck)) { quality = "SD"; qIcon = "🔥"; }
                    else { quality = "WebStreams"; }
                    
                    if (sourceName.includes("StreamingCommunity") || sourceName.includes("Vix")) {
                        if (quality === "SD" && !regexSD.test(textToCheck)) {
-                           quality = "1080p"; qIcon = "✨";
+                           quality = "1080p"; qIcon = "🔥";
                        }
                    }
                    const techStr = `🎞️ ${quality} ${qIcon}`;
