@@ -16,6 +16,9 @@ const PackResolver = require("./leviathan-pack-resolver");
 const aioFormatter = require("./aiostreams-formatter.cjs");
 const { searchWebStreamr } = require("./webstreamr_handler");
 
+// --- IMPORT NUOVO FORMATTER (Skins & Logic) ---
+const { formatStreamSelector, cleanFilename, formatBytes } = require("./formatter");
+
 // --- IMPORT GESTORE TRAILER (YouTube/Invidious) ---
 const { getTrailerStreams } = require("./trailerProvider"); 
 
@@ -91,28 +94,18 @@ const CONFIG = {
 
 const REGEX_YEAR = /(19|20)\d{2}/;
 
-// Regex Qualità Estremamente Precisa
-const REGEX_QUALITY = {
+// NOTA: REGEX_QUALITY, REGEX_AUDIO, REGEX_CLEANER sono ora in formatter.js
+// Manteniamo qui solo le regex che servono per la LOGICA DI FILTRO (non grafica)
+
+// Regex Qualità semplificata per filtri logici
+const REGEX_QUALITY_FILTER = {
     "4K": /\b(?:2160p|4k|uhd|ultra[-.\s]?hd|2160i)\b/i,
     "1080p": /\b(?:1080p|1080i|fhd|full[-.\s]?hd|blu[-.\s]?ray|bd[-.\s]?rip)\b/i,
     "720p": /\b(?:720p|720i|hd[-.\s]?rip|hd)\b/i,
     "SD": /\b(?:480p|576p|sd|dvd|dvd[-.\s]?rip|dvd[-.\s]?scr|cd)\b/i
 };
 
-const REGEX_AUDIO = {
-    channels: /\b(7\.1|5\.1|2\.1|2\.0)\b/,
-    atmos: /atmos/i,
-    dtsx: /dts[:\s-]?x/i,
-    truehd: /truehd/i,
-    dtshd: /\bdts-?hd\b|\bma\b/i,
-    dts: /\bdts\b/i,
-    ddp: /\bddp\b|\beac-?3\b|\bdolby\s?digital\s?plus\b/i,
-    dolby: /\bac-?3\b|\bdd\b|\bdolby\b/i,
-    aac: /\baac\b/i,
-    flac: /\bflac\b/i
-};
-
-// NUOVA REGEX ITA POTENZIATA PER KNABEN/1337X
+// NUOVA REGEX ITA POTENZIATA PER KNABEN/1337X (Serve per isSafeForItalian)
 const REGEX_ITA = [
     // 1. Espliciti: Audio ITA, Lingua ITA
     /\b(AUDIO|LINGUA|LANG|VO)\s*[:.\-_]?\s*(ITA|IT|ITALIAN)\b/i,
@@ -137,8 +130,6 @@ const REGEX_ITA = [
 const REGEX_SUB_ONLY = /\b(SUB|SUBS|SUBBED|SOTTOTITOLI|VOST|VOSTIT)\s*[:.\-_]?\s*(ITA|IT|ITALIAN)\b/i;
 // Regex per confermare che, anche se c'è scritto SUB, c'è pure l'audio (es. "Audio ITA - Sub ITA")
 const REGEX_AUDIO_CONFIRM = /\b(AUDIO|AC3|AAC|DTS|MD|LD|DDP|MP3|LINGUA)[\s.\-_]+(ITA|IT)\b/i;
-
-const REGEX_CLEANER = /\b(ita|eng|ger|fre|spa|latino|rus|sub|h264|h265|x264|x265|hevc|avc|vc1|1080p|1080i|720p|480p|4k|2160p|uhd|sdr|hdr|hdr10|dv|dolby|vision|bluray|bd|bdrip|brrip|web-?dl|webrip|hdtv|remux|mux|ac-?3|aac|dts|ddp|flac|truehd|atmos|multi|dual|complete|pack|amzn|nf|dsnp|hmax|atvp|apple|hulu|peacock|rakuten|iyp|dvd|dvdrip|unrated|extended|director|cut|rip)\b.*/yi;
 
 function base32ToHex(base32) {
     const base32chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -197,12 +188,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-const UNITS = ["B", "KB", "MB", "GB", "TB"];
-function formatBytes(bytes) {
-  if (!+bytes) return "0 B";
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${UNITS[i]}`;
-}
+// --- HELPER FUNZIONALI ---
 
 function parseSize(sizeStr) {
   if (!sizeStr) return 0;
@@ -246,9 +232,9 @@ function filterByQualityLimit(results, limit) {
         const t = (item.title || "").toLowerCase();
         let q = "SD";
         
-        if (REGEX_QUALITY["4K"].test(t)) q = "4K";
-        else if (REGEX_QUALITY["1080p"].test(t)) q = "1080p";
-        else if (REGEX_QUALITY["720p"].test(t)) q = "720p";
+        if (REGEX_QUALITY_FILTER["4K"].test(t)) q = "4K";
+        else if (REGEX_QUALITY_FILTER["1080p"].test(t)) q = "1080p";
+        else if (REGEX_QUALITY_FILTER["720p"].test(t)) q = "720p";
 
         if (counts[q] < limitNum) {
             filtered.push(item);
@@ -263,357 +249,13 @@ function isSafeForItalian(item) {
   return REGEX_ITA.some(p => p.test(item.title));
 }
 
-function cleanFilename(filename) {
-  if (!filename) return "";
-  const yearMatch = filename.match(REGEX_YEAR);
-  let cleanTitle = filename;
-  let year = "";
-  if (yearMatch) {
-    year = ` (${yearMatch[0]})`;
-    cleanTitle = filename.substring(0, yearMatch.index);
-  }
-  cleanTitle = cleanTitle.replace(/[._]/g, " ");
-  cleanTitle = cleanTitle.replace(REGEX_CLEANER, "");
-  cleanTitle = cleanTitle.replace(/[\(\[\-\s]+$/, ""); 
-  return `${cleanTitle.trim()}${year}`;
-}
-
-function getEpisodeTag(filename) {
-    const f = filename.toLowerCase();
-    const matchEp = f.match(/s(\d+)[ex](\d+)/i);
-    if (matchEp) return `🍿 S${matchEp[1]}E${matchEp[2]}`;
-    const matchX = f.match(/(\d+)x(\d+)/i);
-    if (matchX) return `🍿 S${matchX[1].padStart(2, '0')}E${matchX[2].padStart(2, '0')}`;
-    const sMatch = f.match(/s(\d+)\b|stagione (\d+)|season (\d+)/i);
-    if (sMatch) {
-        const num = sMatch[1] || sMatch[2] || sMatch[3];
-        return `📦 STAGIONE ${num}`;
-    }
-    return "";
-}
-
-function extractAudioInfo(title) {
-    const t = String(title).toLowerCase();
-
-    // Canali audio 
-    const channelMatch = t.match(REGEX_AUDIO.channels);
-    let channels = channelMatch?.[1] || "";
-    if (channels === "2.0") channels = "";
-
-    // CONFIGURAZIONE "LEVIATHAN WAR MODE" ⚔️
-    const AUDIO_PRIORITY = [
-        { test: REGEX_AUDIO.atmos,  tag: "💥💣 Atmos" },   // Esplosivo
-        { test: REGEX_AUDIO.dtsx,   tag: "💥💣 DTS:X" },   // Esplosivo
-        { test: REGEX_AUDIO.truehd, tag: "🔊⚡ TrueHD" },  // Potenza pura
-        { test: REGEX_AUDIO.dtshd,  tag: "🔊⚡ DTS-HD" },  // Potenza pura
-        { test: REGEX_AUDIO.ddp,    tag: "🔊🔥 Dolby+" },  // Caldo
-        { test: REGEX_AUDIO.dts,    tag: "🔊🔥 DTS" },     // Caldo
-        { test: REGEX_AUDIO.flac,   tag: "🎼🌊 FLAC" },    // Fluido/Musicale
-        { test: REGEX_AUDIO.dolby,  tag: "🔈🌑 Dolby" },   // Dark
-        { test: REGEX_AUDIO.aac,    tag: "🔈✨ AAC" },     // Crisp
-        { test: /\bmp3\b/i,         tag: "🔈🎶 MP3" }      // Basic
-    ];
-
-    let audioTag = AUDIO_PRIORITY.find(c => c.test.test(t))?.tag || "";
-
-    // Fallback surround
-    if (!audioTag && (channels === "5.1" || channels === "7.1")) {
-        audioTag = "🔊🌌 Surround";
-    }
-
-    // Fallback stereo
-    if (!audioTag) return "🔈⚡ Stereo";
-
-    
-    return channels ? `${audioTag} ┃ ${channels}` : audioTag;
-}
-
-// --- NUOVA FUNZIONE PER TESTO STILIZZATO (BOLD SANS, SPACED, E 'SUPER' PER QUALITÀ) ---
-function toStylized(text, type = 'std') {
-    // Mappa per lettere e numeri standard
-    const numbers = { '0': '𝟎', '1': '𝟏', '2': '𝟐', '3': '𝟑', '4': '𝟒', '5': '𝟓', '6': '𝟔', '7': '𝟕', '8': '𝟖', '9': '𝟗' };
-    const chars = {
-        'A': '𝗔', 'B': '𝗕', 'C': '𝗖', 'D': '𝗗', 'E': '𝗘', 'F': '𝗙', 'G': '𝗚', 'H': '𝗛', 'I': '𝗜', 'J': '𝗝',
-        'K': '𝗞', 'L': '𝗟', 'M': '𝗠', 'N': '𝗡', 'O': '𝗢', 'P': '𝗣', 'Q': '𝗤', 'R': '𝗥', 'S': '𝗦', 'T': '𝗧',
-        'U': '𝗨', 'V': '𝗩', 'W': '𝗪', 'X': '𝗫', 'Y': '𝗬', 'Z': '𝗭',
-        'a': '𝗮', 'b': '𝗯', 'c': '𝗰', 'd': '𝗱', 'e': '𝗲', 'f': '𝗳', 'g': '𝗴', 'h': '𝗵', 'i': '𝗶', 'j': '𝗷',
-        'k': '𝗸', 'l': '𝗹', 'm': '𝗺', 'n': '𝗻', 'o': '𝗼', 'p': '𝗽', 'q': '𝗾', 'r': '𝗿', 's': '𝘀', 't': '𝘁',
-        'u': '𝘂', 'v': '𝘃', 'w': '𝘄', 'x': '𝘅', 'y': '𝘆', 'z': '𝘇'
-    };
-
-    // Mappa SUPER BOMBA (Sans-Serif Bold Italic) per 4K, 1080p, etc.
-    const superNumbers = { '0': '𝟬', '1': '𝟭', '2': '𝟮', '3': '𝟯', '4': '𝟰', '5': '𝟱', '6': '𝟲', '7': '𝟳', '8': '𝟴', '9': '𝟵' };
-    const superChars = { 
-        'K': '𝙆', 'p': '𝙥', 'H': '𝙃', 'D': '𝘿', 'S': '𝙎', 'A': '𝘼', 'R': '𝙍',
-        'a': '𝙖', 'b': '𝙗', 'c': '𝙘', 'd': '𝙙', 'e': '𝙚', 'f': '𝙛', 'g': '𝙜', 'h': '𝙝', 'i': '𝙞' 
-    };
-
-    if (type === 'super') {
-        return text.split('').map(c => {
-             if (/[0-9]/.test(c)) return superNumbers[c] || c;
-             return superChars[c] || chars[c] || c; // Fallback a Bold se manca super
-        }).join('');
-    }
-
-    if (type === 'spaced') {
-        return text.split('').map(c => (chars[c] || numbers[c] || c) + ' ').join('').trim();
-    }
-
-    return text.split('').map(c => {
-        if (/[0-9]/.test(c)) return numbers[c] || c;
-        return chars[c] || c;
-    }).join('');
-}
-
-function extractStreamInfo(title, source) {
-  const t = String(title).toLowerCase();
-  
-  // LOGICA ESTRAZIONE QUALITÀ: NIENTE ICONE NEL TITOLO
-  let q = "SD"; 
-
-  if (REGEX_QUALITY["4K"].test(t)) { 
-      q = "4K"; 
-  }
-  else if (REGEX_QUALITY["1080p"].test(t)) { 
-      q = "1080p"; 
-  }
-  else if (REGEX_QUALITY["720p"].test(t)) { 
-      q = "720p"; 
-  }
-  else {
-      q = "SD";
-  }
-  
-  // --- NUOVA LOGICA TAG VIDEO ---
-  const videoTags = [];
-  
-  // 1. ANALISI SORGENTE POTENZIATA E SMART
-  const isRemux = /remux/i.test(t);
-  const isBluRay = /\bbd\b|\bbluray\b|\bbdrip\b|\bbrrip\b/i.test(t) && !isRemux;
-  
-  // Regex Web Estesa: cerca web-dl ma anche i tag dei provider (NF, AMZN, DSNP, etc)
-  const isWeb = /\bweb-?dl\b|\bwebrip\b|\bweb\b|\bhdtv\b|\bppv\b|\bnf\b|\bamzn\b|\bdsnp\b|\bhmax\b|\bhulu\b|\bmax\b/i.test(t);
-  
-  if (isRemux) videoTags.push(`💎 ${toStylized("REMUX")}`);
-  else if (isBluRay) videoTags.push(`💿 ${toStylized("BluRay")}`);
-  else if (isWeb) videoTags.push(`☁️ ${toStylized("WEB")}`);
-  
-  // 2. ANALISI TECNICA (HDR, DV, 10bit)
-  if (/hdr/.test(t)) videoTags.push(`🔥 ${toStylized("HDR")}`);
-  if (/dolby|vision|\bdv\b/.test(t)) videoTags.push(`👁️ ${toStylized("DV")}`);
-  if (/imax/.test(t)) videoTags.push(`🏟️ ${toStylized("IMAX")}`);
-  if (/10bit|10-bit|hi10p/i.test(t)) videoTags.push(`🔟 ${toStylized("10bit")}`);
-  if (/\bsdr\b/i.test(t)) videoTags.push(`🌈 ${toStylized("SDR")}`);
-
-  // 3. CODEC (HEVC, AVC) E FIX "HEVC SOLITARIO"
-  let hasCodec = false;
-  if (/x265|h\.?265|hevc/i.test(t)) {
-      videoTags.push(`⚙️ ${toStylized("HEVC")}`);
-      hasCodec = true;
-  } 
-  else if (/x264|h\.?264|avc|mpeg-?4/i.test(t)) {
-      videoTags.push(`📼 ${toStylized("AVC")}`);
-      hasCodec = true;
-  }
-
-  // --- FIX HEVC SOLITARIO ---
-  // Se abbiamo trovato un codec ma nessuna sorgente (Web/BD/Remux), aggiungiamo una sorgente di default.
-  // Se è HEVC/AVC è quasi certamente un file digitale.
-  const hasSourceTag = isRemux || isBluRay || isWeb;
-  if (hasCodec && !hasSourceTag) {
-      // Se non abbiamo identificato la sorgente, ma c'è il codec, forziamo WEB (o HDRip per bassa qualità)
-      if (q === "4K" || q === "1080p") {
-         videoTags.unshift(`☁️ ${toStylized("WEB")}`);
-      } else {
-         videoTags.unshift(`📼 ${toStylized("HDRip")}`);
-      }
-  }
-  
-  let lang = "🇬🇧 ENG";
-  if (/corsaro/i.test(source) || isSafeForItalian({ title })) {
-      lang = "🇮🇹 ITA";
-      if (/multi|mui/i.test(t)) lang = "🇮🇹 MULTI";
-  }
-  
-  const audioInfo = extractAudioInfo(title);
-  
-  // Costruzione stringa info
-  let detailsParts = [];
-  if (videoTags.length) detailsParts.push(videoTags.join(" • "));
-  
-  // qIcon qui non serve più, lo gestiamo in formatStreamTitle
-  const qIcon = ""; 
-  
-  return { quality: q, qIcon, info: detailsParts.join(" "), lang, audioInfo, rawVideoTags: videoTags };
-}
-
-function formatStreamTitleCinePro(fileTitle, source, size, seeders, serviceTag = "RD", config = {}, infoHash = null, isLazy = false, isPackItem = false) {
-    const { quality, qIcon, info, lang, audioInfo, rawVideoTags } = extractStreamInfo(fileTitle, source);
-    const cleanNameTitle = cleanFilename(fileTitle);
-
-    let sizeString = size ? formatBytes(size) : "";
-    if (!sizeString || size === 0) {
-        let hash = 0;
-        for (let i = 0; i < fileTitle.length; i++) {
-            hash = fileTitle.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const seed = Math.abs(hash);
-        const tLower = fileTitle.toLowerCase();
-        let gb = 0;
-        if (REGEX_QUALITY["4K"].test(tLower)) gb = 12 + (seed % 1000) / 100;
-        else if (REGEX_QUALITY["1080p"].test(tLower)) gb = 1.8 + (seed % 270) / 100;
-        else if (REGEX_QUALITY["720p"].test(tLower)) gb = 0.6 + (seed % 80) / 100;
-        else gb = 1 + (seed % 200) / 100;
-        sizeString = `${gb.toFixed(2)} GB`;
-    }
-
-    const techClean = rawVideoTags ? rawVideoTags.join("") : "";
-    const bingeGroup = `Leviathan|${quality}|${techClean}|${serviceTag}`;
-
-    if (aioFormatter && aioFormatter.isAIOStreamsEnabled(config)) {
-        let fullService = 'p2p';
-        if (serviceTag === 'RD') fullService = 'realdebrid';
-        if (serviceTag === 'AD') fullService = 'alldebrid';
-        if (serviceTag === 'TB') fullService = 'torbox';
-        
-        let displaySource = source;
-        if (/corsaro/i.test(source)) {
-            displaySource = "ilCorSaRoNeRo";
-        } else if (/knaben/i.test(source)) {
-            displaySource = "Knaben";
-        } else if (/comet/i.test(source)) {
-            displaySource = "StremThru";
-        } else {
-             displaySource = source
-                .replace(/MediaFusion/gi, '') 
-                .replace(/Torrentio/gi, '')   
-                .replace(/TorrentGalaxy|tgx/i, 'TGx')
-                .replace(/\b1337\b/i, '1337x')
-                .replace(/Fallback/ig, '') 
-                .trim();
-        }
-
-        const uniqueLine = [quality, sizeString, displaySource].filter(Boolean).join(" • ");
-        const name = aioFormatter.formatStreamName({
-            addonName: "Leviathan",
-            service: fullService,
-            cached: true,
-            quality: uniqueLine
-        });
-        const title = aioFormatter.formatStreamTitle({
-            title: fileTitle,        
-            infoHash: infoHash,      
-            size: sizeString || "Unknown",
-            language: lang,
-            source: displaySource,
-            seeders: seeders,
-            isPack: isPackItem, 
-            episodeTitle: isPackItem ? "📦 SEASON PACK" : getEpisodeTag(fileTitle)
-        });
-        return { name, title, bingeGroup };
-    }
-
-    // === MODIFICHE ESTETICHE "OLD SCHOOL REVAMPED" ===
-    
-    // 1. Qualità in FONT BOMBA (Super Style) - es. 𝟭𝟬𝟴𝟬𝗽, 𝟰𝗞
-    const qualityBold = toStylized(quality, 'super');
-
-    // 2. Leviathan Spaziato (es. 𝗟 𝗘 𝗩 𝗜 𝗔 𝗧 𝗛 𝗔 𝗡)
-    // CALAMARO SINGOLO
-    const leviathanStyled = toStylized("LEVIATHAN", "spaced");
-
-    const sizeStr = `🧲 ${sizeString}`;
-    
-    // Seeders: Icona Folla
-    const seedersStr = seeders != null ? `👥 ${seeders}` : "";
-
-    // Lingua: Omino + Bandiera
-    let langStr = "🗣️ ❓";
-    if (/multi/i.test(lang || "")) langStr = "🗣️ 🌐"; 
-    else if (/ita|it\b|italiano/i.test(lang || "")) langStr = "🗣️ 🇮🇹";
-    else if (/eng|en\b|english/i.test(lang || "")) langStr = "🗣️ 🇬🇧";
-    else if (lang) langStr = `🗣️ ${lang.toUpperCase()}`;
-    
-    let displaySource = source || "P2P";
-
-    // Normalizzazione nomi sorgenti
-    if (/1337/i.test(displaySource)) displaySource = "1337x"; 
-    else if (/corsaro/i.test(displaySource)) displaySource = "ilCorSaRoNeRo";
-    else if (/knaben/i.test(displaySource)) displaySource = "Knaben";
-    else if (/comet|stremthru/i.test(displaySource)) displaySource = "StremThru";
-    else if (/rarbg/i.test(displaySource)) displaySource = "RARBG";
-    else if (/rd cache/i.test(displaySource)) {
-        const groupMatch = fileTitle.match(/[-_]\s*([a-zA-Z0-9]+)(?:\.[a-z0-9]{2,4})?$/i);
-        if (groupMatch && groupMatch[1] && groupMatch[1].length < 15 && !/mkv|mp4|avi/i.test(groupMatch[1])) {
-            displaySource = groupMatch[1]; 
-        } else {
-            displaySource = "Cloud"; 
-        }
-    }
-    else {
-        displaySource = displaySource
-            .replace(/MediaFusion/gi, '') 
-            .replace(/[-_]/g, ' ')        
-            .replace(/Torrentio/gi, '') 
-            .replace(/TorrentGalaxy|tgx/i, 'TGx')
-            .replace(/Fallback/ig, '')
-            .trim() || "P2P";
-    }
-    
-    const finalServiceTag = serviceTag;
-
-    // --- ICONE SERVIZIO PER IL TITOLO ---
-    // RD = Cometa, TB = Scatola, AD = Aquila
-    let serviceIconForTitle = "⚡"; 
-    if (finalServiceTag === "RD") serviceIconForTitle = "☄️";
-    else if (finalServiceTag === "TB") serviceIconForTitle = "📦";
-    else if (finalServiceTag === "AD") serviceIconForTitle = "🦅";
-
-    // ICONA SERVIZIO PER LA RIGA SOTTO (solo estetico)
-    let serviceIcon = "⚡"; 
-    if (finalServiceTag === "TB") serviceIcon = "📦";      
-    else if (finalServiceTag === "RD") serviceIcon = "☄️"; 
-    else if (finalServiceTag === "AD") serviceIcon = "🦅"; 
-    
-    const sourceLine = `${serviceIcon} [${finalServiceTag}] ${displaySource}`;
-
-    // Nome in alto: CALAMARO + TITOLO SPAZIATO + ICONA SERVICE + BARRA + QUALITÀ SUPER
-    const name = `🦑 ${leviathanStyled}\n${serviceIconForTitle} ┃ ${qualityBold}`;
-    
-    const cleanName = cleanFilename(fileTitle)
-    .replace(/(s\d{1,2}e\d{1,2}|\d{1,2}x\d{1,2}|s\d{1,2})/ig, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-    
-    const epTag = getEpisodeTag(fileTitle);
-    const finalEpTag = isPackItem ? "📦 SEASON PACK" : epTag;
-
-    const lines = [];
-    // Icona Film: 🗂️
-    lines.push(`🗂️ ${cleanName}${finalEpTag ? ` ${finalEpTag}` : ""}`);
-    
-    // Lingua + Audio
-    const audioLine = [langStr, audioInfo].filter(Boolean).join(" • ");
-    if (audioLine) lines.push(audioLine);
-    
-    // Info Video (TUTTE LE INFO TECNICHE DETTAGLIATE + FIX HEVC SOLITARIO)
-    const cleanInfo = info ? info.replace("🖥️ ", "") : "";
-    if (cleanInfo) lines.push(cleanInfo);
-    
-    // Tech: Size + Seeders
-    const techLine = [sizeStr, seedersStr].filter(Boolean).join(" • ");
-    if (techLine) lines.push(techLine);
-    
-    // Sorgente
-    if (sourceLine) lines.push(sourceLine);
-    
-    return { name, title: lines.join("\n"), bingeGroup };
-}
-
+// FORMATTAZIONE VIX MANUALE (RIMANE QUI PERCHÉ SPECIFICA)
 function formatVixStream(meta, vixData) {
     const isFHD = vixData.isFHD;
     const quality = isFHD ? "1080p" : "720p";
-    const qStyled = toStylized(quality, 'super');
+    // Nota: toStylized non è disponibile qui se non lo reimportiamo o usiamo formatter
+    // Ma per semplicità usiamo stringhe base o importiamo se serve.
+    // Per ora lasciamo semplice.
     const lines = [];
     lines.push(`🎬 ${meta.title}`);
     lines.push(`🇮🇹 ITA • 🔊 AAC`);
@@ -623,7 +265,7 @@ function formatVixStream(meta, vixData) {
     const bingeGroup = `Leviathan|${quality}|Web|SC`;
 
     return {
-        name: `🌪️ StreamingCommunity\n${qStyled}`,
+        name: `🌪️ StreamingCommunity\n${quality}`,
         title: lines.join("\n"),
         url: vixData.url,
         behaviorHints: { notWebReady: false, bingieGroup: bingeGroup }
@@ -826,17 +468,86 @@ function saveResultsToDbBackground(meta, results) {
     })().catch(err => console.error("❌ Errore background save:", err.message));
 }
 
+// --- RISOLUZIONE DEBRID E FORMATTAZIONE (INTELLIGENT SIZE GENERATOR) ---
 async function resolveDebridLink(config, item, showFake, reqHost) {
     try {
         const service = config.service || 'rd';
         const apiKey = config.key || config.rd;
         if (!apiKey) return null;
 
+        // Funzione Helper: Genera dimensione INTELLIGENTE (Movie vs Series)
+        const ensureSize = (size, title, isSeries) => {
+            if (size && size > 0) return size;
+            
+            // Creiamo un hash deterministico dal titolo
+            let hash = 0;
+            const safeTitle = (title || "video").toLowerCase();
+            for (let i = 0; i < safeTitle.length; i++) {
+                hash = safeTitle.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            hash = Math.abs(hash);
+
+            // Logica INTELLIGENTE: 
+            if (isSeries) {
+                // --- PROFILO SERIE TV (Episodi) ---
+                // 4K Episodio: - 
+                if (/2160p|4k|uhd/i.test(safeTitle)) {
+                    const variance = (hash % 500) / 100; // 0 - 5 GB
+                    return (3 + variance) * 1024 * 1024 * 1024;
+                }
+                // 1080p Episodio: 
+                if (/1080p|fhd/i.test(safeTitle)) {
+                    const variance = (hash % 230) / 100; // 0 - 2.3 GB
+                    return (1.2 + variance) * 1024 * 1024 * 1024;
+                }
+                // 720p Episodio: 
+                if (/720p|hd/i.test(safeTitle)) {
+                    const variance = (hash % 100) / 100; 
+                    return (0.5 + variance) * 1024 * 1024 * 1024;
+                }
+            } else {
+                // --- PROFILO FILM (Movie) ---
+                // 4K Film: 
+                if (/2160p|4k|uhd/i.test(safeTitle)) {
+                    const variance = (hash % 2300) / 100; // 0 - 23 GB
+                    return (12 + variance) * 1024 * 1024 * 1024;
+                }
+                // 1080p Film: 
+                if (/1080p|fhd/i.test(safeTitle)) {
+                    const variance = (hash % 900) / 100; // 0 - 9 GB
+                    return (5 + variance) * 1024 * 1024 * 1024;
+                }
+                // 720p Film: 
+                if (/720p|hd/i.test(safeTitle)) {
+                    const variance = (hash % 350) / 100; 
+                    return (2.5 + variance) * 1024 * 1024 * 1024;
+                }
+            }
+            
+            // Default SD 
+            const variance = (hash % 80) / 100;
+            return (0.7 + variance) * 1024 * 1024 * 1024;
+        };
+
         if (service === 'tb') {
             if (item._tbCached) {
                 const serviceTag = "TB";
-                // Passiamo item._isPack
-                const { name, title, bingeGroup } = formatStreamTitleCinePro(item.title, item.source, item._size, item.seeders, serviceTag, config, item.hash, false, item._isPack);
+                let realSize = item._size || item.sizeBytes || 0;
+                // Verifichiamo se è una serie (se ha stagione/episodio settati e > 0)
+                const isSeries = (item.season > 0 || item.episode > 0);
+                realSize = ensureSize(realSize, item.title, isSeries);
+
+                const { name, title, bingeGroup } = formatStreamSelector(
+                    item.title, 
+                    item.source, 
+                    realSize, 
+                    item.seeders, 
+                    serviceTag, 
+                    config, 
+                    item.hash, 
+                    false, 
+                    item._isPack
+                );
                 const proxyUrl = `${reqHost}/${config.rawConf}/play_tb/${item.hash}?s=${item.season || 0}&e=${item.episode || 0}`;
                 return { name, title, url: proxyUrl, behaviorHints: { notWebReady: false, bingieGroup: bingeGroup } };
             } else { return null; }
@@ -849,7 +560,25 @@ async function resolveDebridLink(config, item, showFake, reqHost) {
         if (!streamData || (streamData.type === "ready" && streamData.size < CONFIG.REAL_SIZE_FILTER)) return null;
 
         const serviceTag = service.toUpperCase();
-        const { name, title, bingeGroup } = formatStreamTitleCinePro(streamData.filename || item.title, item.source, streamData.size || item.size, item.seeders, serviceTag, config, item.hash, false, item._isPack);
+        
+        // 1. Prendi la dimensione reale se c'è
+        let finalSize = streamData.size || item._size || item.sizeBytes || 0;
+        
+        // 2. APPLICA IL FALLBACK INTELLIGENTE
+        const isSeries = (item.season > 0 || item.episode > 0);
+        finalSize = ensureSize(finalSize, streamData.filename || item.title, isSeries);
+
+        const { name, title, bingeGroup } = formatStreamSelector(
+            streamData.filename || item.title, 
+            item.source, 
+            finalSize, 
+            item.seeders, 
+            serviceTag, 
+            config, 
+            item.hash, 
+            false, 
+            item._isPack
+        );
         return { name, title, url: streamData.url, behaviorHints: { notWebReady: false, bingieGroup: bingeGroup } };
     } catch (e) {
         if (showFake) return { name: `[P2P ⚠️]`, title: `${item.title}\n⚠️ Cache Assente`, url: item.magnet, behaviorHints: { notWebReady: true } };
@@ -861,11 +590,58 @@ function generateLazyStream(item, config, meta, reqHost, userConfStr, isLazy = f
     const service = config.service || 'rd';
     const serviceTag = service.toUpperCase();
     
-    // Passiamo item._isPack al formattatore
-    const { name, title, bingeGroup } = formatStreamTitleCinePro(
+    // >>> FIX UNKNOWN GB INTELLIGENTE <<<
+    let realSize = item._size || item.sizeBytes || 0;
+
+    if (realSize === 0) {
+        let hash = 0;
+        const safeTitle = (item.title || "video").toLowerCase();
+        for (let i = 0; i < safeTitle.length; i++) {
+            hash = safeTitle.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        hash = Math.abs(hash);
+
+        // Capire se è serie o film dai metadati
+        const isSeries = (meta.season > 0 || meta.episode > 0 || (item.season > 0));
+
+        if (isSeries) {
+            // SERIE TV
+            if (/2160p|4k|uhd/i.test(safeTitle)) {
+                const v = (hash % 500) / 100; 
+                realSize = (3 + v) * 1024 * 1024 * 1024; // 3-8 GB
+            } 
+            else if (/1080p|fhd/i.test(safeTitle)) {
+                const v = (hash % 230) / 100;
+                realSize = (1.2 + v) * 1024 * 1024 * 1024; // 1.2-3.5 GB
+            } 
+            else if (/720p|hd/i.test(safeTitle)) {
+                const v = (hash % 100) / 100;
+                realSize = (0.5 + v) * 1024 * 1024 * 1024; // 0.5-1.5 GB
+            } 
+            else realSize = 400 * 1024 * 1024;
+        } else {
+            // FILM
+            if (/2160p|4k|uhd/i.test(safeTitle)) {
+                const v = (hash % 2300) / 100;
+                realSize = (12 + v) * 1024 * 1024 * 1024; // 12-35 GB
+            } 
+            else if (/1080p|fhd/i.test(safeTitle)) {
+                const v = (hash % 900) / 100;
+                realSize = (5 + v) * 1024 * 1024 * 1024; // 5-14 GB
+            } 
+            else if (/720p|hd/i.test(safeTitle)) {
+                const v = (hash % 350) / 100;
+                realSize = (2.5 + v) * 1024 * 1024 * 1024; // 2.5-6 GB
+            } 
+            else realSize = 1.2 * 1024 * 1024 * 1024;
+        }
+    }
+
+    // >>> NUOVA CHIAMATA A FORMAT STREAM SELECTOR <<<
+    const { name, title, bingeGroup } = formatStreamSelector(
         item.title,
         item.source,
-        item._size || item.sizeBytes || 0,
+        realSize, 
         item.seeders,
         serviceTag,
         config,
@@ -1384,11 +1160,11 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
               const itemSize = item._size || item.sizeBytes || 0;
               if (itemSize > 0 && itemSize > maxBytes) return false;
           }
-          if (config.filters.no4k && REGEX_QUALITY["4K"].test(t)) return false;
-          if (config.filters.no1080 && REGEX_QUALITY["1080p"].test(t)) return false;
-          if (config.filters.no720 && REGEX_QUALITY["720p"].test(t)) return false;
+          if (config.filters.no4k && REGEX_QUALITY_FILTER["4K"].test(t)) return false;
+          if (config.filters.no1080 && REGEX_QUALITY_FILTER["1080p"].test(t)) return false;
+          if (config.filters.no720 && REGEX_QUALITY_FILTER["720p"].test(t)) return false;
           if (config.filters.noScr) {
-               if (REGEX_QUALITY["SD"].test(t)) return false;
+               if (REGEX_QUALITY_FILTER["SD"].test(t)) return false;
                if (/cam|hdcam|ts|telesync|screener|scr\b/i.test(t)) return false;
           }
           if (config.filters.noCam && /cam|hdcam|ts|telesync|screener|scr\b/i.test(t)) return false;
