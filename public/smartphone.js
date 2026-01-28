@@ -747,7 +747,7 @@ const mobileHTML = `
                 
                 <h1 class="m-brand-title">LEVIATHAN</h1>
                 <div class="m-brand-sub">SOVRANO DEGLI ABISSI</div>
-                <div class="m-version-tag"><div class="m-v-dot"></div>v2.2.0 STABLE</div>
+                <div class="m-version-tag"><div class="m-v-dot"></div>v2.3.0 STABLE</div>
             </div>
 
             <div id="page-setup" class="m-page active">
@@ -959,6 +959,8 @@ const mobileHTML = `
                         <div class="m-skin-btn active" id="msk_leviathan" onclick="selectMobileSkin('leviathan')"><span class="m-skin-icon">🦑</span> LEVIATHAN</div>
                         <div class="m-skin-btn" id="msk_lev2" onclick="selectMobileSkin('lev2')"><span class="m-skin-icon">🧬</span> ARCHETYPE</div>
                         <div class="m-skin-btn" id="msk_fra" onclick="selectMobileSkin('fra')"><span class="m-skin-icon">⚡️</span> HORIZON</div>
+                        <div class="m-skin-btn" id="msk_comet" onclick="selectMobileSkin('comet')"><span class="m-skin-icon">☄️</span> COMET</div>
+                        <div class="m-skin-btn" id="msk_stremio_ita" onclick="selectMobileSkin('stremio_ita')"><span class="m-skin-icon">🇮🇹</span> ITA MOD</div>
                         <div class="m-skin-btn" id="msk_dav" onclick="selectMobileSkin('dav')"><span class="m-skin-icon">📼</span> DATABANK</div>
                         <div class="m-skin-btn" id="msk_pri" onclick="selectMobileSkin('pri')"><span class="m-skin-icon">👑</span> ECLIPSE</div>
                         <div class="m-skin-btn" id="msk_and" onclick="selectMobileSkin('and')"><span class="m-skin-icon">🎬</span> MATRIX</div>
@@ -1226,6 +1228,7 @@ function updateMobilePreview() {
         lang: "🇮🇹 ITA",
         audioInfo: "🔊⚡ TrueHD ┃ 7.1",
         info: "💎 ʀᴇᴍᴜx • 🔥 HDR • 👁️ DV",
+        cleanInfo: "Remux • HDR • DV",
         seedersStr: "👥 1337"
     };
 
@@ -1252,6 +1255,14 @@ function updateMobilePreview() {
     } else if (mSkin === 'fra') {
         name = `⚡️ Leviathan 4K`;
         desc = `📄 ❯ ${p.cleanName}\n🌎 ❯ 🇮🇹 ITA • TrueHD\n✨ ❯ ${p.serviceTag} • ${p.source}\n🔥 ❯ 4K • Remux • HDR\n💾 ❯ ${p.sizeString} / 👥 ❯ 1337`;
+    } else if (mSkin === 'comet') {
+        // Comet Style Replica
+        name = `[${p.serviceTag} ⚡]\nLeviathan\n4K`;
+        desc = `📄 ${p.cleanName}\n📹 HEVC • ${p.cleanInfo} | TrueHD\n⭐ ${p.source}\n💾 ${p.sizeString} 👥 1337\n🌍 ITA`;
+    } else if (mSkin === 'stremio_ita') {
+        // Stremio ITA Template Replica
+        name = `⚡️ Leviathan 4K`;
+        desc = `📄 ❯ ${p.cleanName}\n🌎 ❯ ita • eng\n✨ ❯ ${p.serviceTag} • ${p.source}\n🔥 ❯ 4K • HEVC • ${p.cleanInfo}\n💾 ❯ ${p.sizeString} / 👥 ❯ 1337\n🔉 ❯ TrueHD • 7.1`;
     } else if (mSkin === 'dav') {
         name = `🎥4K UHD HEVC`;
         desc = `📺 ${p.cleanName}\n🎧 TrueHD 7.1 | 🎞️ HEVC\n🗣️ ITA | 📦 ${p.sizeString}\n⏱️ 1337 Seeds | 🏷️ ${p.source}\n${p.serviceIcon} Leviathan 📡 ${p.serviceTag}\n📂 ${p.title}`;
