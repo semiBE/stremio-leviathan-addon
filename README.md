@@ -92,18 +92,18 @@
 
 Il core, sviluppato in **Node.js**, orchestra scansioni parallele sui principali index mondiali e italiani. Utilizza una logica proprietaria per distinguere le sorgenti in base alla latenza di risposta, applicando timeout dinamici e tecniche di evasione anti-bot.
 
-### 🔥 Release 2.1 Highlights
+### 🔥 Release 2.5 Highlights
 
 * 🚀 **Core Refactoring:** Motore riscritto per massimizzare stabilità e concorrenza.
-* 🧠 **Proprietary DB:** Implementazione di un database di proprietà per indicizzazione istantanea e indipendente.
-* 📱 **Mobile UX:** Implementazione di `smartphone.js` per una GUI completamente ridisegnata e ottimizzata per dispositivi mobili.
-* 🌪️ **VIX Hybrid Module:** Integrazione diretta con **StreamingCommunity**, **GuardaHD** e **GuardaSerie** per flussi istantanei (No-P2P).
+* 🕷️ **WebStreams Fallback:** Attivazione automatica intelligente delle sorgenti Web se il P2P non ha risultati (Disattivabile).
+* 🎨 **Polymorphic Formatter:** Engine di formattazione avanzato. Scegli tra preset grafici o inietta il tuo stile custom.
+* 🗣️ **Tri-Scope Language:** Selettore di perimetro: Solo ITA, ITA+ENG (Hybrid) o Solo ENG.
+* 🎬 **Trailer Bridge:** Reindirizzamento nativo verso YouTube per anteprime istantanee.
+* 🌪️ **VIX Hybrid Module:** Integrazione diretta con **StreamingCommunity**, **GuardaHD** e **GuardaSerie**.
+* 📱 **Mobile UX:** Implementazione di `smartphone.js` per una GUI ottimizzata mobile.
 * 👻 **Ghost Proxying:** Supporto nativo a **MediaFlow** per l'uso sicuro di Account Debrid condivisi.
-* 🔗 **AIOStreams:** Supporto nativo per flussi AIOStreams, integrato nel motore Leviathan.
-* 🏎️ **Fast Lane Mode:** Gestione intelligente dei timeout per API ad alta velocità.
-* 🇮🇹 **Strict ITA Validation:** Filtri regex chirurgici per l'eliminazione dei falsi positivi.
+* 🔗 **AIOStreams:** Supporto nativo per flussi AIOStreams integrato nel motore.
 * 🛡️ **Cloudscraper Integration:** Ottimizzazione avanzata per il superamento dei controlli Cloudflare.
-* 💉 **Magnet Injection:** Arricchimento automatico dei metadati con tracker UDP Tier-1.
 
 
 
@@ -164,6 +164,34 @@ Progettato per l'elusione dei blocchi IP e la gestione di account Multi-Utente.
 * **Shared Account Support:** Permette l'utilizzo dello stesso account Debrid su più IP contemporaneamente senza rischiare il ban, poiché il provider vede solo l'IP del Proxy.
 * **Anti-Throttling:** Bypassa i blocchi imposti dagli ISP sui domini dei servizi Debrid.
 
+### 9. 🕷️ WebStreams Auto-Failover
+Il sistema non accetta vicoli ciechi.
+* **Smart Switch:** Se la scansione Torrent restituisce 0 risultati validi, Leviathan innesca automaticamente i moduli Web (StreamingCommunity/GuardaHD).
+* **Configurable Logic:** Funzione attivata di default, ma disabilitabile dalla dashboard per gli utenti che desiderano un'esperienza rigorosamente P2P.
+
+### 10. 🎨 Polymorphic Formatter Engine
+Il controllo totale sulla presentazione visiva dei risultati.
+* **Preset Selection:** Seleziona tra diversi stili di visualizzazione pre-codificati per adattare l'output ai tuoi gusti.
+* **Custom Syntax:** Possibilità di definire un formatter personalizzato per strutturare i metadati (Risoluzione, Codec, Audio) esattamente come vuoi tu.
+
+### 11. 🗣️ Linguistic Scope Control
+Definisci i confini della tua ricerca.
+* **🇮🇹 ITA Strict:** Filtro chirurgico solo per contenuti in lingua italiana.
+* **🌍 Global (ENG):** Accesso diretto ai tracker internazionali senza filtri linguistici.
+* **🧬 Hybrid (ITA+ENG):** La fusione perfetta. Priorità ai contenuti italiani, con fallback immediato sulle release internazionali ad alta qualità.
+
+### 12. 🎬 Visual Pre-Fetch (Trailer Integration)
+* **Instant Preview:** Integrazione diretta con le API di YouTube.
+* **Context Aware:** Recupera automaticamente il trailer corretto basandosi sui metadati IMDB/TMDB del contenuto selezionato.
+
+<br>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/⚙️_Auto--WebStreams-ACTIVE-FF0000?style=for-the-badge&labelColor=black" />
+  <img src="https://img.shields.io/badge/🎨_Custom--UI-FORMATTER-FFD700?style=for-the-badge&labelColor=black" />
+  <img src="https://img.shields.io/badge/🗣️_Lang--Scope-ITA%2FENG-00eaff?style=for-the-badge&labelColor=black" />
+</p>
+
 ---
 
 <div align="center">
@@ -218,20 +246,42 @@ Progettato per l'elusione dei blocchi IP e la gestione di account Multi-Utente.
 
 <div align="center">
 
-Il modo più veloce e pulito per eseguire Leviathan in locale o in produzione.
+<p style="font-size: 1.1rem; color: #cbd5e1;">
+  Procedura standardizzata per il deploy di infrastrutture <b>Leviathan Standalone</b>.
+</p>
 
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Stremio Addon](https://img.shields.io/badge/Stremio-Addon-green?logo=stremio&logoColor=white)](https://www.stremio.com/)
 
-### 💠 Sequenza di Avvio Rapido
-
-Copia l'intera sequenza e incollala nel terminale per l'inizializzazione immediata:
 </div>
 
+<br>
+
+<div align="center">
+  <div style="background: rgba(255, 69, 58, 0.08); border: 1px solid rgba(255, 69, 58, 0.4); border-radius: 8px; padding: 20px; width: 90%; max-width: 800px; text-align: left;">
+    <strong style="color: #ff453a; font-size: 1rem; display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+      ⚠️ LIMITAZIONE ARCHITETTURALE: SELF-HOSTING
+    </strong>
+    <span style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6;">
+      L'architettura <b>Leviathan</b> è composta da due layer. Eseguendo il deploy locale (Self-Hosting), opererai in modalità <b>"Decentralized Computation"</b>.
+      <br><br>
+      ❌ <b>Esclusione Database Proprietario:</b> Il database di indicizzazione istantanea e caching predittivo è un asset privato lato server dell'istanza pubblica. Non è incluso nel codice sorgente open-source.
+      <br>
+      🔄 <b>Conseguenza Operativa:</b> La tua istanza locale eseguirà lo <b>scraping in tempo reale</b> per ogni singola richiesta, senza attingere alla cache centrale. Le prestazioni dipenderanno esclusivamente dalla potenza della tua CPU e dalla latenza della tua rete.
+    </span>
+  </div>
+</div>
+
+<br>
+
+### 💠 Sequenza di Inizializzazione (Docker)
+
+Eseguire la seguente catena di comandi per il provisioning immediato del container:
+
 ```bash
-                         git clone https://github.com/LUC4N3X/stremio-leviathan-addon
-                  cd stremio-leviathan-addon
-                  docker compose up -d --build 
+git clone [https://github.com/LUC4N3X/stremio-leviathan-addon](https://github.com/LUC4N3X/stremio-leviathan-addon)
+cd stremio-leviathan-addon
+docker compose up -d --build
 ```
 ✅ Fatto! Leviathan sarà raggiungibile su:
 http://localhost:7000
@@ -289,60 +339,105 @@ Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico
 👁‍🗨 BENVENUTO NELL'ABISSO.
 ---
 
+<hr>
 
+<h3 align="center">⭐ SUPPORTO & DONAZIONI</h3>
+
+<p align="center" style="color:#8b949e; font-size:14px; max-width:700px;">
+Leviathan è un progetto <b>open-source</b>, gratuito e in continua evoluzione.<br>
+Ogni forma di supporto contribuisce a mantenerlo <b>indipendente, stabile e in costante evoluzione</b>.
+</p>
+
+<table align="center" width="100%" style="border:none;">
+  <tr>
+<!-- PAYPAL -->
+    <td align="center" width="50%">
+      <h4 style="margin-bottom:6px;">💙 Supporto Diretto</h4>
+      <p style="font-size:13px; color:#c9d1d9; margin-top:0;">
+        Dona tramite PayPal per sostenere lo sviluppo del Protocollo
+      </p>
+      <a href="https://www.paypal.me/luc4nex">
+        <img src="https://img.shields.io/badge/Donate-PayPal-blue?style=for-the-badge&logo=paypal">
+      </a>
+    </td>
+  <!-- GITHUB -->
+    <td align="center" width="50%">
+      <h4 style="margin-bottom:6px;">⭐ Supporto GitHub</h4>
+      <p style="font-size:13px; color:#c9d1d9; margin-top:0;">
+        Supporto gratuito ma fondamentale per la visibilità del progetto
+      </p>
+      <b>Lascia una ⭐ al repository</b>
+    </td>
+
+  </tr>
+</table>
+
+<p align="center" style="font-size:12px; color:#6e7681; margin-top:18px;">
+Supportare Leviathan significa investire in un Protocollo <b>libero, curato e senza compromessi</b>.
+</p>
+
+---
+
+<h3 align="center" style="letter-spacing: 2px; text-transform: uppercase; color: #ffffff;">
+  <span class="notranslate">🧬 PROTOCOL ARCHITECTURE & ENGINEERING</span>
+</h3>
+
+<table style="border: none; width: 100%; border-collapse: collapse;">
+  <tr>
+    <td align="center" style="width: 25%; vertical-align: middle; padding: 10px;">
+      <a href="https://github.com/qwertyuiop8899">
+        <img src="https://github.com/qwertyuiop8899.png" width="50" style="border-radius: 50%; border: 2px solid #30363d; opacity: 0.8;" alt="qwerty"/>
+        <br>
+        <b style="font-size: 10px; color: #8b949e; font-family: monospace;">qwertyuiop8899</b>
+      </a>
+      <div style="font-size: 10px; color: #6e7681; line-height: 1.4; margin-top: 8px; text-align: center;">
+        <b style="color: #c9d1d9;">✨ Ringraziamenti speciali</b><br>
+        per il contributo su:<br>
+        • Logica di formatter.js<br>
+        • Moduli Web<br>
+        • Trailer.js
+      </div>
+    </td>
+
+  <td align="center" style="width: 50%; vertical-align: middle; background: radial-gradient(circle, rgba(0,224,255,0.05) 0%, rgba(0,0,0,0) 70%);">
+      <div style="margin-bottom: 10px;">
+         <span style="background-color: #0d1117; border: 1px solid #00E0FF; border-radius: 20px; padding: 4px 12px; font-size: 10px; color: #00E0FF; letter-spacing: 1px; font-weight: bold;">
+            PROJECT LEAD
+         </span>
+      </div>
+      <a href="https://github.com/LUC4N3X">
+        <img src="https://github.com/LUC4N3X.png" width="145" style="border-radius: 50%; border: 4px solid #00E0FF; box-shadow: 0 0 35px rgba(0, 224, 255, 0.5), 0 0 10px rgba(0, 224, 255, 0.8);" alt="LUC4N3X"/>
+        <br>
+        <h2 style="margin: 10px 0 0 0; font-size: 26px; color: #ffffff; text-shadow: 0 0 15px rgba(0, 224, 255, 0.6);">LUC4N3X</h2>
+      </a>
+      
+   <div style="font-size: 14px; color: #00E0FF; font-weight: 800; letter-spacing: 2px; margin-top: 5px;">
+        👑 ARCHITECT & CORE
+      </div>
+      <div style="font-size: 12px; color: #8b949e; margin-top: 5px; font-style: italic;">
+        Fondatore del Protocollo
+      </div>
+    </td>
+
+  <td align="center" style="width: 25%; vertical-align: middle; padding: 10px;">
+      <a href="https://github.com/diogomiguel93">
+        <img src="https://github.com/diogomiguel93.png" width="50" style="border-radius: 50%; border: 2px solid #30363d; opacity: 0.8;" alt="diogo"/>
+        <br>
+        <b style="font-size: 10px; color: #8b949e; font-family: monospace;">diogomiguel93</b>
+      </a>
+      <div style="font-size: 10px; color: #6e7681; line-height: 1.4; margin-top: 8px; text-align: center;">
+        <b style="color: #c9d1d9;">Base Integration</b><br>
+        Ispirazione e base per<br>
+        l'addon Torrentio (ITA)<br>
+        &nbsp;
+      </div>
+    </td>
+  </tr>
+</table>
+
+<br>
 <div align="center">
-
-  <img src="https://img.shields.io/badge/STATUS-OPERATIONAL-2ea44f?style=flat-square&logo=github&logoColor=white">
-  <img src="https://img.shields.io/badge/MODE-COMMUNITY-0366d6?style=flat-square&logo=linux&logoColor=white">
-
-  <br><br>
-
-  <a href="https://www.paypal.me/luc4nex" target="_blank">
-    <img src="https://img.shields.io/badge/⚡_SUPPORTO_ENERGETICO-OFFRI_UN_CAFFÈ-FFD21E?style=for-the-badge&logo=paypal&logoColor=black&labelColor=black" alt="Supporta il progetto">
-  </a>
-
-  <br><br>
-
-  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=20&pause=1000&color=00E0FF&center=true&vCenter=true&width=500&lines=Forgiato+nel+CODICE.;Rimani+legale.+Rimani+lucido.;Lunga+vita+al+progetto." alt="Typing SVG" />
-
-  <br><br>
-
-
-
-<h3><span class="notranslate">🧬 PROJECT CORE & NEURAL NETWORK</span></h3>
-  
-  <table style="border: none;">
-    <tr>
-      <td align="center" width="200px" style="border: none; vertical-align: top;">
-        <a href="https://github.com/LUC4N3X">
-          <img src="https://github.com/LUC4N3X.png" width="70" style="border-radius:50%; border: 2px solid #00E0FF;" alt="LUC4N3X"/>
-          <br><b>LUC4N3X</b>
-        </a>
-        <br><br>
-        <sub style="color: #8b949e;">Architect & Core<br>Fondatore del protocollo</sub>
-      </td>
-      
-  <td align="center" width="200px" style="border: none; vertical-align: top;">
-        <a href="https://github.com/qwertyuiop8899">
-          <img src="https://github.com/qwertyuiop8899.png" width="70" style="border-radius:50%;" alt="qwerty"/>
-          <br><b>qwertyuiop8899</b>
-        </a>
-        <br><br>
-        <sub style="color: #8b949e;">Supporto costante, debug strategico e logica chiave del external-addons.js</sub>
-      </td>
-      
-  <td align="center" width="200px" style="border: none; vertical-align: top;">
-        <a href="https://github.com/diogomiguel93">
-          <img src="https://github.com/diogomiguel93.png" width="70" style="border-radius:50%;" alt="diogo"/>
-          <br><b>diogomiguel93</b>
-        </a>
-        <br><br>
-        <sub style="color: #8b949e;">Base e ispirazione per l’integrazione dell’addon Torrentio(ITA)</sub>
-      </td>
-    </tr>
-  </table>
-  
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=00E0FF&height=50&section=footer&animation=fadeIn" width="100%" style="opacity: 0.5;">
   <br>
-  <sub style="color: grey;">Leviathan Project © 2025 • Evolution Guaranteed</sub>
-
+  <sub style="color: #6e7681; font-family: monospace;">Leviathan Project © 2025 • <span style="color: #00E0FF;">Evolution Guaranteed</span></sub>
 </div>
