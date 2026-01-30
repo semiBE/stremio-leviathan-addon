@@ -6,6 +6,7 @@ const mobileCSS = `
     --m-accent: #b026ff;      
     --m-amber: #ff9900;       
     --m-cine: #ff0055;        
+    --m-kofi: #FF5E5B;        /* Ko-fi Brand Red/Pink */
     --m-surface: rgba(10, 15, 25, 0.85); 
     --m-text: #e0f7fa;
     --m-dim: #7a9ab5; 
@@ -56,9 +57,11 @@ body::before {
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
 .m-content-wrapper { flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+
+/* --- FIX SCROLLING: AUMENTATO PADDING BOTTOM A 250px --- */
 .m-content {
     flex: 1; overflow-y: scroll; overflow-x: hidden;
-    padding: 0 15px 180px 15px;
+    padding: 0 15px 250px 15px; /* AUMENTATO PER EVITARE CHE I TASTI COPRANO IL CONTENUTO */
     width: 100%; -webkit-overflow-scrolling: touch; 
 }
 
@@ -164,9 +167,11 @@ body::before {
 .m-hyp-desc { font-size: 0.7rem; color: #666; margin-bottom: 12px; margin-top: -5px; line-height: 1.3; font-family: 'Outfit'; }
 
 .m-chip-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 25px; }
-.m-qual-chip { font-family: 'Rajdhani'; font-weight: 800; font-size: 0.8rem; text-align: center; padding: 10px 4px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); color: #fff; transition: all 0.2s; cursor: pointer; }
+.m-qual-chip { font-family: 'Rajdhani'; font-weight: 800; font-size: 0.8rem; text-align: center; padding: 10px 4px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); color: #fff; transition: all 0.2s; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .m-qual-chip.excluded { opacity: 0.4; background: rgba(255, 51, 102, 0.1); border-color: rgba(255, 51, 102, 0.3); color: var(--m-error); text-decoration: line-through; }
 .m-qual-chip:not(.excluded):active { transform: scale(0.95); }
+.mini-tag { font-size: 0.6rem; opacity: 0.7; margin-top: -2px; font-weight: 700; letter-spacing: 1px; color: var(--m-primary); }
+.m-qual-chip.excluded .mini-tag { color: var(--m-error); }
 
 /* SYSTEM GRID */
 .m-sys-grid { display: grid; grid-template-columns: 1fr; gap: 0; background: rgba(0,0,0,0.2); border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; margin-bottom: 20px; }
@@ -272,17 +277,62 @@ input:checked + .m-slider-pink:before { background-color: var(--m-cine); box-sha
 .m-flux-header { background: rgba(0, 242, 255, 0.05); padding: 8px 15px; font-size: 0.7rem; color: var(--m-primary); letter-spacing: 1px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0, 242, 255, 0.1); }
 .m-flux-input { width: 100%; background: transparent; border: none; color: #fff; padding: 15px; font-size: 0.75rem; resize: none; min-height: 80px; line-height: 1.4; outline: none; font-family: 'Consolas', monospace; white-space: pre-wrap; word-break: break-all; }
 
-.m-credits-section { margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 15px; }
-.m-faq-btn { width: 100%; padding: 12px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.2); color: var(--m-dim); border-radius: 10px; font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.85rem; letter-spacing: 1px; display: flex; justify-content: center; align-items: center; gap: 10px; transition: all 0.3s ease; }
-.m-dev-hub { display: flex; gap: 12px; height: 55px; }
-.m-cmd-tag { flex: 1; text-decoration: none; background: linear-gradient(90deg, rgba(0, 242, 255, 0.05), rgba(0,0,0,0.4)); border: 1px solid rgba(0, 242, 255, 0.25); border-radius: 12px; display: flex; align-items: center; padding: 0 12px; gap: 12px; transition: all 0.3s ease; position: relative; overflow: hidden; }
-.m-cmd-tag::before { content: ''; position: absolute; top:0; left:0; width: 3px; height: 100%; background: var(--m-primary); box-shadow: 0 0 8px var(--m-primary); }
-.m-cmd-avatar-mini { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--m-primary); object-fit: cover; box-shadow: 0 0 8px rgba(0, 242, 255, 0.4); }
-.m-cmd-details { display: flex; flex-direction: column; justify-content: center; }
-.m-cmd-role { font-size: 0.65rem; color: var(--m-primary); letter-spacing: 2px; text-transform: uppercase; font-weight: 800; opacity: 0.8; }
-.m-cmd-nick { font-family: 'Rajdhani', sans-serif; font-size: 1.05rem; color: #fff; font-weight: 800; line-height: 1; display: flex; align-items: center; gap: 8px; }
-.m-coffee-btn { text-decoration: none; padding: 0 15px; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(10, 15, 25, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 12px; font-size: 1rem; color: var(--m-dim); transition: all 0.3s; position: relative; font-family: 'Rajdhani', sans-serif; font-weight: 700; }
-.m-coffee-text { font-size: 0.8rem; letter-spacing: 1px; color: var(--m-dim); transition: color 0.3s; }
+/* --- NEW CREDITS SECTION (VISUALLY DISTINCT) --- */
+.m-credits-section { 
+    margin: 40px 10px 20px 10px;
+    padding: 20px 10px;
+    background: radial-gradient(circle at center, rgba(0, 242, 255, 0.03), transparent 70%);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    display: flex; flex-direction: column; gap: 20px; 
+    position: relative;
+    text-align: center;
+}
+.m-credits-section::before {
+    content: 'NEURAL SIGNATURE';
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.6rem; letter-spacing: 4px; color: rgba(255,255,255,0.2);
+    margin-bottom: 5px; display: block;
+}
+
+/* DEV CARD - HOLOGRAPHIC STYLE */
+.m-dev-id { 
+    width: 100%; padding: 15px; text-decoration: none; 
+    background: rgba(0, 0, 0, 0.6); 
+    border: 1px solid #222; border-left: 2px solid var(--m-primary);
+    border-radius: 12px; display: flex; align-items: center; gap: 15px; 
+    transition: all 0.3s ease; position: relative; overflow: hidden;
+}
+.m-dev-id:active { transform: scale(0.98); background: rgba(0, 242, 255, 0.05); }
+
+.m-dev-avatar { width: 48px; height: 48px; border-radius: 8px; border: 1px solid var(--m-primary); object-fit: cover; box-shadow: 0 0 10px rgba(0,0,0,0.8); filter: grayscale(20%); }
+.m-dev-info { display: flex; flex-direction: column; align-items: flex-start; }
+.m-dev-role { font-size: 0.65rem; color: var(--m-primary); letter-spacing: 2px; text-transform: uppercase; font-weight: 700; opacity: 0.8; margin-bottom: 2px; }
+.m-dev-name { font-family: 'Rajdhani', sans-serif; font-size: 1.1rem; color: #fff; font-weight: 800; letter-spacing: 1px; }
+
+/* KO-FI ULTRA BUTTON */
+.m-kofi-ultra { 
+    width: 100%; height: 55px; text-decoration: none; padding: 0 15px; 
+    display: flex; align-items: center; justify-content: center; gap: 12px; 
+    background: linear-gradient(135deg, #FF5E5B, #E01E5A); 
+    border-radius: 12px; font-size: 1rem; color: #fff; transition: all 0.3s; 
+    position: relative; font-family: 'Rajdhani', sans-serif; font-weight: 800; 
+    box-shadow: 0 5px 20px rgba(255, 30, 90, 0.25);
+    border: 1px solid rgba(255,255,255,0.1);
+    overflow: hidden;
+}
+.m-kofi-ultra::before {
+    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 60%);
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+.m-kofi-ultra:hover::before { opacity: 1; }
+.m-kofi-ultra:active { transform: scale(0.96); box-shadow: 0 2px 10px rgba(255, 30, 90, 0.4); }
+
+.m-kofi-icon { font-size: 1.2rem; animation: heartBeat 1.5s infinite ease-in-out; }
+@keyframes heartBeat { 
+    0% { transform: scale(1); } 15% { transform: scale(1.2); } 
+    30% { transform: scale(1); } 45% { transform: scale(1.2); } 100% { transform: scale(1); } 
+}
 
 .m-dock-container { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(2, 5, 10, 0.97); border-top: 1px solid rgba(0,242,255,0.15); z-index: 100; display: flex; flex-direction: column; padding-bottom: var(--safe-bottom); box-shadow: 0 -12px 35px rgba(0,0,0,0.85); backdrop-filter: blur(12px); }
 .m-dock-actions { display: flex; gap: 12px; padding: 12px 18px 6px 18px; }
@@ -308,6 +358,64 @@ input:checked + .m-slider-pink:before { background-color: var(--m-cine); box-sha
 .m-lock-icon { font-size: 2rem; color: var(--m-secondary); margin-bottom: 10px; }
 .m-lock-text { font-family: 'Rajdhani'; color: #fff; font-weight: 800; font-size: 1.1rem; }
 .m-lock-sub { font-size: 0.75rem; color: #888; margin-top: 5px; max-width: 80%; }
+
+/* --- MICRO-INTERACTIONS & FX --- */
+
+/* 1. AIO DENIED ANIMATION (Shake + Purple Glow) */
+@keyframes shakeGlow {
+    0%, 100% { transform: translateX(0); border-color: rgba(170,0,255,0.2); box-shadow: none; }
+    20% { transform: translateX(-5px); border-color: var(--m-secondary); box-shadow: 0 0 20px var(--m-secondary), inset 0 0 10px var(--m-secondary); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
+}
+.m-denied-anim {
+    animation: shakeGlow 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* 2. PREVIEW RECALCULATION OVERLAY */
+.m-recalc-overlay {
+    position: absolute; top:0; left:0; width:100%; height:100%;
+    background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+    backdrop-filter: blur(2px);
+}
+.m-recalc-overlay.visible { opacity: 1; }
+.m-recalc-text {
+    font-family: 'Rajdhani'; font-weight: 800; color: var(--m-primary);
+    letter-spacing: 2px; text-transform: uppercase; font-size: 0.9rem;
+    display: flex; align-items: center; gap: 10px;
+    text-shadow: 0 0 10px var(--m-primary);
+}
+
+/* 3. SCI-FI TOAST NOTIFICATION */
+.m-toast-container {
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+    z-index: 999; pointer-events: none; width: 90%; max-width: 300px;
+    display: flex; flex-direction: column; gap: 10px;
+}
+.m-toast {
+    background: rgba(5, 10, 15, 0.95);
+    border: 1px solid var(--m-primary);
+    border-left: 4px solid var(--m-primary);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.8);
+    color: #fff; padding: 12px 15px; border-radius: 8px;
+    font-family: 'Rajdhani'; font-size: 0.9rem; font-weight: 700;
+    display: flex; align-items: center; gap: 12px;
+    animation: slideUpFade 0.3s ease-out forwards;
+    backdrop-filter: blur(5px);
+}
+.m-toast.warning { border-color: var(--m-amber); border-left-color: var(--m-amber); color: var(--m-amber); }
+.m-toast.error { border-color: var(--m-error); border-left-color: var(--m-error); color: var(--m-error); }
+.m-toast.success { border-color: var(--m-success); border-left-color: var(--m-success); color: var(--m-success); }
+@keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.m-toast.out { animation: fadeOut 0.3s ease-out forwards; }
+@keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
 `;
 
 const mobileHTML = `
@@ -445,33 +553,25 @@ const mobileHTML = `
                 </div>
 
                 <div class="m-credits-section">
-                    <button class="m-faq-btn" onclick="openFaq()">
-                        <i class="fas fa-terminal"></i> SYSTEM FAQ & MANUAL
-                    </button>
+                    <a href="https://github.com/LUC4N3X/stremio-leviathan-addon" target="_blank" class="m-dev-id">
+                        <img src="https://i.ibb.co/gLkrjxXT/Whats-App-Image-2026-01-12-at-20-15-37.jpg" alt="Dev" class="m-dev-avatar">
+                        <div class="m-dev-info">
+                            <span class="m-dev-role">LEAD DEVELOPER</span>
+                            <span class="m-dev-name">LUC4N3X</span>
+                        </div>
+                        <i class="fab fa-github" style="margin-left:auto; color:#fff; font-size:1.4rem;"></i>
+                    </a>
 
-                    <div class="m-dev-hub">
-                        <a href="https://github.com/LUC4N3X/stremio-leviathan-addon" target="_blank" class="m-cmd-tag">
-                            <img src="https://i.ibb.co/gLkrjxXT/Whats-App-Image-2026-01-12-at-20-15-37.jpg" alt="Dev" class="m-cmd-avatar-mini">
-                            <div class="m-cmd-details">
-                                <span class="m-cmd-role">LEAD DEVELOPER</span>
-                                <span class="m-cmd-nick">
-                                    LUC4N3X <i class="fab fa-github m-git-icon"></i>
-                                </span>
-                            </div>
-                        </a>
-
-                        <a href="https://www.paypal.me/luc4nex" target="_blank" class="m-coffee-btn" title="Offri un Caffè">
-                            <i class="fas fa-mug-hot"></i>
-                            <span class="m-coffee-text">DONATE</span>
-                        </a>
-                    </div>
-                    <div style="height:30px;"></div> 
+                    <a href="https://ko-fi.com/luc4n3x" target="_blank" class="m-kofi-ultra" title="Supporta il progetto">
+                        <i class="fas fa-heart m-kofi-icon"></i>
+                        <span>SUPPORTA SU KO-FI</span>
+                    </a>
                 </div>
             </div>
 
             <div id="page-filters" class="m-page">
                 
-                <div class="m-visual-core-v2">
+                <div class="m-visual-core-v2" id="m-visual-core-v2">
                 
                      <div class="m-hyp-header" style="margin-bottom:15px; border:none; padding-bottom:0;">
                         <span>VISUAL FORMATTER</span>
@@ -485,6 +585,10 @@ const mobileHTML = `
                     </div>
 
                     <div class="m-visual-preview" id="m-preview-box">
+                        <div class="m-recalc-overlay" id="m-recalc-layer">
+                            <div class="m-recalc-text"><i class="fas fa-cog fa-spin"></i> UPDATING CORE...</div>
+                        </div>
+                        
                         <div class="m-vp-icon"><i class="fas fa-film"></i></div>
                         <div class="m-vp-text">
                             <div class="m-vp-title" id="m-prev-title">LEVIATHAN</div>
@@ -603,7 +707,7 @@ const mobileHTML = `
                     <div class="m-chip-grid">
                         <div class="m-qual-chip" id="mq-4k" onclick="toggleFilter('mq-4k')">4K UHD</div>
                         <div class="m-qual-chip" id="mq-1080" onclick="toggleFilter('mq-1080')">1080p</div>
-                        <div class="m-qual-chip" id="mq-720" onclick="toggleFilter('mq-720')">720p</div>
+                        <div class="m-qual-chip" id="mq-720" onclick="toggleFilter('mq-720')">720p <span class="mini-tag">HD</span></div>
                         <div class="m-qual-chip" id="mq-sd" onclick="toggleFilter('mq-sd')">CAM/SD</div>
                     </div>
 
@@ -737,6 +841,8 @@ const mobileHTML = `
             </div>
         </div>
     </div>
+    
+    <div class="m-toast-container" id="m-toast-area"></div>
 
 </div>
 `;
@@ -791,7 +897,56 @@ function toStylized(text, type = 'std') {
     }).join('');
 }
 
+// --- NEW TOAST & EFFECT SYSTEM ---
+
+function showToast(msg, type = 'info') {
+    const container = document.getElementById('m-toast-area');
+    if(!container) return;
+    const el = document.createElement('div');
+    el.className = `m-toast ${type}`;
+    
+    let icon = 'fa-info-circle';
+    if(type === 'warning') icon = 'fa-exclamation-triangle';
+    if(type === 'error') icon = 'fa-bug';
+    if(type === 'success') icon = 'fa-check-circle';
+    
+    el.innerHTML = `<i class="fas ${icon}"></i> <span>${msg}</span>`;
+    container.appendChild(el);
+    
+    if(navigator.vibrate) navigator.vibrate(20);
+    
+    setTimeout(() => {
+        el.classList.add('out');
+        setTimeout(() => el.remove(), 300);
+    }, 3000);
+}
+
+function triggerPreviewUpdateEffect() {
+    const layer = document.getElementById('m-recalc-layer');
+    if(!layer) return;
+    
+    layer.classList.add('visible');
+    setTimeout(() => {
+        layer.classList.remove('visible');
+    }, 400); 
+}
+
 function selectMobileSkin(skinId) {
+    // 1. CHECK AIO LOCK
+    const isAIO = document.getElementById('m-aioMode').checked;
+    
+    if (isAIO && skinId !== 'leviathan') {
+        const lockOverlay = document.getElementById('m-aio-lock-overlay');
+        lockOverlay.classList.remove('m-denied-anim');
+        void lockOverlay.offsetWidth; // Force reflow
+        lockOverlay.classList.add('m-denied-anim');
+        
+        if(navigator.vibrate) navigator.vibrate([50, 50, 50]); 
+        showToast("SKIN BLOCCATA DA AIO MODE", "warning");
+        return; 
+    }
+
+    // 2. STANDARD LOGIC
     mSkin = skinId;
     document.querySelectorAll('.m-cortex-chip').forEach(b => b.classList.remove('active'));
     const selectedBtn = document.getElementById('msk_' + skinId);
@@ -807,8 +962,10 @@ function selectMobileSkin(skinId) {
         void previewBox.offsetWidth;
         previewBox.classList.add('glitching');
     }
+    // triggerPreviewUpdateEffect();  <-- REMOVED FOR INSTANT SWITCH
     updateMobilePreview();
     updateLinkModalContent();
+    if(navigator.vibrate) navigator.vibrate(10);
 }
 
 function updateMobilePreview() {
@@ -992,6 +1149,7 @@ function navTo(pageId, btn) {
     document.querySelectorAll('.m-nav-item').forEach(i => i.classList.remove('active'));
     if(btn) btn.classList.add('active');
     document.querySelector('.m-content').scrollTop = 0;
+    if(navigator.vibrate) navigator.vibrate(10);
 }
 
 function setMService(srv, btn, keepInput = false) {
@@ -1014,6 +1172,7 @@ function setMService(srv, btn, keepInput = false) {
     
     updateMobilePreview(); 
     updateLinkModalContent();
+    if(navigator.vibrate) navigator.vibrate(10);
 }
 
 function updateStatus(inputId, statusId) {
@@ -1090,9 +1249,17 @@ function toggleGate() {
     const active = document.getElementById('m-gateActive').checked;
     const wrapper = document.getElementById('m-gate-wrapper');
     const lbl = document.getElementById('st-gate');
-    if(active) { wrapper.classList.add('show'); if(lbl) {lbl.innerText = "ON"; lbl.classList.add('on');} } 
-    else { wrapper.classList.remove('show'); if(lbl) {lbl.innerText = "OFF"; lbl.classList.remove('on');} }
+    
+    if(active) { 
+        wrapper.classList.add('show'); 
+        if(lbl) {lbl.innerText = "ON"; lbl.classList.add('on');}
+        showToast("Signal Gate Attivo: Risultati Limitati", "warning");
+    } else { 
+        wrapper.classList.remove('show'); 
+        if(lbl) {lbl.innerText = "OFF"; lbl.classList.remove('on');}
+    }
     updateLinkModalContent();
+    if(navigator.vibrate) navigator.vibrate(10);
 }
 
 function updateGateDisplay(val) { document.getElementById('m-gate-display').innerText = val; updateLinkModalContent(); }
@@ -1113,6 +1280,7 @@ function toggleSize() {
         document.getElementById('m-size-display').innerText = "∞";
     }
     updateLinkModalContent();
+    if(navigator.vibrate) navigator.vibrate(10);
 }
 
 function updateSizeDisplay(val) {
@@ -1138,6 +1306,7 @@ function setScQuality(val) {
     const activeEl = document.getElementById('mq-sc-' + val);
     if(activeEl) activeEl.classList.add('active');
     updateLinkModalContent();
+    if(navigator.vibrate) navigator.vibrate(10);
 }
 
 // --- FLUX PRIORITY LOGIC ---
@@ -1158,6 +1327,7 @@ function setSortMode(mode) {
         }, 200);
     }
     updateLinkModalContent();
+    if(navigator.vibrate) navigator.vibrate(10);
 }
 
 function updateGhostVisuals() {
@@ -1193,12 +1363,13 @@ function toggleModuleStyle(inputId, boxId) {
 
 function toggleFilter(id) { 
     document.getElementById(id).classList.toggle('excluded'); 
+    const isExcluded = document.getElementById(id).classList.contains('excluded');
+    if(isExcluded) {
+        if(navigator.vibrate) navigator.vibrate(20);
+        triggerPreviewUpdateEffect();
+    }
     updateLinkModalContent();
 }
-
-function openFaq() { const m = document.getElementById('m-faq-modal'); m.classList.add('show'); }
-function closeFaq() { document.getElementById('m-faq-modal').classList.remove('show'); }
-function toggleFaqItem(item) { item.classList.toggle('open'); }
 
 async function pasteTo(id) {
     try {
@@ -1211,6 +1382,7 @@ async function pasteTo(id) {
             btn.innerHTML = '<i class="fas fa-check"></i>';
             setTimeout(() => btn.innerHTML = originalHTML, 1500);
         }
+        showToast("INCOLLATO CON SUCCESSO", "success");
     } catch (err) { alert("Impossibile accedere agli appunti. Incolla manualmente."); }
 }
 
@@ -1377,7 +1549,7 @@ function mobileInstall() {
     const config = getMobileConfig();
     const isWebEnabled = config.filters.enableVix || config.filters.enableGhd || config.filters.enableGs;
     if(!config.key && !isWebEnabled) {
-        alert("⚠️ ERRORE: Inserisci una API Key o attiva una sorgente Web."); return;
+        showToast("ERRORE: API KEY MANCANTE", "error"); return;
     }
     const manifestUrl = `${window.location.host}/${btoa(JSON.stringify(config))}/manifest.json`;
     window.location.href = `stremio://${manifestUrl}`;
@@ -1399,7 +1571,7 @@ async function copyFromModal() {
     const textToCopy = box.value;
     
     if (textToCopy.includes("WAITING FOR")) {
-        alert("Configura prima l'addon!");
+        showToast("CONFIGURA PRIMA L'ADDON", "error");
         return;
     }
 
@@ -1407,7 +1579,7 @@ async function copyFromModal() {
         if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(textToCopy);
             closeLinkModal();
-            triggerCopySuccess();
+            showToast("LINK COPIATO NEGLI APPUNTI", "success");
         } else {
             // Fallback
             const dummy = document.createElement("textarea");
@@ -1417,29 +1589,11 @@ async function copyFromModal() {
             document.execCommand("copy");
             document.body.removeChild(dummy);
             closeLinkModal();
-            triggerCopySuccess();
+            showToast("LINK COPIATO NEGLI APPUNTI", "success");
         }
     } catch (err) {
-        alert("Errore nella copia. Seleziona e copia manualmente dal box.");
+        showToast("ERRORE COPIA MANUALE", "error");
     }
-}
-
-function triggerCopySuccess() {
-    const btn = document.querySelector('.m-btn-copy span');
-    const icon = document.querySelector('.m-btn-copy i');
-    const originalText = btn.innerText;
-    
-    btn.innerText = "FATTO!";
-    icon.className = "fas fa-check";
-    icon.style.color = "#00f2ff";
-    
-    if(navigator.vibrate) navigator.vibrate(50);
-    
-    setTimeout(() => { 
-        btn.innerText = originalText;
-        icon.className = "fas fa-link";
-        icon.style.color = "";
-    }, 2000);
 }
 
 initMobileInterface();

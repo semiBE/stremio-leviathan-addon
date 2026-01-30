@@ -1,4 +1,4 @@
-const titleParser = require('parse-torrent-title'); // RICHIESTO: npm install parse-torrent-title
+const titleParser = require('parse-torrent-title'); 
 
 const UNITS = ["B", "KB", "MB", "GB", "TB"];
 
@@ -98,12 +98,9 @@ function extractStreamInfo(title, source) {
   
   if (info.resolution) {
       q = info.resolution.toUpperCase();
-      
-      // --- MODIFICA RICHIESTA: 2160P -> 4K ---
       if (q === "2160P") {
           q = "4K";
       }
-      
       qDetails = q;
   } else if (info.source) {
       const camSources = ['CAM', 'TeleSync', 'TeleCine', 'SCR', 'Screener'];
@@ -142,8 +139,6 @@ function extractStreamInfo(title, source) {
   } 
 
   // --- LOGICA ANTI-VUOTO ---
-  // Se non abbiamo trovato una sorgente (Remux/BD/Web), 
-  // forziamo "RIP" per non lasciare il codec da solo.
   if (!sourceFound) {
       videoTags.push(`🎞️ ${toStylized("RIP")}`);
       cleanTags.push("Rip");
@@ -157,29 +152,32 @@ function extractStreamInfo(title, source) {
       cleanTags.push(codec);
   }
 
-  // HDR / DV
-  if (info.hdr) {
-      const hdrTags = Array.isArray(info.hdr) ? info.hdr : [info.hdr];
-      hdrTags.forEach(tag => {
-          if (/dolby/i.test(tag) || /vision/i.test(tag)) {
-              videoTags.push(`👁️ ${toStylized("DV")}`);
-              cleanTags.push("DV");
-          } else {
-              videoTags.push(`🔥 ${toStylized("HDR")}`);
-              cleanTags.push("HDR");
-          }
-      });
+  // --- NUOVA LOGICA HDR / DV INTELLIGENTE ---
+  const rawT = String(title).toUpperCase();
+  const hasDV = /\b(DV|DOLBY\s*VISION|DOVI)\b/.test(rawT) || (info.hdr && (/dolby|vision/i.test(info.hdr.toString())));
+  const hasHDR = /\b(HDR|HDR10|HDR10\+|UHD\s*HDR)\b/.test(rawT) || (info.hdr && (/hdr/i.test(info.hdr.toString())));
+
+  if (hasDV && hasHDR) {
+      videoTags.push(`👁️🔥 ${toStylized("DV+HDR")}`);
+      cleanTags.push("DV+HDR");
+  } else if (hasDV) {
+      videoTags.push(`👁️ ${toStylized("DV")}`);
+      cleanTags.push("DV");
+  } else if (hasHDR) {
+      videoTags.push(`🔥 ${toStylized("HDR")}`);
+      cleanTags.push("HDR");
   }
 
-  // Audio
-  let audioTag = "🔈 Stereo";
-  let audioChannels = "";
-
+  // Audio Detection
   let lang = "🇬🇧 ENG";
   if (REGEX_ITA.audio.test(t) || REGEX_ITA.contextIt.test(t) || /corsaro/i.test(source)) {
       lang = "🇮🇹 ITA";
       if (/multi/i.test(t)) lang = "🇮🇹 MULTI";
   }
+
+  // Audio Tags
+  let audioTag = "🔈 Stereo";
+  let audioChannels = "";
 
   if (info.audio) {
       const a = info.audio.toUpperCase();
@@ -203,30 +201,30 @@ function extractStreamInfo(title, source) {
   
   return { 
       quality: q, 
-      qDetails: qDetails,
+      qDetails: qDetails, 
       qIcon: qIcon, 
       videoTags, 
       cleanTags, 
       lang, 
       codec: info.codec || "",
-      audioTag: audioTag,
-      audioChannels: audioChannels,
+      audioTag: audioTag, 
+      audioChannels: audioChannels, 
       rawInfo: info 
   };
 }
 
 // =========================================================================
-// 🌟 PRESET STILI
+// 🌟 PRESET STILI (MODIFICATI CON p.configFlag)
 // =========================================================================
 
 // 1. LEVIATHAN (CLASSIC)
 function styleLeviathan(p) {
     const qualityBold = toStylized(p.quality, 'bold');
-    const name = `🦑 𝗟𝗘𝗩𝗜𝗔𝗧𝗛𝗔𝗡\n${p.qIcon} ┃ ${qualityBold}`;
+    // AGGIUNTA BANDIERA QUI
+    const name = `🦑 𝗟𝗘𝗩𝗜𝗔𝗧𝗛𝗔𝗡 ${p.configFlag}\n${p.qIcon} ┃ ${qualityBold}`;
     const lines = [];
     lines.push(`📁 ${p.cleanName} ${p.epTag}`);
     lines.push(`🗣️ ${p.lang} • ${p.audioInfo}`);
-    // Qui ora videoTags avrà SEMPRE almeno un elemento o "RIP + Codec"
     if (p.videoTags.length > 0) lines.push(p.videoTags.join(" • "));
     else lines.push(`🎞️ ${p.codec || "Video"}`);
     lines.push(`🧲 ${p.sizeString} • 👥 ${p.seeders}`);
@@ -237,7 +235,8 @@ function styleLeviathan(p) {
 // 2. LEVIATHAN 2.0 (ARCHITECT)
 function styleLeviathanTwo(p) {
     const levText = toStylized("LEVIATHAN", "small");
-    const name = `🦑 ${levText} ${p.serviceIconTitle} │ ${p.quality}`;
+    // AGGIUNTA BANDIERA QUI
+    const name = `🦑 ${levText} ${p.configFlag} ${p.serviceIconTitle} │ ${p.quality}`;
     const lines = [];
     lines.push(`🎬 ${toStylized(p.cleanName, "bold")}`);
     lines.push(`📦 ${p.sizeString} │ ${p.codec} ${p.videoTags.filter(x=>!x.includes(p.codec)).join(" ")}`);
@@ -249,7 +248,8 @@ function styleLeviathanTwo(p) {
 // 3. FRA STYLE
 function styleFra(p) {
     let qShort = p.quality === "1080p" ? "FHD" : (p.quality === "4K" ? "4K" : "HD");
-    const name = `⚡️ Leviathan ${qShort}`;
+    // AGGIUNTA BANDIERA QUI
+    const name = `⚡️ Leviathan ${p.configFlag} ${qShort}`;
     const tagString = p.cleanTags.join(' • ');
     const lines = [`📄 ❯ ${p.fileTitle}`, `🌎 ❯ ${p.lang} • ${p.audioTag}`, `✨ ❯ ${p.serviceTag} • ${p.displaySource}`, `🔥 ❯ ${p.quality} • ${tagString}`, `💾 ❯ ${p.sizeString} / 👥 ❯ ${p.seeders}`];
     return { name, title: lines.join("\n") };
@@ -264,7 +264,8 @@ function styleDav(p) {
     lines.push(`🎧 ${p.audioTag} ${p.audioChannels} | 🎞️ ${p.codec}`);
     lines.push(`🗣️ ${p.lang} | 📦 ${p.sizeString}`);
     lines.push(`⏱️ ${p.seeders} Seeds | 🏷️ ${p.displaySource}`);
-    lines.push(`${p.serviceIconTitle} Leviathan 📡 ${p.serviceTag}`);
+    // AGGIUNTA BANDIERA QUI NELLA DESCRIZIONE
+    lines.push(`${p.serviceIconTitle} Leviathan ${p.configFlag} 📡 ${p.serviceTag}`);
     lines.push(`📂 ${p.fileTitle}`);
     return { name, title: lines.join("\n") };
 }
@@ -279,7 +280,8 @@ function styleAnd(p) {
     lines.push(`Lingue: ${p.lang}`);
     lines.push(`Specifiche: ${p.quality} | 📺 ${p.cleanTags.join(' ')} | 🔊 ${p.audioTag}`);
     lines.push(`─ ─ ─ ─ ─ ─ ─ ─ ─ ─`);
-    lines.push(`📂 ${p.sizeString} | ☁️ ${p.serviceTag} | 🛰️ Leviathan`);
+    // AGGIUNTA BANDIERA QUI
+    lines.push(`📂 ${p.sizeString} | ☁️ ${p.serviceTag} | 🛰️ Leviathan ${p.configFlag}`);
     return { name, title: lines.join("\n") };
 }
 
@@ -290,7 +292,8 @@ function styleLad(p) {
     lines.push(`🎟️ ${p.cleanName}`);
     lines.push(`📜 ${p.epTag || "Movie"}`);
     lines.push(`🎥 ${p.quality} 🎞️ ${p.codec} 🎧 ${p.audioTag}`);
-    lines.push(`📦 ${p.sizeString} • 🔗 Leviathan`);
+    // AGGIUNTA BANDIERA QUI
+    lines.push(`📦 ${p.sizeString} • 🔗 Leviathan ${p.configFlag}`);
     lines.push(`🌐 ${p.lang}`);
     return { name, title: lines.join("\n") };
 }
@@ -298,7 +301,8 @@ function styleLad(p) {
 // 7. PRI STYLE
 function stylePri(p) {
     let resIcon = p.quality === "4K" ? "4K🔥UHD" : (p.quality === "1080p" ? "FHD🚀1080p" : "HD💿720p");
-    const name = `[${p.serviceTag}]⚡️☁️\n${resIcon}\n[Leviathan]`;
+    // AGGIUNTA BANDIERA QUI
+    const name = `[${p.serviceTag}]⚡️☁️\n${resIcon}\n[Leviathan ${p.configFlag}]`;
     const lines = [];
     lines.push(`🎬 ${p.cleanName} ${p.epTag}`);
     lines.push(`${p.cleanTags.join(" ")}`);
@@ -310,7 +314,8 @@ function stylePri(p) {
 
 // 8. COMET STYLE
 function styleComet(p) {
-    const name = `[${p.serviceTag} ⚡]\nLeviathan\n${p.quality}`;
+    // AGGIUNTA BANDIERA QUI
+    const name = `[${p.serviceTag} ⚡]\nLeviathan ${p.configFlag}\n${p.quality}`;
     const lines = [];
     lines.push(`📄 ${p.fileTitle}`);
     const techStack = [p.codec, ...p.cleanTags].filter(Boolean).join(" • ");
@@ -327,7 +332,8 @@ function styleComet(p) {
 function styleStremioIta(p) {
     const isCached = ["RD", "TB", "AD"].includes(p.serviceTag);
     const statusIcon = isCached ? "⚡️" : "⏳";
-    const name = `${statusIcon} Leviathan ${p.qDetails}`;
+    // AGGIUNTA BANDIERA QUI
+    const name = `${statusIcon} Leviathan ${p.configFlag} ${p.qDetails}`;
     const lines = [];
     lines.push(`📄 ❯ ${p.fileTitle}`);
     lines.push(`🌎 ❯ ${p.lang.replace(/ITA/i, "ita").replace(/ENG/i, "eng").replace(/MULTI/i, "multi")}`);
@@ -361,7 +367,8 @@ function styleCustom(p, template) {
     let userString = template;
     Object.keys(vars).forEach(key => { userString = userString.replace(new RegExp(key, "g"), vars[key]); });
     userString = userString.replace(/\\n/g, "\n");
-    return { name: `Leviathan ${p.quality}`, title: userString };
+    // Fallback standard se custom
+    return { name: `Leviathan ${p.configFlag} ${p.quality}`, title: userString };
 }
 
 // =========================================================================
@@ -371,6 +378,16 @@ function styleCustom(p, template) {
 function formatStreamSelector(fileTitle, source, size, seeders, serviceTag = "RD", config = {}, infoHash = null, isLazy = false, isPackItem = false) {
     let { quality, qDetails, qIcon, videoTags, cleanTags, lang, codec, audioTag, audioChannels, rawInfo } = extractStreamInfo(fileTitle, source);
     
+    // --- 🌍 CONFIG FLAG LOGIC ---
+    // Determina quale bandiera mostrare in base alla modalità selezionata in index.html
+    const langMode = (config.filters && config.filters.language) ? config.filters.language : (config.filters && config.filters.allowEng ? 'all' : 'ita');
+    
+    let configFlag = "🇮🇹"; // Default fallback
+    if (langMode === 'eng') configFlag = "🇬🇧";
+    else if (langMode === 'all') configFlag = "🇮🇹🇬🇧";
+    // Se 'ita', resta default
+    // -----------------------------
+
     if (serviceTag === "RD") qIcon = "☄️";
     else if (serviceTag === "TB") qIcon = "📦";
     else if (serviceTag === "AD") qIcon = "🦅";
@@ -423,7 +440,8 @@ function formatStreamSelector(fileTitle, source, size, seeders, serviceTag = "RD
         serviceTag, serviceIconTitle,
         videoTags, cleanTags, codec,
         lang, langStr, audioInfo, audioTag, audioChannels,
-        cleanName, epTag, sourceLine
+        cleanName, epTag, sourceLine,
+        configFlag // <-- PASSAGGIO BANDIERA AGLI STILI
     };
 
     let result;
