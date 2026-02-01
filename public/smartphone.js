@@ -635,9 +635,9 @@ const mobileHTML = `
                     </div>
 
                     <div class="m-srv-rail">
-                        <div class="m-srv-btn active" onclick="setMService('rd', this)"><span class="m-rail-icon">🚀</span> RD</div>
-                        <div class="m-srv-btn" onclick="setMService('ad', this)"><span class="m-rail-icon">🦅</span> AD</div>
-                        <div class="m-srv-btn" onclick="setMService('tb', this)"><span class="m-rail-icon">📦</span> TB</div>
+                        <div class="m-srv-btn active" onclick="setMService('rd', this)"><span class="m-rail-icon">🐋</span> RD</div>
+                        <div class="m-srv-btn" onclick="setMService('ad', this)"><span class="m-rail-icon">🐚</span> AD</div>
+                        <div class="m-srv-btn" onclick="setMService('tb', this)"><span class="m-rail-icon">⚓</span> TB</div>
                     </div>
 
                     <div id="m-ad-warn" class="m-ad-warning"><i class="fas fa-exclamation-triangle"></i> ATTENZIONE: AllDebrid funziona SOLO se hostato in LOCALE.</div>
@@ -1120,7 +1120,7 @@ const langDescriptions = {
 const skinMaps = {
     'bold': {
         nums: {'0':'𝟬','1':'𝟭','2':'𝟮','3':'𝟯','4':'𝟰','5':'𝟱','6':'𝟲','7':'𝟳','8':'𝟴','9':'𝟵'},
-        chars: {'A':'𝗔','B':'𝗕','C':'𝗖','D':'𝗗','E':'𝗘','F':'𝗙','G':'𝗚','H':'𝗛','I':'𝗜','J':'𝗝','K':'𝗞','L':'𝗟','M':'𝗠','N':'𝗡','O':'𝗢','P':'𝗣','Q':'𝗤','R':'𝗥','S':'𝗦','T':'𝗧','U':'𝗨','V':'𝗩','W':'𝗪','X':'𝗫','Y':'𝗬','Z':'𝗭','a':'𝗮','b':'𝗯','c':'𝗰','d':'𝗱','e':'𝗲','f':'𝗳','g':'𝗴','h':'𝗵','i':'𝗶','j':'j','k':'𝗸','l':'𝗹','m':'𝗺','n':'𝗻','o':'ᴏ','p':'ᴘ','q':'𝗾','r':'𝗿','s':'𝘀','t':'𝘁','u':'𝘂','v':'𝘃','w':'𝘄','x':'𝘅','y':'𝘆','z':'ᴢ'}
+        chars: {'A':'𝗔','B':'𝗕','C':'𝗖','D':'𝗗','E':'𝗘','F':'𝗙','G':'𝗚','H':'𝗛','I':'𝗜','J':'𝗝','K':'𝗞','L':'𝗟','M':'𝗠','N':'𝗡','O':'𝗢','P':'𝗣','Q':'𝗤','R':'𝗥','S':'𝗦','T':'𝗧','U':'𝗨','V':'𝗩','W':'𝗪','X':'𝗫','Y':'𝗬','Z':'𝗭','a':'𝗮','b':'𝗯','c':'𝗰','d':'𝗱','e':'𝗲','f':'𝗳','g':'𝗴','h':'𝗵','i':'𝗶','j':'j','k':'𝗸','l':'𝗹','m':'𝗺','n':'𝗻','o':'ᴏ','p':'ᴘ','q':'𝗾','r':'𝗿','s':'𝘀','t':'𝘁','u':'𝘂','v':'ᴠ','w':'𝘄','x':'𝘅','y':'𝘆','z':'ᴢ'}
     },
     'spaced': {
         nums: {'0':'𝟎','1':'𝟏','2':'𝟐','3':'𝟑','4':'𝟒','5':'𝟓','6':'𝟔','7':'𝟕','8':'𝟖','9':'𝟗'},
@@ -1218,54 +1218,69 @@ function updateMobilePreview() {
     if(mLangMode === 'ita-eng') langStr = "🇮🇹 ITA 🇺🇸 ENG";
     if(mLangMode === 'eng') langStr = "🇺🇸 ENG";
 
+    // Mock Data (Matching Photo Style)
     const p = {
-        title: "Dune Parte Due",
-        cleanName: "Dune Parte Due (2024)",
+        cleanName: "Dune Part Two",
+        epTag: "",
         quality: "4K",
-        sizeString: "67.81 GB",
-        source: "ilCorSaRoNeRo",
-        displaySource: "ilCorSaRoNeRo",
+        sizeString: "64.20 GB",
+        displaySource: "1337x",
         serviceTag: mCurrentService.toUpperCase(),
-        serviceIcon: mCurrentService === 'rd' ? "☄️" : (mCurrentService === 'tb' ? "📦" : "🦅"),
-        lang: langStr,
-        audioInfo: "🔊 ⚡ Stereo",
-        info: "💎 𝗥𝗘𝗠𝗨𝗫 • 🔥 𝗛𝗗𝗥 • 👁️ 𝗗𝗩 • ⚙️ 𝗛𝗘𝗩𝗖", 
-        cleanInfo: "Remux • HDR • DV",
-        seedersStr: "152"
+        lang: langStr, 
+        audioInfo: "Stereo",
+        // Specific tags for the trident line in photo: 4K • RIP • x265 • DV+HDR
+        techLine: "4K • RIP • x265 • DV+HDR"
     };
+
+    // Service Icon Logic
+    if (p.serviceTag === "RD") { p.serviceIconTitle = "🐋"; }
+    else if (p.serviceTag === "TB") { p.serviceIconTitle = "⚓"; }
+    else if (p.serviceTag === "AD") { p.serviceIconTitle = "🐚"; }
+    else { p.serviceIconTitle = "⚡"; }
 
     let name = "", desc = "";
 
     if (mSkin === 'leviathan') {
-        const qualityBold = toStylized(p.quality, 'bold');
-        const qIconOverride = mCurrentService === 'rd' ? "☄️" : (mCurrentService === 'tb' ? "📦" : "🦅");
-        name = `🦑 𝗟𝗘𝗩𝗜𝗔𝗧𝗛𝗔𝗡\n${qIconOverride} ┃ ${qualityBold}`;
-        desc = `📁 ${p.cleanName}\n🗣️ ${p.lang} • ${p.audioInfo}\n${p.info}\n🧲 ${p.sizeString} • 👥 ${p.seedersStr}\n${p.serviceIcon} [${p.serviceTag}] ${p.displaySource}`;
-    } else if (mSkin === 'lev2') {
+        const titleIcon = "▶️";
+        const techIcon = "🔱";
+        const brandName = toStylized("LEVIATHAN", "spaced");
+
+        name = `[${p.serviceTag}] 🦑 ${brandName}`;
+
+        const lines = [];
+        // Line 1: Play + Title
+        lines.push(`${titleIcon} ${toStylized(p.cleanName, "bold")}`);
+        // Line 2: Trident + Tech (Mocked exactly as photo)
+        lines.push(`${techIcon} ${toStylized("4K", "small")} • ${toStylized("RIP", "small")} • ${toStylized("x265", "small")} • ${toStylized("DV+HDR", "small")}`);
+        // Line 3: Audio/Lang
+        lines.push(`🗣️ ${p.lang}  |  🔊 ${p.audioInfo}`);
+        // Line 4: Size + Source
+        lines.push(`🧲 ${p.sizeString}  |  ${p.serviceIconTitle} ${p.displaySource}`);
+
+        desc = lines.join("\n");
+    } 
+    else if (mSkin === 'lev2') {
         const levText = toStylized("LEVIATHAN", "small");
         const qText = toStylized("4K", "bold");
         const sizeSmall = toStylized("64.20", "bold") + " " + toStylized("GB", "small");
-        name = `🦑 ${levText} ${p.serviceIcon} │ ${qText}`;
+        name = `🦑 ${levText} ${p.serviceIconTitle} │ ${qText}`;
         const titleBold = toStylized(p.cleanName, "bold");
         const audioSmall = toStylized("TrueHD 7.1", "small");
         const langSmall = toStylized("ITA ENG", "small");
         const srcSmall = toStylized(p.displaySource, "small");
-        let servSmall = "ᴘ𝟚ᴘ";
-        if(p.serviceTag === "RD") servSmall = "ʀᴇᴀʟ-ᴅᴇʙʀɪᴅ";
-        if(p.serviceTag === "AD") servSmall = "ᴀʟʟ-ᴅᴇʙʀɪᴅ";
-        desc = `🎬 ${titleBold}\n📦 ${sizeSmall} │ ʀᴇᴍᴜx │ ᴅᴏʟʙʏ ᴠɪsɪᴏɴ\n🔊 ${audioSmall} • 🇮🇹 ${langSmall}\n🔗 ${servSmall} │ ${srcSmall}`;
+        desc = `🎬 ${titleBold}\n📦 ${sizeSmall} │ ʀᴇᴍᴜx │ ᴅᴏʟʙʏ ᴠɪsɪᴏɴ\n🔊 ${audioSmall} • 🇮🇹 ${langSmall}\n🔗 ${p.serviceIconTitle} [${p.serviceTag}] │ ${srcSmall}`;
     } else if (mSkin === 'fra') {
         name = `⚡️ Leviathan 4K`;
-        desc = `📄 ❯ ${p.cleanName}\n🌎 ❯ ${p.lang} • TrueHD\n✨ ❯ ${p.serviceTag} • ${p.source}\n🔥 ❯ 4K • Remux • HDR\n💾 ❯ ${p.sizeString} / 👥 ❯ 1337`;
+        desc = `📄 ❯ ${p.cleanName}\n🌎 ❯ ${p.lang} • TrueHD\n✨ ❯ ${p.serviceTag} • ${p.displaySource}\n🔥 ❯ 4K • Remux • HDR\n💾 ❯ ${p.sizeString} / 👥 ❯ 1337`;
     } else if (mSkin === 'comet') {
         name = `[${p.serviceTag} ⚡]\nLeviathan\n4K`;
-        desc = `📄 ${p.cleanName}\n📹 HEVC • ${p.cleanInfo} | TrueHD\n⭐ ${p.source}\n💾 ${p.sizeString} 👥 1337\n🌍 ${p.lang}`;
+        desc = `📄 ${p.cleanName}\n📹 HEVC • Remux | TrueHD\n⭐ ${p.displaySource}\n💾 ${p.sizeString} 👥 1337\n🌍 ${p.lang}`;
     } else if (mSkin === 'stremio_ita') {
         name = `⚡️ Leviathan 4K`;
-        desc = `📄 ❯ ${p.cleanName}\n🌎 ❯ ${p.lang}\n✨ ❯ ${p.serviceTag} • ${p.source}\n🔥 ❯ 4K • HEVC • ${p.cleanInfo}\n💾 ❯ ${p.sizeString} / 👥 ❯ 1337\n🔉 ❯ TrueHD • 7.1`;
+        desc = `📄 ❯ ${p.cleanName}\n🌎 ❯ ${p.lang}\n✨ ❯ ${p.serviceTag} • ${p.displaySource}\n🔥 ❯ 4K • HEVC • Remux\n💾 ❯ ${p.sizeString} / 👥 ❯ 1337\n🔉 ❯ TrueHD • 7.1`;
     } else if (mSkin === 'dav') {
         name = `🎥4K UHD HEVC`;
-        desc = `📺 ${p.cleanName}\n🎧 TrueHD 7.1 | 🎞️ HEVC\n🗣️ ${p.lang} | 📦 ${p.sizeString}\n⏱️ 1337 Seeds | 🏷️ ${p.source}\n${p.serviceIcon} Leviathan 📡 ${p.serviceTag}\n📂 ${p.title}`;
+        desc = `📺 ${p.cleanName}\n🎧 TrueHD 7.1 | 🎞️ HEVC\n🗣️ ${p.lang} | 📦 ${p.sizeString}\n⏱️ 1337 Seeds | 🏷️ ${p.displaySource}\n${p.serviceIconTitle} Leviathan 📡 ${p.serviceTag}\n📂 ${p.cleanName}`;
     } else if (mSkin === 'and') {
         name = `🎬 ${p.cleanName}`;
         desc = `4K ⚡\n─ ─ ─ ─ ─ ─ ─ ─ ─ ─\nLingue: ${p.lang}\nSpecifiche: 4K | 📺 Remux HDR | 🔊 TrueHD\n─ ─ ─ ─ ─ ─ ─ ─ ─ ─\n📂 ${p.sizeString} | ☁️ ${p.serviceTag} | 🛰️ Leviathan`;
@@ -1274,11 +1289,11 @@ function updateMobilePreview() {
         desc = `🎟️ ${p.cleanName}\n📜 Movie\n🎥 4K 🎞️ HEVC 🎧 TrueHD\n📦 ${p.sizeString} • 🔗 Leviathan\n🌐 ${p.lang}`;
     } else if (mSkin === 'pri') {
         name = `[${p.serviceTag}]⚡️☁️\n4K🔥UHD\n[Leviathan]`;
-        desc = `🎬 ${toStylized(p.cleanName, 'bold')}\n💎 ʀᴇᴍᴜx 🔆 HDR\n🎧 TrueHD | 🔊 7.1 | 🗣️ ${p.lang}\n📁 ${p.sizeString} | 🏷️ ${p.source}\n📄 ▶️ ${p.title} ◀️`;
+        desc = `🎬 ${toStylized(p.cleanName, 'bold')}\n💎 ʀᴇᴍᴜx 🔆 HDR\n🎧 TrueHD | 🔊 7.1 | 🗣️ ${p.lang}\n📁 ${p.sizeString} | 🏷️ ${p.displaySource}\n📄 ▶️ ${p.cleanName} ◀️`;
     } else if (mSkin === 'custom') {
         let tpl = document.getElementById('m-customTemplate').value || "Lev {quality} ||| {title} - {size}";
         tpl = tpl.replace("{title}", p.cleanName).replace("{quality}", p.quality)
-                 .replace("{size}", p.sizeString).replace("{source}", p.source)
+                 .replace("{size}", p.sizeString).replace("{source}", p.displaySource)
                  .replace("{service}", p.serviceTag).replace("{lang}", p.lang)
                  .replace("{audio}", p.audioInfo).replace(/\\n/g, "\n");
         if (tpl.includes("|||")) {
