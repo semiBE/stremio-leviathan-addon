@@ -1,5 +1,6 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const kitsuProvider = require("./kitsu_provider");
 
 // --- CONFIGURAZIONE ---
 const AW_DOMAIN = "https://www.animeworld.ac";
@@ -19,53 +20,18 @@ const MONTHS = {
     "Ottobre": "October", "Novembre": "November", "Dicembre": "December"
 };
 
-// SOSTITUZIONI TITOLI
-const SHOWNAME_REPLACE = {
-    "Attack on Titan": "L'attacco dei Giganti",
-    "Season": "",
-    "Shippuuden": "Shippuden",
-    "Solo Leveling 2": "Solo Leveling 2:",
-    "-": ""
-};
-
-// --- HELPER: GENERATORE GRAFICA (STILE GUARDAHD) ---
+// --- HELPER: GENERATORE GRAFICA ---
 function generateRichDescription(title, episode, langInfo) {
     const lines = [];
-    lines.push(`🎬 ${title} Ep. ${episode}`); // Riga 1: Titolo e Episodio
-    lines.push(`${langInfo} • 🔊 AAC`);        // Riga 2: Bandiera, Lingua e Audio
-    lines.push(`🎞️ FHD/HD • Streaming Web`);   // Riga 3: Qualità (AnimeWorld è solitamente buono)
-    lines.push(`☁️ Web Stream • ⚡ Instant`);   // Riga 4: Info Server
-    lines.push(`⛩️ AnimeWorld`);               // Riga 5: Branding
+    lines.push(`🎬 ${title} Ep. ${episode}`);
+    lines.push(`${langInfo} • 🔊 AAC`);
+    lines.push(`🎞️ FHD/HD • Streaming Web`);
+    lines.push(`☁️ Web Stream • ⚡ Instant`);
+    lines.push(`⛩️ AnimeWorld`);
     return lines.join("\n");
 }
 
-// --- 1. GET INFO KITSU ---
-async function getInfoKitsu(kitsuId) {
-    console.log(`🦊 [AW] Getting Kitsu Info for ID: ${kitsuId}`);
-    try {
-        const url = `https://kitsu.io/api/edge/anime/${kitsuId}`;
-        const { data } = await axios.get(url, { timeout: 5000 });
-        
-        if (data && data.data && data.data.attributes) {
-            const attr = data.data.attributes;
-            let showname;
-            try {
-                showname = attr.titles.en;
-                if (!showname) throw new Error("No EN title");
-            } catch (e) {
-                showname = attr.canonicalTitle;
-            }
-            const date = attr.startDate;
-            console.log(`✅ [AW] Kitsu Info Found: Title="${showname}" | Date="${date}"`);
-            return { title: showname, date: date };
-        }
-    } catch (e) {
-        console.warn(`❌ [AW] Kitsu Fetch Error: ${e.message}`);
-    }
-    return null;
-}
-
-// --- 2. GESTIONE COOKIE SECURITY ---
+// --- GESTIONE COOKIE SECURITY ---
 async function requestWithSecurity(url, headers = {}, cookies = "") {
     try {
         const config = { headers: { ...HEADERS, ...headers }, validateStatus: () => true };
@@ -73,6 +39,7 @@ async function requestWithSecurity(url, headers = {}, cookies = "") {
 
         let response = await axios.get(url, config);
 
+        // Controllo Anti-DDoS / Security
         const securityMatch = response.data.match(/SecurityAW-([A-Za-z0-9]{2})=([^;"]+)/);
         
         if (securityMatch || response.status === 202) {
@@ -104,14 +71,10 @@ async function requestWithSecurity(url, headers = {}, cookies = "") {
     }
 }
 
-// --- 3. GET MP4 LINK ---
+// --- GET MP4 LINK ---
 async function getMp4(animeUrl, isMovie, episode, cookies, index) {
-    // Determina Lingua e Info per la grafica
-    let langLabel = "🇯🇵 JPN • Sub ITA"; // Default Original
-    
-    if (index === 1) {
-        langLabel = "🇮🇹 ITA • Dub"; // Index 1 è ITA
-    }
+    let langLabel = "🇯🇵 JPN • Sub ITA"; 
+    if (index === 1) langLabel = "🇮🇹 ITA • Dub"; 
 
     console.log(`📥 [AW] Fetching MP4 for Index ${index} (${langLabel})...`);
 
@@ -123,6 +86,7 @@ async function getMp4(animeUrl, isMovie, episode, cookies, index) {
         const $ = cheerio.load(response.data);
         let targetUrl = animeUrl;
 
+        // Se è una serie, dobbiamo navigare all'episodio specifico
         if (!isMovie) {
             const epLinkEl = $(`a[data-episode-num="${episode}"]`);
             if (!epLinkEl.length) {
@@ -139,8 +103,8 @@ async function getMp4(animeUrl, isMovie, episode, cookies, index) {
         
         if (altLink) {
             try {
+                // Verifica rapida se il link è vivo (HEAD request)
                 await axios.head(altLink);
-                console.log(`✅ [AW] Valid Link Found: ${altLink}`);
                 return { url: altLink, langLabel: langLabel };
             } catch (e) {
                 console.log(`❌ [AW] Link 404/Dead: ${altLink}`);
@@ -153,45 +117,51 @@ async function getMp4(animeUrl, isMovie, episode, cookies, index) {
     return null;
 }
 
-// --- 4. MAIN SEARCH FUNCTION ---
-async function searchAnimeWorld(meta, config) {
+// --- MAIN SEARCH FUNCTION ---
+// NOTA: Ora accetta 'id' come primo parametro per verificare se è kitsu
+async function searchAnimeWorld(requestId, meta, config) {
     if (!config.filters.enableAnimeWorld) return [];
 
-    console.log(`🚀 [AW] Start Search for: ${meta.title}`);
-
-    let showname = meta.title;
-    let targetDate = meta.year ? `${meta.year}-01-01` : null;
-    let isKitsuMode = false;
-
-    let kitsuId = meta.kitsu_id || (config.originalId && config.originalId.startsWith('kitsu:') ? config.originalId.split(':')[1] : null);
-
-    if (kitsuId) {
-        const kData = await getInfoKitsu(kitsuId);
-        if (kData) {
-            showname = kData.title;
-            targetDate = kData.date;
-            isKitsuMode = true;
-        }
+    // 1. VERIFICA TIPO ID (SOLO KITSU)
+    // Se l'ID non è presente o non inizia con "kitsu:", interrompiamo subito.
+    if (!requestId || !requestId.startsWith("kitsu:")) {
+        // console.log("⏭️ [AW] Skipped: ID is not Kitsu.");
+        return [];
     }
 
-    for (const [key, val] of Object.entries(SHOWNAME_REPLACE)) {
-        if (showname.includes(key)) {
-            showname = showname.replace(key, val);
-            if (showname.includes("Naruto:")) showname = showname.replace(":", "");
-            if (showname.includes("’")) showname = showname.split("’")[0];
-            if (showname.includes(":")) showname = showname.split(":")[0];
-        }
+    // 2. PARSING ID KITSU
+    const parsedKitsu = kitsuProvider.parseKitsuId(requestId);
+    if (!parsedKitsu) {
+        console.warn(`⚠️ [AW] Invalid Kitsu ID format: ${requestId}`);
+        return [];
     }
-    showname = showname.replace(/Season|Stagione/yi, "").replace(/\(\d{4}\)/, "").trim();
+
+    console.log(`🦊 [AW] Processing Kitsu ID: ${parsedKitsu.kitsuId} | Ep: ${parsedKitsu.episodeNumber}`);
+
+    // 3. RECUPERO METADATI DA KITSU
+    const kitsuData = await kitsuProvider.getAnimeInfo(parsedKitsu.kitsuId);
+    if (!kitsuData) {
+        console.log(`❌ [AW] No data found on Kitsu for ID ${parsedKitsu.kitsuId}`);
+        return [];
+    }
+
+    // 4. NORMALIZZAZIONE TITOLO
+    let showname = kitsuProvider.normalizeTitle(kitsuData.title);
     
-    const searchYear = targetDate ? targetDate.substring(0, 4) : (meta.year || "");
+    // Pulizia extra per la ricerca (rimozione anno tra parentesi se presente nel titolo raw)
+    showname = showname.replace(/\(\d{4}\)/, "").trim();
+
+    const targetDate = kitsuData.date; // Es: "2024-01-07"
+    const searchYear = targetDate ? targetDate.substring(0, 4) : "";
+    
+    console.log(`🔎 [AW] Search: "${showname}" | Year: ${searchYear}`);
+
     const searchUrl = `${AW_DOMAIN}/filter?year=${searchYear}&sort=2&keyword=${encodeURIComponent(showname)}`;
-    
-    console.log(`🔎 [AW] Query: "${showname}" | Year: ${searchYear} | Target Date: ${targetDate}`);
 
     const streams = [];
     let currentCookies = "";
 
+    // 5. ESECUZIONE RICERCA SUL SITO
     const response = await requestWithSecurity(searchUrl, {}, currentCookies);
     if (!response) return [];
     if (response._securityCookie) currentCookies = response._securityCookie;
@@ -200,11 +170,11 @@ async function searchAnimeWorld(meta, config) {
     const animeList = $('a.poster');
 
     if (animeList.length === 0) {
-        console.log(`❌ [AW] Nessun risultato nella ricerca.`);
+        console.log(`❌ [AW] Nessun risultato trovato.`);
         return [];
     }
 
-    let validMatchIndex = 0; // 0 = Originale, 1 = Italiano
+    let validMatchIndex = 0; // 0 = Primo match (spesso SUB), 1 = Secondo match (spesso DUB)
 
     for (let i = 0; i < animeList.length; i++) {
         const el = animeList[i];
@@ -216,6 +186,7 @@ async function searchAnimeWorld(meta, config) {
         if (!infoResp) continue;
         if (infoResp._securityCookie) currentCookies = infoResp._securityCookie;
 
+        // Estrazione Data Uscita dal tooltip o pagina info per conferma match
         const dateMatch = infoResp.data.match(/<label>Data di uscita:<\/label>\s*<span>\s*(.*?)\s*<\/span>/s);
         if (!dateMatch) continue;
 
@@ -228,24 +199,27 @@ async function searchAnimeWorld(meta, config) {
             const releaseDate = new Date(releaseDateStr);
             const target = new Date(targetDate);
             
+            // Calcolo differenza giorni
             const diffTime = Math.abs(releaseDate - target);
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
             
-            const isMatch = isKitsuMode ? (diffDays <= 1 || releaseDateStr === targetDate) : true;
+            // Tolleranza di 2 giorni sulla data di uscita
+            const isMatch = diffDays <= 2 || releaseDateStr === targetDate;
 
             if (isMatch) {
-                console.log(`🎯 [AW] Match Trovato! ID: ${validMatchIndex} | Date: ${releaseDateStr}`);
+                console.log(`🎯 [AW] Match Confermato! ID AW: ${validMatchIndex} | Date: ${releaseDateStr}`);
                 
                 const animeLink = $(el).attr('href');
                 const animeUrl = `${AW_DOMAIN}${animeLink}`;
-                const episodeNum = meta.episode || 1;
-                const isMovie = !meta.isSeries;
+                
+                // Usiamo l'episodio parsato da KitsuProvider, fallback a 1
+                const episodeNum = parsedKitsu.episodeNumber || 1;
+                const isMovie = parsedKitsu.isMovie;
 
                 const result = await getMp4(animeUrl, isMovie, episodeNum, currentCookies, validMatchIndex);
                 
                 if (result) {
-                    // --- COSTRUZIONE GRAFICA  ---
-                    const richDescription = generateRichDescription(meta.title, episodeNum, result.langLabel);
+                    const richDescription = generateRichDescription(showname, episodeNum, result.langLabel);
 
                     streams.push({
                         name: `⛩️ AnimeWorld\n⚡ Direct`, 
@@ -257,12 +231,10 @@ async function searchAnimeWorld(meta, config) {
                         }
                     });
                 }
-                
                 validMatchIndex++; 
             } else {
                 console.log(`⚠️ [AW] Date Mismatch: Found ${releaseDateStr} vs Target ${targetDate}`);
             }
-
         } catch (err) {
             console.error(`⚠️ [AW] Date Parse Error: ${err.message}`);
         }

@@ -264,14 +264,14 @@ body::before {
 .m-sys-grid { display: grid; grid-template-columns: 1fr; gap: 0; background: rgba(0,0,0,0.2); border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; margin-bottom: 20px; }
 .m-sys-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); }
 .m-sys-row:last-child { border-bottom: none; }
-.m-sys-info h4 { margin: 0; font-size: 0.85rem; color: #fff; font-family: 'Rajdhani'; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.m-sys-info h4 { margin: 0; font-size: 0.85rem; color: #fff; font-family: 'Rajdhani'; font-weight: 700; display: flex; align-items: center; gap: 5px; }
 .m-sys-info p { margin: 2px 0 0; font-size: 0.65rem; color: rgba(255,255,255,0.5); }
 
 /* --- NEW MFP BADGE & NO PROXY FIX (TINY VERSION) --- */
 .m-proxy-badge {
     display: inline-flex; align-items: center; gap: 3px;
     background: rgba(0, 242, 255, 0.08); border: 1px solid rgba(0, 242, 255, 0.4);
-    border-radius: 3px; padding: 1px 4px; margin-left: 5px;
+    border-radius: 3px; padding: 1px 4px; margin-left: 2px;
     font-size: 0.55rem; color: var(--m-primary); font-family: 'Rajdhani', sans-serif; font-weight: 800;
     letter-spacing: 0.5px; box-shadow: 0 0 5px rgba(0, 242, 255, 0.1);
     white-space: nowrap; flex-shrink: 0;
@@ -280,7 +280,7 @@ body::before {
 .m-noproxy-badge {
     display: inline-flex; align-items: center; gap: 3px;
     background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 3px; padding: 1px 3px; margin-left: 4px;
+    border-radius: 3px; padding: 1px 3px; margin-left: 2px;
     font-size: 0.5rem; color: #aaa; font-family: 'Rajdhani', sans-serif; font-weight: 800;
     letter-spacing: 0px; /* Compattato */
     white-space: nowrap; flex-shrink: 0;
@@ -698,7 +698,7 @@ const mobileHTML = `
                                     <i class="fas fa-play-circle" style="color:var(--m-secondary)"></i> StreamingCommunity
                                     <span class="m-noproxy-badge">NO PROXY</span>
                                 </h4>
-                                <p>Scraper Veloce & Affidabile</p>
+                                <p>Film, Serie TV & Anime (Catalogo Vasto)</p>
                             </div>
                             <label class="m-switch">
                                 <input type="checkbox" id="m-enableVix" onchange="updateStatus('m-enableVix','st-vix'); toggleModuleStyle('m-enableVix', 'mod-vix');">
@@ -719,7 +719,7 @@ const mobileHTML = `
                                     <i class="fas fa-film" style="color:var(--m-primary)"></i> GuardaHD 
                                     <span class="m-proxy-badge"><i class="fas fa-shield-alt"></i> MFP</span>
                                 </h4>
-                                <p>Film Streaming ITA</p>
+                                <p>Film & Serie TV ITA</p>
                             </div>
                             <label class="m-switch">
                                 <input type="checkbox" id="m-enableGhd" onchange="updateStatus('m-enableGhd','st-ghd'); toggleModuleStyle('m-enableGhd', 'mod-ghd');">
