@@ -24,9 +24,9 @@
 
 <p>
   <img src="https://img.shields.io/badge/Real_Debrid-NATIVE_SUPPORT-A2B9F0?style=for-the-badge&logo=realdebrid&logoColor=black" />
-  <img src="https://img.shields.io/badge/AllDebrid-MODULE_ACTIVE-F5A623?style=for-the-badge&logo=alldebrid&logoColor=white" />
   <img src="https://img.shields.io/badge/TorBox-COMPATIBLE-7A4EE3?style=for-the-badge&logo=torbox&logoColor=white" />
   <img src="https://img.shields.io/badge/AIOStreams-COMPATIBLE-1ABC9C?style=for-the-badge&logo=stream&logoColor=white" />
+  <img src="https://img.shields.io/badge/P2P_Network-DIRECT_SWARM-ff0055?style=for-the-badge&logo=qbittorrent&logoColor=white" />
 </p>
 
 <p>
@@ -92,7 +92,7 @@
 
 Il core, sviluppato in **Node.js**, orchestra scansioni parallele sui principali index mondiali e italiani. Utilizza una logica proprietaria per distinguere le sorgenti in base alla latenza di risposta, applicando timeout dinamici e tecniche di evasione anti-bot.
 
-### 🔥 Release 2.5 Highlights
+### 🔥 Release 2.7 Highlights
 
 * 🚀 **Core Refactoring:** Motore riscritto per massimizzare stabilità e concorrenza.
 * 🕷️ **WebStreams Fallback:** Attivazione automatica intelligente delle sorgenti Web se il P2P non ha risultati (Disattivabile).
@@ -104,8 +104,8 @@ Il core, sviluppato in **Node.js**, orchestra scansioni parallele sui principali
 * 👻 **Ghost Proxying:** Supporto nativo a **MediaFlow** per l'uso sicuro di Account Debrid condivisi.
 * 🔗 **AIOStreams:** Supporto nativo per flussi AIOStreams integrato nel motore.
 * 🛡️ **Cloudscraper Integration:** Ottimizzazione avanzata per il superamento dei controlli Cloudflare.
-
-
+* 📡 **Direct Swarm Protocol:** Supporto nativo per la riproduzione P2P diretta (senza Debrid) con download sequenziale ottimizzato.
+* ⛩️ **AnimeWorld Module:** Integrazione nativa per l'animazione giapponese con estrazione diretta dei flussi (SUB/DUB).
 
 ---
 
@@ -158,31 +158,44 @@ Sorgente web specializzata in Serie TV ITA.
 * **Zero-Seed Playback:** Avvio immediato, nessuna dipendenza da torrent o debrid.
 * **Fast Web Lane:** Priorità alta come web fallback per serie TV.
 
-### 8. 👻 Debrid Ghost Shell (MediaFlow Proxy)
+### 8. ⛩️ AnimeWorld Integration Layer
+Modulo verticale dedicato all'animazione giapponese (Anime).
+* **Direct Stream Extraction:** Estrazione flussi diretti dai server proprietari di AnimeWorld.
+* **Simulcast Engine:** Accesso prioritario agli episodi in corso di trasmissione (Simulcast) e ai cataloghi completi.
+* **Dual-Audio Recognition:** Identificazione intelligente release DUB (Doppiato) vs SUB (Sottotitolato).
+* **Zero-Seed Playback:** Avvio immediato, nessuna dipendenza da torrent o debrid.
+* **Fast Web Lane:** Priorità alta come web fallback per contenuti anime.
+
+### 9. 👻 Debrid Ghost Shell (MediaFlow Proxy)
 Progettato per l'elusione dei blocchi IP e la gestione di account Multi-Utente.
 * **IP Masking:** Tutto il traffico verso Real-Debrid viene tunnelizzato tramite **MediaFlow Proxy**.
 * **Shared Account Support:** Permette l'utilizzo dello stesso account Debrid su più IP contemporaneamente senza rischiare il ban, poiché il provider vede solo l'IP del Proxy.
 * **Anti-Throttling:** Bypassa i blocchi imposti dagli ISP sui domini dei servizi Debrid.
 
-### 9. 🕷️ WebStreams Auto-Failover
+### 10. 🕷️ WebStreams Auto-Failover
 Il sistema non accetta vicoli ciechi.
 * **Smart Switch:** Se la scansione Torrent restituisce 0 risultati validi, Leviathan innesca automaticamente i moduli Web (StreamingCommunity/GuardaHD).
 * **Configurable Logic:** Funzione attivata di default, ma disabilitabile dalla dashboard per gli utenti che desiderano un'esperienza rigorosamente P2P.
 
-### 10. 🎨 Polymorphic Formatter Engine
+### 11. 🎨 Polymorphic Formatter Engine
 Il controllo totale sulla presentazione visiva dei risultati.
 * **Preset Selection:** Seleziona tra diversi stili di visualizzazione pre-codificati per adattare l'output ai tuoi gusti.
 * **Custom Syntax:** Possibilità di definire un formatter personalizzato per strutturare i metadati (Risoluzione, Codec, Audio) esattamente come vuoi tu.
 
-### 11. 🗣️ Linguistic Scope Control
+### 12. 🗣️ Linguistic Scope Control
 Definisci i confini della tua ricerca.
 * **🇮🇹 ITA Strict:** Filtro chirurgico solo per contenuti in lingua italiana.
 * **🌍 Global (ENG):** Accesso diretto ai tracker internazionali senza filtri linguistici.
 * **🧬 Hybrid (ITA+ENG):** La fusione perfetta. Priorità ai contenuti italiani, con fallback immediato sulle release internazionali ad alta qualità.
 
-### 12. 🎬 Visual Pre-Fetch (Trailer Integration)
+### 13. 🎬 Visual Pre-Fetch (Trailer Integration)
 * **Instant Preview:** Integrazione diretta con le API di YouTube.
 * **Context Aware:** Recupera automaticamente il trailer corretto basandosi sui metadati IMDB/TMDB del contenuto selezionato.
+
+### 14. 📡 Direct Swarm Access (Pure P2P)
+Leviathan non impone l'uso di intermediari. Il motore supporta la connessione diretta alla rete BitTorrent.
+* **Sequential Priority:** Forza il download sequenziale dei pezzi del file per garantire uno streaming fluido senza attendere il completamento.
+* **Peer Exchange:** Aggancio aggressivo ai peer tramite DHT e PEX per massimizzare la velocità anche su torrent con pochi seed.
 
 <br>
 
@@ -216,13 +229,33 @@ Definisci i confini della tua ricerca.
 
 ## 🌐 LEVIATHAN NETWORK NODES
 
+<div align="center">
+
 <br>
 
+<div style="background: rgba(0, 234, 255, 0.05); border: 1px solid rgba(0, 234, 255, 0.2); border-radius: 10px; padding: 10px; margin-bottom: 20px; width: 95%;">
+  <h3 style="margin: 0; padding: 10px; color: #fff; text-transform: uppercase; letter-spacing: 3px; font-size: 1.2rem; border-bottom: 1px solid rgba(0, 234, 255, 0.2);">
+    🌊 Direct Stream Protocols <span style="font-size: 0.8rem; color: #00eaff; vertical-align: middle;">(NO P2P REQUIRED)</span>
+  </h3>
+  <br>
+  
 | **TARGET ENGINE** | **REGION** | **LATENCY** | **MODE** | **STATUS** |
 | :--- | :---: | :---: | :---: | :---: |
 | **StreamingCommunity** | 🇮🇹 ITA | ![](https://img.shields.io/badge/⏱️_INSTANT-ULTRA-FF0000?style=flat-square&labelColor=black) | ![](https://img.shields.io/badge/🌪️_HLS-Stream-red?style=flat-square&labelColor=black) | 🟢 |
 | **GuardaHD** | 🇮🇹 ITA | ![](https://img.shields.io/badge/⏱️_INSTANT-PREMIUM-00ff00?style=flat-square&labelColor=black) | ![](https://img.shields.io/badge/🦁_HLS-Stream-red?style=flat-square&labelColor=black) | 🟢 |
 | **GuardaSerie** | 🇮🇹 ITA | ![](https://img.shields.io/badge/⏱️_INSTANT-HQ-00ff00?style=flat-square&labelColor=black) | ![](https://img.shields.io/badge/🍿_HLS-Stream-red?style=flat-square&labelColor=black) | 🟢 |
+| **AnimeWorld** | 🇮🇹 ITA | ![](https://img.shields.io/badge/⏱️_INSTANT-ANIME-ff9900?style=flat-square&labelColor=black) | ![](https://img.shields.io/badge/⛩️_HLS-Stream-red?style=flat-square&labelColor=black) | 🟢 |
+
+</div>
+
+<div style="background: rgba(138, 43, 226, 0.05); border: 1px solid rgba(138, 43, 226, 0.2); border-radius: 10px; padding: 10px; width: 95%;">
+  <h3 style="margin: 0; padding: 10px; color: #fff; text-transform: uppercase; letter-spacing: 3px; font-size: 1.2rem; border-bottom: 1px solid rgba(138, 43, 226, 0.2);">
+    🕸️ Magnet Swarm Indexers <span style="font-size: 0.8rem; color: #8A2BE2; vertical-align: middle;">(DEBRID & P2P READY)</span>
+  </h3>
+  <br>
+
+| **TARGET ENGINE** | **REGION** | **LATENCY** | **MODE** | **STATUS** |
+| :--- | :---: | :---: | :---: | :---: |
 | **Il Corsaro Nero** | 🇮🇹 ITA | ![](https://img.shields.io/badge/⏱️_3000ms-HQ-00eaff?style=flat-square&labelColor=black) | ![](https://img.shields.io/badge/⚡_Fast-Lane-00eaff?style=flat-square&labelColor=black) | 🟢 |
 | **Knaben** | 🌍 GLB | ![](https://img.shields.io/badge/⏱️_3000ms-HQ-00eaff?style=flat-square&labelColor=black) | ![](https://img.shields.io/badge/🔌_API-JSON-blueviolet?style=flat-square&labelColor=black) | 🟢 |
 | **The Pirate Bay** | 🌍 GLB | ![](https://img.shields.io/badge/⏱️_3000ms-HQ-00eaff?style=flat-square&labelColor=black) | ![](https://img.shields.io/badge/🔌_API-JSON-blueviolet?style=flat-square&labelColor=black) | 🟢 |
@@ -236,7 +269,10 @@ Definisci i confini della tua ricerca.
 | **RARBG** | 🌍 GLB | ![](https://img.shields.io/badge/⏱️_5000ms-DEEP-orange?style=flat-square&labelColor=black) | ![](https://img.shields.io/badge/🪞_Mirror-Cluster-ff69b4?style=flat-square&labelColor=black) | 🟢 |
 | **1337x** | 🌍 GLB | ![](https://img.shields.io/badge/⏱️_5000ms-DEEP-orange?style=flat-square&labelColor=black) | ![](https://img.shields.io/badge/🛡️_Cloudflare-Protected-f38020?style=flat-square&labelColor=black) | 🟢 |
 
+</div>
+
 <br>
+</div>
 
 
 
@@ -301,38 +337,40 @@ http://localhost:7000
 > **AVVISO CRITICO DI CONFORMITÀ LEGALE**
 > L'accesso, l'installazione e l'esecuzione del codice contenuto in questo repository costituiscono l'accettazione incondizionata delle seguenti clausole di esclusione della responsabilità.
 
-### 1. 🛡️ Natura Agnostica e Neutralità Tecnologica
-**Leviathan** è definito tecnicamente come un *Web Scraper User-Agent* e un *Framework di Indicizzazione Distribuita*.
+### 1. 🛡️ Natura Agnostica e Caching Tecnico
+**Leviathan** è definito tecnicamente come un *Web Scraper User-Agent* supportato da un layer di *Casting Volatile*.
 Il software opera secondo il principio della **Neutralità Tecnologica**:
-* **Funzione Esclusiva:** Il codice agisce come un interprete automatizzato di linguaggi di markup (HTML/XML/JSON). La sua funzione è limitata all'estrazione di stringhe di testo (metadati) da sorgenti pubbliche definite dall'utente.
-* **Assenza di Hosting:** Leviathan **NON** ospita, **NON** trasmette, **NON** memorizza e **NON** indicizza sui propri server alcun contenuto protetto da diritto d'autore (Video, Audio, Binari).
-* **Non-Interferenza:** Il software non possiede capacità intrinseche di decriptazione (DRM bypass), elusione di misure tecnologiche di protezione o accesso abusivo a sistemi informatici.
+
+* **Funzione Esclusiva:** Il codice agisce come un interprete automatizzato. La sua funzione è limitata all'estrazione e all'organizzazione temporanea di stringhe di testo (metadati) da sorgenti pubbliche.
+* **Assenza di Contenuti (No-Hosting):** Leviathan **NON** ospita, **NON** trasmette e **NON** possiede sui propri server alcun file multimediale protetto da diritto d'autore (Video, Audio, Binari).
+* **Natura dei Dati (Pointer Data):** L'eventuale persistenza di dati nell'infrastruttura server è limitata esclusivamente a "Puntatori Informatici" (Hash crittografici, Magnet URI, Metadati testuali). Tali dati non costituiscono l'opera creativa, ma semplici indirizzi logici già pubblicamente accessibili nella rete Internet.
+* **Finalità di Caching:** Qualsiasi memorizzazione di stringhe ha l'unico scopo tecnico di **ridurre la latenza di rete** (Performance Caching) e limitare il carico sui server sorgente. Non costituisce un indice curato o permanente.
 
 ### 2. 🧪 Finalità di Ricerca e Sviluppo (R&D)
 Il presente repository è pubblicato sotto licenza Open Source con finalità strettamente limitate a:
-* **Proof of Concept (PoC):** Dimostrazione teorica di algoritmi di scraping ed estrazione dati.
-* **Interoperabilità:** Studio delle interazioni tra protocolli di rete decentralizzati e client multimediali.
+* **Proof of Concept (PoC):** Dimostrazione teorica di algoritmi di scraping ed estrazione dati ad alta concorrenza.
+* **Network Optimization:** Studio delle tecniche di *Query Caching* per la riduzione del traffico ripetitivo su protocolli decentralizzati.
 * **Analisi Forense:** Test di sicurezza e analisi del traffico web in ambienti controllati (Sandboxed Environment).
 
 ### 3. 🚫 Limitazione di Responsabilità e Manleva (Indemnification)
-L'autore (**LUC4N3X**), i contributori e i maintainer del progetto non esercitano alcun controllo, monitoraggio o supervisione sull'utilizzo del software da parte dell'utente finale.
+L'autore (**LUC4N3X**), i contributori e i maintainer del progetto non esercitano alcun controllo, monitoraggio o supervisione sull'effettivo utilizzo dei puntatori informatici da parte dell'utente finale.
 
 **L'Utente Finale dichiara e garantisce che:**
-1.  **Utilizzo Autonomo:** L'utilizzo del software avviene a proprio esclusivo rischio e pericolo su infrastrutture locali o private.
+1.  **Utilizzo Autonomo:** L'utilizzo del software avviene a proprio esclusivo rischio.
 2.  **Conformità Giurisdizionale:** L'utente si assume l'onere di verificare che l'uso di Leviathan sia conforme alle leggi vigenti nel proprio territorio (inclusi, ma non limitati a: DMCA 17 U.S.C. § 512, Direttiva Copyright UE 2019/790).
 3.  **Esonero di Responsabilità:** L'utente accetta di manlevare, indennizzare e tenere indenne lo sviluppatore da qualsiasi rivendicazione, azione legale, sanzione o richiesta di risarcimento danni derivante dall'uso improprio, illecito o non autorizzato del codice.
 
 ### 4. 🏴‍☠️ Politica Zero-Tolerance sulla Pirateria
-Il software è progettato per l'indicizzazione di contenuti di pubblico dominio (Public Domain) o licenziati liberamente (Creative Commons).
-**Qualsiasi utilizzo volto alla violazione del copyright, alla pirateria digitale o alla distribuzione non autorizzata di proprietà intellettuale è severamente proibito.**
-Lo sviluppatore condanna fermamente la pirateria e non fornirà supporto tecnico a configurazioni volte a tale scopo.
+Il software è progettato per l'ottimizzazione dell'accesso a contenuti di pubblico dominio (Public Domain) o licenziati liberamente.
+**Qualsiasi utilizzo volto alla violazione del copyright o alla pirateria digitale è severamente proibito.**
+La presenza di hash o magnet link nel sistema di caching non implica l'approvazione o la verifica del contenuto sottostante da parte degli sviluppatori, che agiscono come meri fornitori di tecnologia passiva (Mere Conduit).
 
 ---
 
 > **CLAUSOLA RISOLUTIVA ESPRESSA**
 > Se non concordi con anche solo una delle clausole sopra esposte, o se la legislazione del tuo paese non consente tale limitazione di responsabilità, non sei autorizzato a utilizzare questo software.
 >
-> **⚠️ INTERROMPI L'ESECUZIONE, ELIMINA IL CONTAINER E DISTRUGGI IL CODICE SORGENTE IMMEDIATAMENTE.**
+> **⚠️ INTERROMPI L'ESECUZIONE E ABBANDONA LA SESSIONE IMMEDIATAMENTE.**
 >
 > ... altrimenti ...
 
