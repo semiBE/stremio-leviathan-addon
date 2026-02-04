@@ -198,18 +198,38 @@ Leviathan non impone l'uso di intermediari. Il motore supporta la connessione di
 <div align="center">
   <div style="background: rgba(245, 166, 35, 0.1); border: 1px solid rgba(245, 166, 35, 0.3); border-radius: 6px; padding: 15px; width: 90%; max-width: 800px;">
     <strong style="color: #F5A623; font-size: 0.9rem; display: block; margin-bottom: 5px;">
-      ⚠️ RESTRIZIONE ALLDEBRID
-    </strong>
-    <span style="color: #cbd5e1; font-size: 0.85rem;">
-      Per motivi di policy del servizio <b>AllDebrid</b>, il servizio è supportato
-      <b>esclusivamente tramite Self-Hosting casalingo</b>.
-      <br>
-      L’istanza pubblica non è compatibile con AllDebrid: per garantire
-      autenticazione corretta, stabilità delle sessioni e continuità del servizio
-      è necessario un <b>deploy locale (Docker su rete domestica)</b>.
-    </span>
-  </div>
+      <div align="center" style="margin-top: 25px;">
+  
+  <div style="
+      display: inline-flex;
+      gap: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid #334155;
+      padding: 10px 25px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      color: #94a3b8;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  ">
+    
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><b>SYSTEM</b></td>
+      <td align="center"><b>STATUS</b></td>
+      <td align="center"><b>LICENSE</b></td>
+    </tr>
+    <tr>
+      <td align="center"><code>v.2.7.0</code></td>
+      <td align="center"><code>ONLINE 🟢</code></td>
+      <td align="center"><code>MIT</code></td>
+    </tr>
+  </table>
 </div>
+
+
 
 ## 🌐 LEVIATHAN NETWORK NODES
 
