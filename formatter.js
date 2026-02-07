@@ -328,7 +328,13 @@ function extractStreamInfo(title, source) {
   const uniqueLangs = [...new Map(detectedLangs.map(item => [item.id, item])).values()];
   let lang = "🇬🇧 ENG"; 
 
-  if (uniqueLangs.length > 0) {
+  // ============================================================
+  // CHECK: Se viene da nyaasi, forzo bandiere ITA/ENG
+  // ============================================================
+  if (source && /nyaasi/i.test(source)) {
+      lang = "🇮🇹" + LANG_SEP + "🇬🇧";
+  } 
+  else if (uniqueLangs.length > 0) {
       uniqueLangs.sort((a, b) => (a.id === 'ita' ? -1 : (b.id === 'ita' ? 1 : 0)));
       if (uniqueLangs.length === 1) {
           lang = `${uniqueLangs[0].flag} ${uniqueLangs[0].label}`;
@@ -575,6 +581,33 @@ function styleStremioIta(p) {
     return { name, title: lines.join("\n") };
 }
 
+function styleTorrentio(p) {
+    const name = `[${p.serviceTag}]\n${p.quality}`;
+    const lines = [];
+    
+    // RIGA 1: Filename completo con icona foglio
+    lines.push(`📄 ${p.fileTitle}`);
+
+    // RIGA 2: Size (Box) e Seeders (Silhouette)
+    let sizeLine = `📦 ${p.sizeString}`;
+    if (p.seeders !== null && p.seeders !== undefined) {
+        sizeLine += ` 👤 ${p.seeders}`;
+    }
+    lines.push(sizeLine);
+
+    // RIGA 3: Sorgente con lente d'ingrandimento
+    lines.push(`🔍 ${p.displaySource}`);
+
+    // RIGA 4: Lingue con altoparlante
+    // Rimuoviamo le bandiere per avvicinarci allo stile testuale "GB / IT" dell'immagine
+    // (o usiamo p.lang standard se la regex toglie tutto)
+    let cleanLang = p.lang.replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "").trim(); 
+    if (!cleanLang.replace(/[^a-zA-Z]/g, "")) cleanLang = p.lang; // Fallback se rimuove tutto
+    lines.push(`🔊 ${cleanLang}`);
+
+    return { name, title: lines.join("\n") };
+}
+
 function styleCustom(p, template) {
     if (!template) return styleLeviathan(p); 
     const vars = {
@@ -656,6 +689,7 @@ function formatStreamSelector(fileTitle, source, size, seeders, serviceTag = "RD
         case "pri": result = stylePri(params); break;
         case "comet": result = styleComet(params); break;
         case "stremio_ita": result = styleStremioIta(params); break;
+        case "torrentio": result = styleTorrentio(params); break; // <--- NUOVO FORMATTER AGGIUNTO
         case "custom": result = styleCustom(params, config.customTemplate || ""); break;
         case "leviathan": 
         default: 
@@ -667,4 +701,3 @@ function formatStreamSelector(fileTitle, source, size, seeders, serviceTag = "RD
 }
 
 module.exports = { formatStreamSelector, cleanFilename, formatBytes, extractStreamInfo, getEpisodeTag };
-
