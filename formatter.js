@@ -4,7 +4,7 @@ const UNITS = ["B", "KB", "MB", "GB", "TB"];
 
 // =========================================================================
 // 1. CONFIGURAZIONE & COSTANTI
-// =========================================================================
+
 
 // CONFIGURAZIONE SEPARATORE LINGUE
 const LANG_SEP = " / "; 
@@ -46,21 +46,14 @@ const QUALITY_ICONS = {
     "scr": "👀"
 };
 
-// Lista nera ESTESA per evitare falsi positivi nel riconoscimento gruppi
+// Lista nera ESTESA per evitare falsi positivi 
 const GROUP_BLACKLIST = new Set([
-    // Estensioni
     "mkv", "mp4", "avi", "wmv", "iso", "flv", "mov", "ts", "m2ts",
-    // Codec Video
     "h264", "h265", "x264", "x265", "hevc", "av1", "divx", "xvid", "mpeg", "avc", "vp9",
-    // Risoluzioni
     "4k", "2160p", "1080p", "1080i", "720p", "576p", "480p", "sd", "hd", "uhd", "fhd",
-    // Audio
     "aac", "ac3", "mp3", "dts", "dtshd", "dts-ma", "truehd", "atmos", "ddp", "dd", "flac", "opus", "pcm", "stereo", "5.1", "7.1", "2.0", "dual", "audio",
-    // Sorgenti
     "bluray", "bd", "bdrip", "brrip", "web", "web-dl", "webrip", "hdtv", "tvrip", "dvd", "dvdrip", "scr", "screener", "cam", "tc", "telesync", "remux", "iso",
-    // Lingue
     "ita", "eng", "jpa", "chn", "kor", "rus", "spa", "fre", "ger", "multi", "multisub", "sub", "dub", "ita-eng", "eng-ita",
-    // Varie
     "repack", "proper", "internal", "readnfo", "extended", "cut", "director", "unrated", "complete", "season", "episode", "ep", "s01", "e01"
 ]);
 
@@ -85,16 +78,10 @@ function cleanFilename(filename) {
         clean = filename.replace(/\./g, " ").trim();
     }
 
-    // ============================================================
-    // FIX TITOLI DOPPI (Logica Aggressiva)
-    // ============================================================
-
-    // 1. Caso specifico: "Fratelli demolitori" (Priorità ITA)
     if (/Fratelli demolitori/i.test(clean) && /The Wrecking Crew/i.test(clean)) {
         return "Fratelli demolitori";
     }
 
-    // 2. Taglio netto al separatore " - "
     if (/\s+-\s+/.test(clean)) {
         const parts = clean.split(/\s+-\s+/);
         if (parts[0] && parts[0].trim().length > 2) {
@@ -102,7 +89,6 @@ function cleanFilename(filename) {
         }
     }
     
-    // 3. Controllo duplicati parola per parola
     const words = clean.split(/\s+/);
     if (words.length >= 2 && words.length % 2 === 0) {
         const mid = words.length / 2;
@@ -116,11 +102,9 @@ function cleanFilename(filename) {
     return clean;
 }
 
-// Parsing Episodi Intelligente
 function getEpisodeTag(filename) {
     const f = filename.toLowerCase();
 
-    // 1. Range Episodi
     const matchMulti = f.match(/s(\d+)[ex](\d+)\s*-\s*(?:[ex]?(\d+))/i) || f.match(/(\d+)x(\d+)\s*-\s*(\d+)/i);
     if (matchMulti) {
         const s = matchMulti[1].padStart(2, '0');
@@ -129,7 +113,6 @@ function getEpisodeTag(filename) {
         return `🍿 S${s} E${eStart}-${eEnd}`;
     }
 
-    // 2. Anime Batch
     const matchAnimeBatch = f.match(/(?:ep|eps|episode|^|\s)\[?(\d{1,3})\s*-\s*(\d{1,3})\]?(?:\s|$)/i);
     if (matchAnimeBatch) {
         if (parseInt(matchAnimeBatch[1]) < 1900) { 
@@ -137,14 +120,12 @@ function getEpisodeTag(filename) {
         }
     }
 
-    // 3. Episodio Singolo
     const matchEp = f.match(/s(\d+)[ex](\d+)/i);
     if (matchEp) return `🍿 S${matchEp[1].padStart(2, '0')}E${matchEp[2].padStart(2, '0')}`;
     
     const matchX = f.match(/(\d+)x(\d+)/i);
     if (matchX) return `🍿 S${matchX[1].padStart(2, '0')}E${matchX[2].padStart(2, '0')}`;
     
-    // 4. Stagione Intera
     if (/(?:complete|season|stagione|tutta)\s+(\d+)/i.test(f)) {
         const num = f.match(/(?:complete|season|stagione|tutta)\s+(\d+)/i)[1];
         return `📦 STAGIONE ${num.padStart(2, '0')}`;
@@ -153,7 +134,6 @@ function getEpisodeTag(filename) {
     return "";
 }
 
-// Generatore Testo Stilizzato (Font)
 function toStylized(text, type = 'std') {
     if (!text) return "";
     text = String(text);
@@ -188,7 +168,7 @@ function toStylized(text, type = 'std') {
 
 // =========================================================================
 // 3. ESTRAZIONE DATI PRINCIPALE
-// =========================================================================
+
 function extractStreamInfo(title, source) {
   const t = String(title);
   const info = titleParser.parse(t);
@@ -196,7 +176,6 @@ function extractStreamInfo(title, source) {
   const cleanForRegex = t.toUpperCase().replace(/[\.\-_\[\]\(\)\s]+/g, ' '); 
 
   let releaseGroup = info.group || "";
-
   const cleanT = t.replace(/\.(mkv|mp4|avi|iso|wmv|ts|flv|mov)$/i, "").trim();
 
   if (!releaseGroup) {
@@ -272,13 +251,11 @@ function extractStreamInfo(title, source) {
       cleanTags.push("Rip");
   }
 
-  // IMAX
   if (/\bIMAX\b/i.test(t)) {
       videoTags.push(`📏 ${toStylized("IMAX")}`);
       cleanTags.push("IMAX");
   }
 
-  // Codec
   if (info.codec) {
       const codec = info.codec.toUpperCase();
       let icon = "📼";
@@ -298,7 +275,6 @@ function extractStreamInfo(title, source) {
       cleanTags.push(stylCodec);
   }
 
-  // HDR / Dolby Vision
   const rawT = String(title).toUpperCase();
   const isDV = /\b(DV|DOLBY\s*VISION|DOVI)\b/.test(rawT) || (info.hdr && (/dolby|vision/i.test(info.hdr.toString())));
   const isHDR10Plus = /\b(HDR10\+|HDR10PLUS)\b/.test(rawT) || (info.hdr && (/hdr10\+|plus/i.test(info.hdr.toString())));
@@ -320,7 +296,6 @@ function extractStreamInfo(title, source) {
 
   // C. Lingue
   let detectedLangs = [];
-  
   LANG_FLAGS.forEach(l => {
       if (l.regex.test(t)) detectedLangs.push(l);
   });
@@ -328,9 +303,6 @@ function extractStreamInfo(title, source) {
   const uniqueLangs = [...new Map(detectedLangs.map(item => [item.id, item])).values()];
   let lang = "🇬🇧 ENG"; 
 
-  // ============================================================
-  // CHECK: Se viene da nyaasi, forzo bandiere ITA/ENG
-  // ============================================================
   if (source && /nyaasi/i.test(source)) {
       lang = "🇮🇹" + LANG_SEP + "🇬🇧";
   } 
@@ -406,30 +378,188 @@ function extractStreamInfo(title, source) {
 
 // =========================================================================
 // 4. STILI DI FORMATTAZIONE
-// =========================================================================
+
+
+// --- 1. NUOVO FORMATTER COMPLEX (Sostituito con Template Custom) ---
+function styleComplex(p) {
+    // --- Costruzione Header (Name) ---
+    // Logica: {service.cached::istrue["🔲 "||"🔳 "]}
+    const isCached = ["RD", "TB", "AD"].includes(p.serviceTag);
+    const statusIcon = isCached ? "🔲" : "🔳";
+
+    // Logica: {stream.resolution::=2160p["4K "||""]}{stream.resolution::=1440p["QHD "||""]}{stream.resolution::=1080p["HD "||""]}...
+    let res = "SD";
+    if (p.quality.includes("2160") || p.quality.includes("4K")) res = "4K";
+    else if (p.quality.includes("1440")) res = "QHD";
+    else if (p.quality.includes("1080")) res = "HD";
+    
+
+    // Logica: {stream.size::>0[" │ ⛁ {stream.size::bytes}"||""]}
+    let sizePart = p.sizeString ? ` │ ⛁ ${p.sizeString}` : "";
+
+    // Logica: {service.cached::istrue[""||" · ⇋ {stream.seeders}"]}
+    let seedPart = "";
+    if (!isCached && p.seeders !== null) {
+        seedPart = ` · ⇋ ${p.seeders}`;
+    }
+
+    const name = `${statusIcon} ${res}${sizePart}${seedPart}`;
+
+    // --- Costruzione Body (Title) ---
+    const lines = [];
+
+    // Riga 1: ☰ {stream.languageCodes} • {stream.audioTags} • {stream.audioChannels}
+    const line1Parts = [];
+    if (p.lang) line1Parts.push(p.lang);
+    if (p.audioTag) line1Parts.push(p.audioTag);
+    if (p.audioChannels) line1Parts.push(p.audioChannels);
+    lines.push(`☰ ${line1Parts.join(' · ')}`);
+
+    // Riga 2: ☲ {stream.quality} · {stream.encode} • {stream.visualTags}
+    const line2Parts = [];
+    line2Parts.push(p.quality);
+    if (p.codec) line2Parts.push(p.codec);
+    if (p.cleanTags.length > 0) line2Parts.push(p.cleanTags.join(' · '));
+    lines.push(`☲ ${line2Parts.join(' · ')}`);
+
+    // Riga 3: ☵ {addon.name} · {stream.releaseGroup} · {source} · {service.shortName}
+    // Riconoscimento Source dal filename come da template
+    const fn = p.fileTitle.toUpperCase();
+    let sourceName = "";
+    if (fn.includes("AMZN")) sourceName = "Amazon";
+    else if (fn.includes("NF")) sourceName = "Netflix";
+    else if (fn.includes("DSNP")) sourceName = "Disney+";
+    else if (fn.includes("HMAX")) sourceName = "HBO Max";
+    else if (fn.includes("APTV")) sourceName = "Apple TV+";
+    else if (fn.includes("HULU")) sourceName = "Hulu";
+    else if (fn.includes("PRME")) sourceName = "Prime";
+    else if (fn.includes("PMTP")) sourceName = "Paramount+";
+    else if (fn.includes("PCKK")) sourceName = "Peacock";
+    else if (fn.includes("CRTC")) sourceName = "Crunchyroll";
+    else if (fn.includes("ANPX")) sourceName = "Anime Plex";
+    else if (fn.includes("STZ")) sourceName = "Starz";
+    else if (fn.includes("DSCV")) sourceName = "Discovery+";
+
+    const line3Parts = ["Leviathan"]; // {addon.name}
+    if (p.releaseGroup) line3Parts.push(p.releaseGroup);
+    if (sourceName) line3Parts.push(sourceName);
+    if (isCached) line3Parts.push(`[${p.serviceTag}]`);
+    
+    
+    lines.push(`☵ ${line3Parts.join(' · ')}`);
+
+    // Riga 4: ☶ {stream.title} · {stream.seasonEpisode}
+    const line4Parts = [p.cleanName];
+    if (p.epTag) line4Parts.push(p.epTag);
+    // {stream.year} e {stream.duration} non sono estratti affidabilmente qui, omettiamo per pulizia
+    lines.push(`☶ ${line4Parts.join(' · ')}`);
+
+    
+    
+    return { name, title: lines.join("\n") };
+}
+
+// --- 2. NUOVO FORMATTER ANDROID TV ---
+function styleAndroidTV(p) {
+    // Header: Res | HDR/DV | Quality | Size | Service
+    const qDisp = p.quality.replace('2160p','4K').replace('1440p','2K');
+    
+    // Filtro Visual Tags per header
+    let vTags = p.cleanTags.filter(t => /HDR|DV|10\+/i.test(t)).join(' | ')
+        .replace('HDR | DV', 'DV').replace('DV | HDR', 'DV').replace('HDR10+ | DV', 'DV');
+    
+    const headerParts = [qDisp, vTags, p.serviceTag].filter(Boolean);
+    const name = headerParts.join(" | ");
+
+    const lines = [];
+    // Riga 1: Codec
+    if (p.codec) lines.push(`🎞️ ${p.codec}`);
+    
+    // Riga 2: Audio
+    if (p.audioTag) lines.push(`🎧 ${p.audioTag} ${p.audioChannels}`);
+    
+    // Riga 3: Indexer/Source
+    lines.push(`⚙️ ${p.displaySource}`);
+    
+    // Riga 4: Lingue (solo bandiere)
+    lines.push(p.lang);
+    
+    // Riga 5: Filename
+    lines.push(p.fileTitle);
+
+    return { name, title: lines.join("\n") };
+}
+
+// --- 3. NUOVO FORMATTER "IN FOTO" (Stile Jurassic) ---
+function stylePicture(p) {
+    // Tentativo di replicare il layout Comet/MediaFusion della foto
+    // La parte sinistra (spunte verdi) la simuliamo nel name o nella prima riga
+    // Poiché Stremio non supporta colonne, usiamo emoji per fare un elenco compatto
+    
+    const isCached = ["RD", "TB", "AD"].includes(p.serviceTag);
+    const cacheIcon = isCached ? "✅" : "⏳";
+    const tierIcon = "✅"; // Simulato
+    
+    let feat = [];
+    if (p.quality === "4K") feat.push("UHD");
+    if (p.cleanTags.some(t => /HDR|DV/i.test(t))) feat.push("HDR");
+    if (p.audioTag.includes("Atmos")) feat.push("ATMOS");
+    
+    // Costruzione Name (Simula la colonna sinistra della foto)
+    const name = `${cacheIcon} ${feat.join(" ")} ${p.quality}`;
+
+    const lines = [];
+    // Riga 1: Titolo
+    lines.push(`🎬 ${p.cleanName} ${p.epTag}`);
+    
+    // Riga 2: Video Tech
+    let vidLine = `✨ ${p.quality}`;
+    const hdrTags = p.cleanTags.filter(t => /HDR|DV|10\+/i.test(t)).join(" | ");
+    if (hdrTags) vidLine += ` 🔆 ${hdrTags}`;
+    lines.push(vidLine);
+
+    // Riga 3: Audio Tech
+    let audLine = `🎧 ${p.audioTag}`;
+    if (p.audioChannels) audLine += ` 🔊 ${p.audioChannels}`;
+    lines.push(audLine);
+
+    // Riga 4: Source Type
+    let typeText = "Web-DL";
+    if (p.cleanTags.some(t => /Remux/i.test(t))) typeText = "Blu-ray Remux";
+    else if (p.cleanTags.some(t => /BluRay/i.test(t))) typeText = "Blu-ray";
+    lines.push(`💿 ${typeText}`);
+
+    // Riga 5: Size
+    lines.push(`📦 ${p.sizeString}`);
+
+    // Riga 6: Group/Tier (Simulato)
+    let groupLine = `🏷️ ${typeText} T1`; 
+    if (p.releaseGroup) groupLine += ` (${p.releaseGroup})`;
+    lines.push(groupLine);
+
+    // Riga 7: Service Provider
+    lines.push(`⚡ Comet ${p.serviceTag}`);
+
+    return { name, title: lines.join("\n") };
+}
+
+// --- STILI PREESISTENTI ---
 
 function styleLeviathan(p) {
     let cleanAudio = p.audioTag.replace(/[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "").trim();
     if (!cleanAudio) cleanAudio = p.audioTag; 
     
-    const titleIcon = "▶️"; 
-    const techIcon = "🔱"; // <--- ECCOLO! Il tridente torna qui per le specifiche tecniche
-
-    // LOGICA ICONE SERVIZI
-    // RD = Delfino, TB = Ancora, AD = Conchiglia, P2P = Squalo
-    let serviceIcon = "🦈"; // Default Squalo (P2P)
+    let serviceIcon = "🦈"; 
     if (p.serviceTag === "RD") serviceIcon = "🐬";
     else if (p.serviceTag === "TB") serviceIcon = "⚓";
     else if (p.serviceTag === "AD") serviceIcon = "🐚";
 
-    // Icona di stato per la PRIMA RIGA (mostra l'animale se cachato, clessidra se download)
     const isCached = ["RD", "AD", "TB"].includes(p.serviceTag);
     const statusIcon = isCached ? serviceIcon : "⏳";
 
     const brandName = toStylized("LEVIATHAN", "small"); 
     const serviceStyled = toStylized(p.serviceTag, "bold");
     
-    // PRIMA RIGA: [Delfino] [RD] 🦑 [LEVIATHAN]
     const name = `${statusIcon} ${serviceStyled} 🦑 ${brandName}`;
 
     let techSpecs = [p.quality, ...p.cleanTags].filter(Boolean);
@@ -437,11 +567,8 @@ function styleLeviathan(p) {
     let techLine = techSpecs.map(t => toStylized(t, 'small')).join(" • ");
 
     const lines = [];
-    // Riga Titolo
-    lines.push(`${titleIcon} ${toStylized(p.cleanName, "bold")} ${p.epTag}`);
-    
-    // RIGA TECNICA: Qui usiamo il TRIDENTE (techIcon) invece del Delfino (serviceIcon)
-    if (techLine) lines.push(`${techIcon} ${techLine}`);
+    lines.push(`▶️ ${toStylized(p.cleanName, "bold")} ${p.epTag}`);
+    if (techLine) lines.push(`🔱 ${techLine}`);
     
     let audioPart = [cleanAudio, p.audioChannels].filter(Boolean).join(" ");
     lines.push(`🗣️ ${p.lang}  |  🫧 ${audioPart}`);
@@ -450,7 +577,6 @@ function styleLeviathan(p) {
     if (p.seedersStr) fileInfo += `  |  ${p.seedersStr}`;
     lines.push(fileInfo);
 
-    // Riga Sorgente (qui teniamo il Delfino per indicare da dove viene)
     let sourceRow = `${p.serviceIconTitle} ${p.displaySource}`;
     if (p.releaseGroup) {
         const styledGroup = toStylized(p.releaseGroup, 'small');
@@ -584,27 +710,31 @@ function styleStremioIta(p) {
 function styleTorrentio(p) {
     const name = `[${p.serviceTag}]\n${p.quality}`;
     const lines = [];
-    
-    // RIGA 1: Filename completo con icona foglio
     lines.push(`📄 ${p.fileTitle}`);
-
-    // RIGA 2: Size (Box) e Seeders (Silhouette)
     let sizeLine = `📦 ${p.sizeString}`;
     if (p.seeders !== null && p.seeders !== undefined) {
         sizeLine += ` 👤 ${p.seeders}`;
     }
     lines.push(sizeLine);
-
-    // RIGA 3: Sorgente con lente d'ingrandimento
     lines.push(`🔍 ${p.displaySource}`);
-
-    // RIGA 4: Lingue con altoparlante
-    // Rimuoviamo le bandiere per avvicinarci allo stile testuale "GB / IT" dell'immagine
-    // (o usiamo p.lang standard se la regex toglie tutto)
     let cleanLang = p.lang.replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "").trim(); 
-    if (!cleanLang.replace(/[^a-zA-Z]/g, "")) cleanLang = p.lang; // Fallback se rimuove tutto
+    if (!cleanLang.replace(/[^a-zA-Z]/g, "")) cleanLang = p.lang; 
     lines.push(`🔊 ${cleanLang}`);
+    return { name, title: lines.join("\n") };
+}
 
+function styleVertical(p) {
+    const isCached = ["RD", "TB", "AD"].includes(p.serviceTag);
+    const cacheIcon = isCached ? "⚡" : "☁️";
+    const name = `🦑 Leviathan ${p.quality} ${cacheIcon} Cached`;
+    const lines = [];
+    lines.push(`🍿 ${p.cleanName}`);
+    const videoInfo = p.cleanTags.length > 0 ? `📼 WEB-DL • ${p.cleanTags[0]}` : `📼 WEB-DL`;
+    lines.push(videoInfo);
+    lines.push(`⚙️ ${p.codec}`);
+    lines.push(`🔊 ${p.audioTag} (${p.audioChannels})`);
+    lines.push(`💬 ${p.lang}`);
+    lines.push(`🧲 ${p.sizeString}`);
     return { name, title: lines.join("\n") };
 }
 
@@ -629,7 +759,6 @@ function styleCustom(p, template) {
 function formatStreamSelector(fileTitle, source, size, seeders, serviceTag = "RD", config = {}, infoHash = null, isLazy = false, isPackItem = false) {
     let { quality, qDetails, qIcon, videoTags, cleanTags, lang, codec, audioTag, audioChannels, rawInfo, releaseGroup } = extractStreamInfo(fileTitle, source);
     
-    // ICONE SERVIZI MODIFICATE
     let serviceIconTitle = "🦈"; // Default P2P
     if (serviceTag === "RD") { qIcon = "🐬"; serviceIconTitle = "🐬"; }     // RD = Delfino
     else if (serviceTag === "TB") { qIcon = "⚓"; serviceIconTitle = "⚓"; } // TB = Ancora
@@ -674,13 +803,16 @@ function formatStreamSelector(fileTitle, source, size, seeders, serviceTag = "RD
         videoTags, cleanTags, codec,
         lang, audioInfo, audioTag, audioChannels,
         cleanName, epTag, sourceLine,
-        releaseGroup
+        releaseGroup, rawInfo
     };
 
     let result;
     const style = config.formatter || "leviathan"; 
 
     switch (style) {
+        case "complex": result = styleComplex(params); break; 
+        case "android": result = styleAndroidTV(params); break; 
+        case "picture": result = stylePicture(params); break; 
         case "lev2": result = styleLeviathanTwo(params); break;
         case "fra": result = styleFra(params); break;
         case "dav": result = styleDav(params); break;
@@ -689,7 +821,8 @@ function formatStreamSelector(fileTitle, source, size, seeders, serviceTag = "RD
         case "pri": result = stylePri(params); break;
         case "comet": result = styleComet(params); break;
         case "stremio_ita": result = styleStremioIta(params); break;
-        case "torrentio": result = styleTorrentio(params); break; // <--- NUOVO FORMATTER AGGIUNTO
+        case "torrentio": result = styleTorrentio(params); break; 
+        case "vertical": result = styleVertical(params); break;
         case "custom": result = styleCustom(params, config.customTemplate || ""); break;
         case "leviathan": 
         default: 

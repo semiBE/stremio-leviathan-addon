@@ -1158,6 +1158,22 @@ const mobileHTML = `
                             <div class="m-chip-icon">📜</div>
                             <div class="m-chip-label">Torrentio</div>
                         </div>
+                        <div class="m-cortex-chip" id="msk_vertical" onclick="selectMobileSkin('vertical')">
+                            <div class="m-chip-icon">📑</div>
+                            <div class="m-chip-label">Vertical</div>
+                        </div>
+                        <div class="m-cortex-chip" id="msk_complex" onclick="selectMobileSkin('complex')">
+                            <div class="m-chip-icon">🔲</div>
+                            <div class="m-chip-label">Template</div>
+                        </div>
+                        <div class="m-cortex-chip" id="msk_android" onclick="selectMobileSkin('android')">
+                            <div class="m-chip-icon">📺</div>
+                            <div class="m-chip-label">Android TV</div>
+                        </div>
+                        <div class="m-cortex-chip" id="msk_picture" onclick="selectMobileSkin('picture')">
+                            <div class="m-chip-icon">🖼️</div>
+                            <div class="m-chip-label">Picture</div>
+                        </div>
                         <div class="m-cortex-chip" id="msk_custom" onclick="selectMobileSkin('custom')" style="grid-column: span 3; border-style: dashed; background: rgba(0,0,0,0.3);">
                             <div class="m-chip-icon">🛠️</div>
                             <div class="m-chip-label">CUSTOM BUILDER</div>
@@ -1433,7 +1449,7 @@ const skinMaps = {
         nums: {'0':'𝟬','1':'𝟭','2':'𝟮','3':'𝟯','4':'𝟰','5':'𝟱','6':'𝟲','7':'𝟳','8':'𝟴','9':'𝟵'},
         chars: {
             'A':'𝗔','B':'𝗕','C':'𝗖','D':'𝗗','E':'𝗘','F':'𝗙','G':'𝗚','H':'𝗛','I':'𝗜','J':'𝗝','K':'𝗞','L':'𝗟','M':'𝗠','N':'𝗡','O':'𝗢','P':'𝗣','Q':'𝗤','R':'𝗥','S':'𝗦','T':'𝗧','U':'𝗨','V':'𝗩','W':'𝗪','X':'𝗫','Y':'𝗬','Z':'𝗭',
-            'a':'𝗮','b':'𝗯','c':'𝗰','d':'𝗱','e':'𝗲','f':'𝗳','g':'𝗴','h':'𝗵','i':'𝗶','j':'𝗷','k':'𝗸','l':'𝗹','m':'𝗺','n':'𝗻','o':'𝗼','p':'𝗽','q':'𝗾','r':'𝗿','s':'𝘀','t':'𝘁','u':'𝘂','v':'𝘃','w':'ᴡ','x':'𝘅','y':'𝘆','z':'𝘇'
+            'a':'𝗮','b':'𝗯','c':'𝗰','d':'𝗱','e':'𝗲','f':'𝗳','g':'𝗴','h':'𝗵','i':'𝗶','j':'𝗷','k':'𝗸','l':'𝗹','m':'𝗺','n':'𝗻','o':'𝗼','p':'ᴘ','q':'𝗾','r':'𝗿','s':'𝘀','t':'𝘁','u':'𝘂','v':'𝘃','w':'ᴡ','x':'𝘅','y':'𝘆','z':'𝘇'
         }
     },
     'small': {
@@ -1618,6 +1634,108 @@ function updateMobilePreview() {
         return { name, title: lines.join("\n") };
     };
 
+    const styleComplex = (p) => {
+        // Status Icon (Cached check simulated)
+        const isCached = ["RD", "TB", "AD"].includes(p.serviceTag);
+        const statusIcon = isCached ? "🔲" : "🔳";
+        
+        let res = "SD";
+        if (p.quality.includes("2160") || p.quality.includes("4K")) res = "4K";
+        else if (p.quality.includes("1440")) res = "QHD";
+        else if (p.quality.includes("1080")) res = "HD";
+
+        let sizePart = p.sizeString ? ` │ ⛁ ${p.sizeString}` : "";
+        let seedPart = ""; 
+        
+        const name = `${statusIcon} ${res}${sizePart}${seedPart}`;
+        
+        const lines = [];
+        // Line 1
+        const line1Parts = [];
+        if (p.lang) line1Parts.push(p.lang);
+        if (p.audioTag) line1Parts.push(p.audioTag);
+        if (p.audioChannels) line1Parts.push(p.audioChannels);
+        lines.push(`☰ ${line1Parts.join(' · ')}`);
+
+        // Line 2
+        const line2Parts = [];
+        line2Parts.push(p.quality);
+        if (p.codec) line2Parts.push(p.codec);
+        if (p.cleanTags.length > 0) line2Parts.push(p.cleanTags.join(' · '));
+        lines.push(`☲ ${line2Parts.join(' · ')}`);
+
+        // Line 3
+        const line3Parts = ["Leviathan"]; 
+        if (p.releaseGroup) line3Parts.push(p.releaseGroup);
+        line3Parts.push("1337x"); 
+        if (isCached) line3Parts.push(`[${p.serviceTag}]`);
+        lines.push(`☵ ${line3Parts.join(' · ')}`);
+
+        // Line 4
+        const line4Parts = [p.cleanName];
+        if (p.epTag) line4Parts.push(p.epTag);
+        lines.push(`☶ ${line4Parts.join(' · ')}`);
+
+        return { name, title: lines.join("\n") };
+    };
+
+    const styleAndroid = (p) => {
+        const qDisp = p.quality.replace('2160p','4K').replace('1440p','2K');
+        let vTags = p.cleanTags.filter(t => /HDR|DV|10\+/i.test(t)).join(' | ')
+            .replace('HDR | DV', 'DV').replace('DV | HDR', 'DV').replace('HDR10+ | DV', 'DV');
+        
+        const headerParts = [qDisp, vTags, p.serviceTag].filter(Boolean);
+        const name = headerParts.join(" | ");
+
+        const lines = [];
+        if (p.codec) lines.push(`🎞️ ${p.codec}`);
+        if (p.audioTag) lines.push(`🎧 ${p.audioTag} ${p.audioChannels}`);
+        lines.push(`⚙️ ${p.displaySource}`);
+        lines.push(p.lang);
+        lines.push(p.fileTitle);
+
+        return { name, title: lines.join("\n") };
+    };
+
+    const stylePicture = (p) => {
+        const isCached = ["RD", "TB", "AD"].includes(p.serviceTag);
+        const cacheIcon = isCached ? "✅" : "⏳";
+        
+        let feat = [];
+        if (p.quality === "4K") feat.push("UHD");
+        if (p.cleanTags.some(t => /HDR|DV/i.test(t))) feat.push("HDR");
+        if (p.audioTag.includes("Atmos")) feat.push("ATMOS");
+        
+        const name = `${cacheIcon} ${feat.join(" ")} ${p.quality}`;
+
+        const lines = [];
+        lines.push(`🎬 ${p.cleanName} ${p.epTag}`);
+        
+        let vidLine = `✨ ${p.quality}`;
+        const hdrTags = p.cleanTags.filter(t => /HDR|DV|10\+/i.test(t)).join(" | ");
+        if (hdrTags) vidLine += ` 🔆 ${hdrTags}`;
+        lines.push(vidLine);
+
+        let audLine = `🎧 ${p.audioTag}`;
+        if (p.audioChannels) audLine += ` 🔊 ${p.audioChannels}`;
+        lines.push(audLine);
+
+        let typeText = "Web-DL";
+        if (p.cleanTags.some(t => /Remux/i.test(t))) typeText = "Blu-ray Remux";
+        else if (p.cleanTags.some(t => /BluRay/i.test(t))) typeText = "Blu-ray";
+        lines.push(`💿 ${typeText}`);
+
+        lines.push(`📦 ${p.sizeString}`);
+
+        let groupLine = `🏷️ ${typeText} T1`; 
+        if (p.releaseGroup) groupLine += ` (${p.releaseGroup})`;
+        lines.push(groupLine);
+
+        lines.push(`⚡ Comet ${p.serviceTag}`);
+
+        return { name, title: lines.join("\n") };
+    };
+
     const styleLeviathanTwo = (p) => {
         const levText = toStylized("LEVIATHAN", "small");
         const name = `🦑 ${levText} ${p.serviceIconTitle} │ ${p.quality}`;
@@ -1742,25 +1860,50 @@ function updateMobilePreview() {
         const name = `[${p.serviceTag}]\n${p.quality}`;
         const lines = [];
         
-        // RIGA 1: Filename completo con icona foglio
         lines.push(`📄 ${p.fileTitle}`);
 
-        // RIGA 2: Size (Box) e Seeders (Silhouette)
         let sizeLine = `📦 ${p.sizeString}`;
-        // p.seeders is a number, p.seedersStr is "👥 152". We reconstruct it manually for "👤 152"
         if (p.seeders !== null && p.seeders !== undefined) {
             sizeLine += ` 👤 ${p.seeders}`;
         }
         lines.push(sizeLine);
 
-        // RIGA 3: Sorgente con lente d'ingrandimento
         lines.push(`🔍 ${p.displaySource}`);
 
-        // RIGA 4: Lingue con altoparlante
-        // Clean flags like in formatter.js
         let cleanLang = p.lang.replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "").trim(); 
         if (!cleanLang.replace(/[^a-zA-Z]/g, "")) cleanLang = p.lang; 
         lines.push(`🔊 ${cleanLang}`);
+
+        return { name, title: lines.join("\n") };
+    };
+
+    const styleVertical = (p) => {
+        const isCached = ["RD", "TB", "AD"].includes(p.serviceTag);
+        const cacheIcon = isCached ? "⚡" : "☁️";
+        
+        // Header: Calamaro + Nome + Qualità + Cache
+        const name = `🦑 Leviathan ${p.quality} ${cacheIcon} Cached`;
+        
+        const lines = [];
+        
+        // Riga 1: Titolo (Popcorn 🍿)
+        lines.push(`🍿 ${p.cleanName}`);
+
+        // Riga 2: Sorgente (Cassetta 📼)
+        const videoInfo = p.cleanTags.length > 0 ? `📼 WEB-DL • ${p.cleanTags[0]}` : `📼 WEB-DL`;
+        lines.push(videoInfo);
+
+        // Riga 3: Codec (Ingranaggio ⚙️)
+        lines.push(`⚙️ ${p.codec}`);
+
+        // Riga 4: Audio (Speaker 🔊)
+        lines.push(`🔊 ${p.audioTag} (${p.audioChannels})`);
+
+        // Riga 5: Lingua (Fumetto 💬)
+        lines.push(`💬 ${p.lang}`);
+
+        // Riga 6: Size (Magnete 🧲)
+        lines.push(`🧲 ${p.sizeString}`);
 
         return { name, title: lines.join("\n") };
     };
@@ -1794,7 +1937,12 @@ function updateMobilePreview() {
         case "pri": result = stylePri(p); break;
         case "comet": result = styleComet(p); break;
         case "stremio_ita": result = styleStremioIta(p); break;
-        case "torrentio": result = styleTorrentio(p); break; // AGGIUNTO
+        case "torrentio": result = styleTorrentio(p); break;
+        case "vertical": result = styleVertical(p); break;
+        // NUOVI CASES AGGIUNTI
+        case "complex": result = styleComplex(p); break;
+        case "android": result = styleAndroid(p); break;
+        case "picture": result = stylePicture(p); break;
         case "custom": result = styleCustom(p); break;
         case "leviathan": default: result = styleLeviathan(p); break;
     }
