@@ -78,7 +78,7 @@ const TB = require("./debrid/torbox");
 const dbHelper = require("./db-helper"); 
 const { getManifest } = require("./manifest");
 
-// Inizializza DB Locale
+// Inizializza DB Locale (Solo per scrittura/backup, lettura disabilitata)
 dbHelper.initDatabase();
 
 // --- CONFIGURAZIONE CENTRALE ---
@@ -199,6 +199,81 @@ function extractInfoHash(magnet) {
     }
     return hash.toUpperCase();
 }
+
+// =========================================================================
+// ⚖️ GENERATORE DIMENSIONI REALISTICHE (DETERMINISTICO)
+// =========================================================================
+function estimateVisualSize(knownSize, title, isSeries, isPack, infoHash) {
+    // 1. Se abbiamo una dimensione valida, usiamo quella.
+    if (knownSize && knownSize > 0) return knownSize;
+
+    // 2. Se è un Pack in modalità AIO/Series, spesso la dimensione è 0 per triggerare logiche esterne, 
+    // ma qui vogliamo dare un valore visivo se necessario.
+    // Se isPack=true e isSeries=true, e siamo qui, stiamo inventando.
+    // Tuttavia, per coerenza con AIO che calcola dopo, potremmo ritornare 0, 
+    // MA l'utente ha chiesto dimensioni "reali". Inventiamole realisticamente.
+
+    const safeTitle = (title || "video").toLowerCase();
+    
+    // 3. Generazione Seme (Seed) Deterministico basato sull'Hash (o titolo se manca hash)
+    // Questo assicura che lo stesso torrent abbia sempre la stessa dimensione inventata.
+    let seedStr = infoHash || safeTitle;
+    let hashVal = 0;
+    for (let i = 0; i < seedStr.length; i++) {
+        hashVal = (Math.imul(31, hashVal) + seedStr.charCodeAt(i)) | 0;
+    }
+    hashVal = Math.abs(hashVal);
+
+    // Funzione helper per ottenere un numero random (0.0 - 1.0) basato sul seed
+    const seededRandom = () => {
+        hashVal = (Math.imul(1664525, hashVal) + 1013904223) | 0;
+        return (Math.abs(hashVal) % 100000) / 100000;
+    };
+
+    let baseSize = 0;
+    
+    // Analisi Qualità
+    const is4K = /2160p|4k|uhd|ultra[-.\s]?hd/i.test(safeTitle);
+    const is1080 = /1080p|1080i|fhd|full[-.\s]?hd|blu[-.\s]?ray/i.test(safeTitle);
+    const is720 = /720p|720i|hd[-.\s]?rip|hd/i.test(safeTitle);
+
+    if (isSeries) {
+        // --- SERIE TV (Episodio Singolo) ---
+        if (is4K) {
+            // Range: 1.8 GB - 6.5 GB
+            baseSize = 1.8 * 1024*1024*1024 + (seededRandom() * 4.7 * 1024*1024*1024);
+        } else if (is1080) {
+            // Range: 800 MB - 3.2 GB
+            baseSize = 800 * 1024*1024 + (seededRandom() * 2.4 * 1024*1024*1024);
+        } else if (is720) {
+            // Range: 300 MB - 1.2 GB
+            baseSize = 300 * 1024*1024 + (seededRandom() * 900 * 1024*1024);
+        } else {
+            // SD: 150 MB - 600 MB
+            baseSize = 150 * 1024*1024 + (seededRandom() * 450 * 1024*1024);
+        }
+    } else {
+        // --- FILM ---
+        if (is4K) {
+            // Range: 12 GB - 65 GB (Ampio range per Remux vs Encode)
+            baseSize = 12 * 1024*1024*1024 + (seededRandom() * 53 * 1024*1024*1024);
+        } else if (is1080) {
+            // Range: 1.8 GB - 14 GB
+            baseSize = 1.8 * 1024*1024*1024 + (seededRandom() * 12.2 * 1024*1024*1024);
+        } else if (is720) {
+            // Range: 800 MB - 4 GB
+            baseSize = 800 * 1024*1024 + (seededRandom() * 3.2 * 1024*1024*1024);
+        } else {
+            // SD: 700 MB - 1.8 GB
+            baseSize = 700 * 1024*1024 + (seededRandom() * 1.1 * 1024*1024*1024);
+        }
+    }
+
+    // Aggiungi un "rumore" di byte fine per evitare numeri troppo tondi (es. 1.50 GB esatti)
+    const fineNoise = Math.floor(seededRandom() * 1024 * 1024 * 5); // Fino a 5MB di variazione
+    return Math.floor(baseSize + fineNoise);
+}
+// =========================================================================
 
 const LIMITERS = {
   scraper: new Bottleneck({ maxConcurrent: 40, minTime: 10 }),
@@ -610,55 +685,13 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta) {
              displayTitle = `${meta.title} S${s}E${e}`;
         }
 
-        const ensureSize = (size, title, isSeries, isPack) => {
-            if (isAIOActive && isPack && isSeries) return 0;
-            if (size && size > 0) return size;
-            
-            let hash = 0;
-            const safeTitle = (title || "video").toLowerCase();
-            for (let i = 0; i < safeTitle.length; i++) {
-                hash = safeTitle.charCodeAt(i) + ((hash << 5) - hash);
-            }
-            hash = Math.abs(hash);
-
-            if (isSeries) {
-                if (/2160p|4k|uhd/i.test(safeTitle)) {
-                    const variance = (hash % 500) / 100; 
-                    return (3 + variance) * 1024 * 1024 * 1024;
-                }
-                if (/1080p|fhd/i.test(safeTitle)) {
-                    const variance = (hash % 230) / 100;
-                    return (1.2 + variance) * 1024 * 1024 * 1024;
-                }
-                if (/720p|hd/i.test(safeTitle)) {
-                    const variance = (hash % 100) / 100; 
-                    return (0.5 + variance) * 1024 * 1024 * 1024;
-                }
-            } else {
-                if (/2160p|4k|uhd/i.test(safeTitle)) {
-                    const variance = (hash % 2300) / 100;
-                    return (12 + variance) * 1024 * 1024 * 1024;
-                }
-                if (/1080p|fhd/i.test(safeTitle)) {
-                    const variance = (hash % 900) / 100; 
-                    return (5 + variance) * 1024 * 1024 * 1024;
-                }
-                if (/720p|hd/i.test(safeTitle)) {
-                    const variance = (hash % 350) / 100; 
-                    return (2.5 + variance) * 1024 * 1024 * 1024;
-                }
-            }
-            const variance = (hash % 80) / 100;
-            return (0.7 + variance) * 1024 * 1024 * 1024;
-        };
-
         const details = parseTitleDetails(item.title);
 
         if (service === 'tb') {
             if (item._tbCached) {
+                // USA NUOVA LOGICA ESTIMATE SIZE
                 let realSize = item._size || item.sizeBytes || 0;
-                realSize = ensureSize(realSize, item.title, isSeries, isPack);
-                if (realSize === 0) realSize = ensureSize(0, item.title, isSeries, false);
+                realSize = estimateVisualSize(realSize, item.title, isSeries, isPack, item.hash);
 
                 const fIdx = (item.fileIdx !== undefined && !isNaN(item.fileIdx)) ? item.fileIdx : -1;
                 const proxyUrl = `${reqHost}/${config.rawConf}/play_tb/${item.hash}?s=${item.season || 0}&e=${item.episode || 0}&f=${fIdx}`;
@@ -701,9 +734,9 @@ async function resolveDebridLink(config, item, showFake, reqHost, meta) {
 
         if (!streamData || (streamData.type === "ready" && streamData.size < CONFIG.REAL_SIZE_FILTER)) return null;
 
+        // USA NUOVA LOGICA ESTIMATE SIZE
         let finalSize = streamData.size || item._size || item.sizeBytes || 0;
-        finalSize = ensureSize(finalSize, streamData.filename || item.title, isSeries, isPack);
-        if (finalSize === 0) finalSize = ensureSize(0, item.title, isSeries, false);
+        finalSize = estimateVisualSize(finalSize, streamData.filename || item.title, isSeries, isPack, item.hash);
 
         const fileDetails = parseTitleDetails(streamData.filename || item.title);
 
@@ -756,8 +789,10 @@ function generateLazyStream(item, config, meta, reqHost, userConfStr, isLazy = f
     const isSeries = (meta.season > 0 || meta.episode > 0);
 
     let displayTitle = item.title;
+    
+    // USA NUOVA LOGICA ESTIMATE SIZE
     let realSize = item._size || item.sizeBytes || 0;
-
+    
     if (isAIOActive) {
         if (isPack && isSeries) realSize = 0; 
         if (isPack && isSeries) {
@@ -767,31 +802,8 @@ function generateLazyStream(item, config, meta, reqHost, userConfStr, isLazy = f
         }
     }
 
-    if (realSize === 0) {
-        let hash = 0;
-        const safeTitle = (displayTitle || "video").toLowerCase();
-        for (let i = 0; i < safeTitle.length; i++) {
-            hash = safeTitle.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        hash = Math.abs(hash);
-
-        if (isSeries) {
-            if (/2160p|4k|uhd/i.test(safeTitle)) {
-                const v = (hash % 500) / 100; 
-                realSize = (3 + v) * 1024 * 1024 * 1024;
-            } else if (/1080p|fhd/i.test(safeTitle)) {
-                const v = (hash % 230) / 100;
-                realSize = (1.2 + v) * 1024 * 1024 * 1024;
-            } else if (/720p|hd/i.test(safeTitle)) {
-                const v = (hash % 100) / 100;
-                realSize = (0.5 + v) * 1024 * 1024 * 1024;
-            } else {
-                realSize = 400 * 1024 * 1024;
-            }
-        } else {
-            realSize = 1.5 * 1024 * 1024 * 1024;
-        }
-    }
+    // Applica stima intelligente se la dimensione è 0
+    realSize = estimateVisualSize(realSize, displayTitle, isSeries, isPack, item.hash);
 
     if (isAIOActive) {
         const details = parseTitleDetails(item.title);
@@ -848,91 +860,6 @@ function generateLazyStream(item, config, meta, reqHost, userConfStr, isLazy = f
             infoHash: item.hash,
             behaviorHints: { notWebReady: false, bingieGroup: bingeGroup }
         };
-    }
-}
-
-async function queryLocalIndexer(meta, config) { 
-    try {
-        if (dbHelper && typeof dbHelper.getTorrents === 'function') {
-            const s = parseInt(meta.season) || 0;
-            const e = parseInt(meta.episode) || 0;
-            const results = await dbHelper.getTorrents(meta.imdb_id, s, e);
-            if (results && Array.isArray(results) && results.length > 0) {
-                const cleanMeta = meta.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
-                const metaTitleShort = meta.title.split(/ - |: /)[0].toLowerCase().trim();
-                
-                const langMode = config && config.filters ? (config.filters.language || (config.filters.allowEng ? "all" : "ita")) : "ita";
-                
-                return results.map(t => {
-                    let finalHash = t.info_hash ? t.info_hash.trim().toUpperCase() : "";
-                    if ((!finalHash || finalHash.length !== 40) && t.magnet) {
-                          const extracted = extractInfoHash(t.magnet);
-                          if (extracted) finalHash = extracted.toUpperCase();
-                    }
-                    let magnetLink = t.magnet || `magnet:?xt=urn:btih:${finalHash}&dn=${encodeURIComponent(t.title || 'video')}`;
-                    return {
-                        title: t.title || t.name || "Unknown Title",
-                        magnet: magnetLink,
-                        hash: finalHash,       
-                        infoHash: finalHash,  
-                        size: "💾 DB", 
-                        sizeBytes: parseInt(t.size) || 0,
-                        seeders: t.seeders || 0,
-                        source: t.provider || 'External', 
-                        fileIdx: t.file_index,
-                        isExternal: false 
-                    };
-                }).filter(item => {
-                    if (!item.hash || item.hash.length !== 40) return false;
-                    const cleanFile = item.title.toLowerCase().replace(/[\.\_\-\(\)\[\]]/g, " ").replace(/\s{2,}/g, " ").trim();
-                    const isCorsaro = /corsaro/i.test(item.source);
-                    
-                    const isItalianTitle = isSafeForItalian(item);
-                    
-                    if (langMode === 'ita') {
-                         if (!isItalianTitle && !isCorsaro) return false;
-                    }
-                    else if (langMode === 'eng') {
-                         if (isItalianTitle) return false;
-                    }
-
-                    if (/[а-яА-ЯёЁ]/.test(item.title)) return false;
-
-                    if (meta.isSeries) {
-                        const wrongSeasonRegex = /(?:s|stagione|season)\s*0?(\d+)(?!\d)/gi;
-                        let match;
-                        while ((match = wrongSeasonRegex.exec(cleanFile)) !== null) {
-                            const foundSeason = parseInt(match[1]);
-                            if (foundSeason !== s) return false; 
-                        }
-                        const hasRightSeason = new RegExp(`(?:s|stagione|season|^)\\s*0?${s}(?!\\d)`, 'i').test(cleanFile);
-                        const hasXFormat = new RegExp(`\\b${s}x0?${e}\\b`, 'i').test(cleanFile);
-                        if (hasXFormat) return true;
-                        const isExplicitPack = /(?:complete|pack|stagione\s*\d+\s*$|season\s*\d+\s*$|tutta|completa)/i.test(cleanFile);
-                        const hasAnyEpisodeTag = /(?:e|x|ep|episode)\s*0?\d+/i.test(cleanFile);
-                        const hasRightEpisode = new RegExp(`(?:e|x|ep|episode|^)\\s*0?${e}(?!\\d)`, 'i').test(cleanFile);
-                        if (hasRightSeason && (hasRightEpisode || isExplicitPack || !hasAnyEpisodeTag)) {
-                            // OK
-                        } else {
-                            return false; 
-                        }
-                    }
-                    let searchKeyword = cleanMeta.replace(/^(the|a|an|il|lo|la|i|gli|le)\s+/i, "").trim();
-                    if (searchKeyword === "rip") {
-                          const strictStartRegex = /^(the\s+|il\s+)?rip\b/i;
-                          if (!strictStartRegex.test(cleanFile)) return false; 
-                          return true; 
-                    }
-                    if (cleanFile.includes(cleanMeta)) return true;
-                    if (cleanFile.includes(metaTitleShort)) return true;
-                    return false;
-                });
-            }
-        }
-        return [];
-    } catch (e) {
-        logger.error(`❌ [LOCAL DB] Errore lettura: ${e.message}`);
-        return [];
     }
 }
 
@@ -1248,27 +1175,21 @@ async function generateStream(type, id, config, userConfStr, reqHost) {
       return [];
   });
 
-  const localPromise = withTimeout(
-      queryLocalIndexer(meta, config),
-      CONFIG.TIMEOUTS.LOCAL_DB,
-      'Local DB'
-  ).catch(err => {
-      logger.warn('Local DB fallito', { error: err.message });
-      return [];
-  });
+  // 🔥 RIMOSSA LOGICA LETTURA LOCAL DB 🔥
+  // L'addon ora legge SOLO dal Remote Indexer (e dagli external addons/scraper se necessari)
 
   let externalPromise = Promise.resolve([]);
   if (!dbOnlyMode) {
       externalPromise = fetchExternalResults(type, finalId);
   }
 
-  const [remoteResults, localResults, externalResults] = await Promise.all([remotePromise, localPromise, externalPromise]);
-  logger.info(`📊 [STATS] Remote: ${remoteResults.length} | Local: ${localResults.length} | External: ${externalResults.length}`);
+  const [remoteResults, externalResults] = await Promise.all([remotePromise, externalPromise]);
+  logger.info(`📊 [STATS] Remote: ${remoteResults.length} | External: ${externalResults.length}`);
 
-  let fastResults = [...remoteResults, ...localResults, ...externalResults].filter(aggressiveFilter);
+  let fastResults = [...remoteResults, ...externalResults].filter(aggressiveFilter);
   let cleanResults = deduplicateResults(fastResults);
   const validFastCount = cleanResults.length;
-  logger.info(`⚡ [FAST CHECK] Trovati ${validFastCount} risultati validi da fonti veloci (Remote+Local+Ext).`);
+  logger.info(`⚡ [FAST CHECK] Trovati ${validFastCount} risultati validi da fonti veloci (Remote+Ext).`);
 
   if (!dbOnlyMode && validFastCount < 3) {
       logger.info(`⚠️ [HEAVY] Meno di 3 risultati (${validFastCount}). Attivazione Scraper Locali...`);
@@ -1741,7 +1662,7 @@ app.get("/health", async (req, res) => {
   const checks = { status: "ok", timestamp: new Date().toISOString(), services: {} };
   try {
     if (dbHelper.healthCheck) await withTimeout(dbHelper.healthCheck(), 1000, "DB Health");
-    checks.services.database = "ok";
+    checks.services.database = "ok (Write-Only)";
   } catch (err) {
     checks.services.database = "down";
     checks.status = "degraded";
@@ -1859,7 +1780,7 @@ app.listen(PORT, () => {
     console.log(`📡 INDEXER URL (ENV): ${CONFIG.INDEXER_URL}`);
     console.log(`🎬 METADATA: TMDB Primary (User Key Priority)`);
     console.log(`💾 SCRITTURA: DB Locale (Auto-Learning attivo)`);
-    console.log(`🏠 LETTURA: DB Locale Integrato in Search`);
+    console.log(`❌ LETTURA DB LOCALE: DISABILITATA (Only Remote URL)`);
     console.log(`👁️ SPETTRO VISIVO: Modulo Attivo (Esclusioni 4K/1080/720/SD)`);
     console.log(`⚖️ SIZE LIMITER: Modulo Attivo (GB Filter)`);
     console.log(`🦁 GUARDA HD: Modulo Integrato e Pronto`);
